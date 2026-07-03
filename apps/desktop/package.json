@@ -208,11 +208,11 @@
       "entitlements": "electron/entitlements.mac.plist",
       "entitlementsInherit": "electron/entitlements.mac.inherit.plist",
       "extendInfo": {
-        "CFBundleDisplayName": "Hermes",
-        "CFBundleExecutable": "Hermes",
-        "CFBundleName": "Hermes",
-        "NSAudioCaptureUsageDescription": "Hermes uses audio capture for voice conversations.",
-        "NSMicrophoneUsageDescription": "Hermes uses the microphone for voice input and voice conversations."
+        "CFBundleDisplayName": "Karna",
+        "CFBundleExecutable": "Karna",
+        "CFBundleName": "Karna",
+        "NSAudioCaptureUsageDescription": "Karna uses audio capture for voice conversations.",
+        "NSMicrophoneUsageDescription": "Karna uses the microphone for voice input and voice conversations."
       },
       "gatekeeperAssess": false,
       "hardenedRuntime": true,
@@ -222,7 +222,7 @@
       ]
     },
     "dmg": {
-      "title": "Install Hermes",
+      "title": "Install Karna",
       "backgroundColor": "#f5f5f7",
       "iconSize": 96,
       "window": {
@@ -244,7 +244,7 @@
       ]
     },
     "win": {
-      "legalTrademarks": "Hermes",
+      "legalTrademarks": "Karna",
       "target": [
         "nsis",
         "msi"
@@ -253,8 +253,8 @@
     },
     "linux": {
       "category": "Development",
-      "maintainer": "Nous Research <support@nousresearch.com>",
-      "synopsis": "Native desktop shell for Hermes Agent.",
+      "maintainer": "Karna <support@karna.local>",
+      "synopsis": "Native desktop shell for Karna Agent.",
       "target": [
         "AppImage",
         "deb",
@@ -265,8 +265,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "shortcutName": "Hermes",
-      "uninstallDisplayName": "Hermes",
+      "shortcutName": "Karna",
+      "uninstallDisplayName": "Karna",
       "warningsAsErrors": false
     }
   }
