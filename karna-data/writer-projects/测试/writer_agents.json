@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "project_id": "wp_4f01df0d23",
+  "project_slug": "测试",
+  "type": "web-novel",
+  "updated_at": "2026-07-03T06:44:43.927Z",
+  "template": "web-novel",
+  "enabled": false,
+  "concurrency": {
+    "enabled": false,
+    "max_parallel": 3
+  },
+  "agents": [
+    {
+      "id": "controller",
+      "name": "主控",
+      "role": "主控",
+      "brief": "Schedule tasks and assign task_system.json.",
+      "persona": "Project dispatcher.",
+      "skills": [],
+      "mcp": [],
+      "enabled": true,
+      "status": "working",
+      "status_label": "待命",
+      "status_detail": "",
+      "waiting_for": "",
+      "session_id": "karna-1783061083926-1"
+    }
+  ]
+}

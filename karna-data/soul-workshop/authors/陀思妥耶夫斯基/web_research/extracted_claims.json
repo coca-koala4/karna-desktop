@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "claim_233baee151a4",
+      "claim": "陀思妥耶夫斯基（百度百科条目）",
+      "evidence": "陀思妥耶夫斯基（百度百科条目）",
+      "source_url": "https://baike.baidu.com/search/word?word=%E9%99%80%E6%80%9D%E5%A6%A5%E8%80%B6%E5%A4%AB%E6%96%AF%E5%9F%BA",
+      "source_title": "陀思妥耶夫斯基",
+      "confidence": 0.6,
+      "category": "critical_lens"
+    },
+    {
+      "id": "claim_4dad42bdd8f6",
+      "claim": "陀思妥耶夫斯基（百度百科条目）",
+      "evidence": "陀思妥耶夫斯基（百度百科条目）",
+      "source_url": "https://baike.baidu.com/search/word?word=%E9%99%80%E6%80%9D%E5%A6%A5%E8%80%B6%E5%A4%AB%E6%96%AF%E5%9F%BA",
+      "source_title": "陀思妥耶夫斯基",
+      "confidence": 0.6,
+      "category": "critical_lens"
+    },
+    {
+      "id": "claim_cf6e6ffc38bd",
+      "claim": "陀思妥耶夫斯基（百度百科条目）",
+      "evidence": "陀思妥耶夫斯基（百度百科条目）",
+      "source_url": "https://baike.baidu.com/search/word?word=%E9%99%80%E6%80%9D%E5%A6%A5%E8%80%B6%E5%A4%AB%E6%96%AF%E5%9F%BA",
+      "source_title": "陀思妥耶夫斯基",
+      "confidence": 0.6,
+      "category": "critical_lens"
+    },
+    {
+      "id": "claim_68d8eeb23989",
+      "claim": "陀思妥耶夫斯基（百度百科条目）",
+      "evidence": "陀思妥耶夫斯基（百度百科条目）",
+      "source_url": "https://baike.baidu.com/search/word?word=%E9%99%80%E6%80%9D%E5%A6%A5%E8%80%B6%E5%A4%AB%E6%96%AF%E5%9F%BA",
+      "source_title": "陀思妥耶夫斯基",
+      "confidence": 0.6,
+      "category": "critical_lens"
+    }
+  ]
+}

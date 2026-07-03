@@ -1,0 +1,56 @@
+﻿{
+  "updated_at": "2026-06-24",
+  "selection_note": "GitHub repository search results, screened to avoid local skill-name duplicates; Karna bundles safe local skills instead of executing third-party code blindly.",
+  "sources": [
+    {
+      "repo": "coreyhaines31/marketingskills",
+      "url": "https://github.com/coreyhaines31/marketingskills",
+      "description": "Marketing/copywriting/SEO skill suite for Claude Code and AI agents."
+    },
+    {
+      "repo": "blader/humanizer",
+      "url": "https://github.com/blader/humanizer",
+      "description": "Skill focused on reducing obvious AI-generated writing patterns."
+    },
+    {
+      "repo": "Master-cai/Research-Paper-Writing-Skills",
+      "url": "https://github.com/Master-cai/Research-Paper-Writing-Skills",
+      "description": "Research paper writing skill package for Codex, Claude Code, and Gemini."
+    },
+    {
+      "repo": "aaron-he-zhu/seo-geo-claude-skills",
+      "url": "https://github.com/aaron-he-zhu/seo-geo-claude-skills",
+      "description": "SEO/GEO content writing and optimization skills."
+    },
+    {
+      "repo": "conorbronsdon/avoid-ai-writing",
+      "url": "https://github.com/conorbronsdon/avoid-ai-writing",
+      "description": "Audits and rewrites content to avoid generic AI writing patterns."
+    },
+    {
+      "repo": "jamditis/claude-skills-journalism",
+      "url": "https://github.com/jamditis/claude-skills-journalism",
+      "description": "Journalism, verification, FOIA, data journalism, and academic writing skills."
+    },
+    {
+      "repo": "haowjy/creative-writing-skills",
+      "url": "https://github.com/haowjy/creative-writing-skills",
+      "description": "Claude skills focused on creative writing."
+    },
+    {
+      "repo": "jzOcb/writing-style-skill",
+      "url": "https://github.com/jzOcb/writing-style-skill",
+      "description": "Writing-style skill template with auto-learning from edits."
+    },
+    {
+      "repo": "content-designer/ux-writing-skill",
+      "url": "https://github.com/content-designer/ux-writing-skill",
+      "description": "Systematic UX writing skill for design-system content quality."
+    },
+    {
+      "repo": "hanlulong/econ-writing-skill",
+      "url": "https://github.com/hanlulong/econ-writing-skill",
+      "description": "Economics paper writing skill based on multiple writing guides."
+    }
+  ]
+}

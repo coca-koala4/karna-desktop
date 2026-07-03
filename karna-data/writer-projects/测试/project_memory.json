@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "scope": "project",
+  "project_id": "wp_4f01df0d23",
+  "project_slug": "测试",
+  "title": "测试",
+  "user_memory": {
+    "author_preferences": [],
+    "style_preferences": [],
+    "common_genres": []
+  },
+  "project_memory": {
+    "bible": "bible/bible.json",
+    "isolated": true
+  },
+  "privacy": {
+    "local_first": true,
+    "manual_analysis": true,
+    "never_overwrite_original": true,
+    "default_full_text_upload": false
+  }
+}

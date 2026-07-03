@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "project_id": "global-workflows",
+  "project_title": "Karna 多智能体工坊",
+  "goal": "",
+  "schema_version": 1,
+  "output_schema": {
+    "knowledge_graph": {
+      "nodes": [],
+      "edges": [],
+      "events": [],
+      "characters": []
+    },
+    "validation": {
+      "ok": true,
+      "errors": []
+    }
+  },
+  "monitor": {
+    "status": "done",
+    "updated_at": "2026-07-02T15:44:19.301Z",
+    "summary": "Multi Agent Workshop completed: smoke-1783007059278"
+  },
+  "tasks": [
+    {
+      "id": "wf_task_run_ff8ac1648d_1",
+      "title": "Plan",
+      "description": "Canvas node from Multi Agent Workshop workflow smoke-1783007059278. Node type: agent.",
+      "owner_agent_id": "outline_architect",
+      "owner_agent_name": "Plan",
+      "status": "done",
+      "notes": "Node failed: connect ECONNREFUSED 127.0.0.1:8710\n\n[Local fallback]\nProject: Karna 多智能体工坊\nWorkflow: smoke-1783007059278\nCurrent node: Plan\nAgent: 大纲 Agent / 大纲设计\nDuties: 生成长篇总纲、分卷纲、章节梗概和阶段目标。\nForbidden: 不直接撰写完整正文。\nHard constraints: 不得改动用户指定主线剧情\nNode resources:\nNode model: default\nSkill selection: auto\nPlugin selection: auto\nMCP/tool selection: auto\nPermissions: must not edit prose; comments or suggestions only; may use knowledge base; may read upstream output\nOutput format: 分层大纲\nUser input: smoke test\nUpstream output: smoke test\nOnly complete this node responsibility. Do not talk to other Agents; return everything to the hidden dispatcher.",
+      "created_at": "2026-07-02T15:44:19.300Z",
+      "updated_at": "2026-07-02T15:44:19.300Z",
+      "depends_on": []
+    },
+    {
+      "id": "wf_task_run_ff8ac1648d_2",
+      "title": "Draft",
+      "description": "Canvas node from Multi Agent Workshop workflow smoke-1783007059278. Node type: agent.",
+      "owner_agent_id": "chapter_writer",
+      "owner_agent_name": "Draft",
+      "status": "done",
+      "notes": "Node failed: connect ECONNREFUSED 127.0.0.1:8710\n\n[Local fallback]\nProject: Karna 多智能体工坊\nWorkflow: smoke-1783007059278\nCurrent node: Draft\nAgent: 正文写作 Agent / 正文写作\nDuties: 根据用户需求、章节梗概和上游材料写章节初稿。\nForbidden: 未经允许不改变大纲和核心情节。\nHard constraints: 贴合用户文风锚点\nNode resources:\nNode model: default\nSkill selection: auto\nPlugin selection: auto\nMCP/tool selection: auto\nPermissions: may edit draft; may use knowledge base; may read upstream output\nOutput format: 章节正文\nUser input: smoke test\nUpstream output: Node failed: connect ECONNREFUSED 127.0.0.1:8710\n\n[Local fallback]\nProject: Karna 多智能体工坊\nWorkflow: smoke-1783007059278\nCurrent node: Plan\nAgent: 大纲 Agent / 大纲设计\nDuties: 生成长篇总纲、分卷纲、章节梗概和阶段目标。\nForbidden: 不直接撰写完整正文。\nHard constraints: 不得改动用户指定主线剧情\nNode resources:\nNode model: default\nSkill selection: auto\nPlugin selection: auto\nMCP/tool selection: auto\nPermissions: must not edit prose; comments or suggestions only; may use knowledge base; may read upstream output\nOutput format: 分层大纲\nUser input: smoke test\nUpstream output: smoke test\nOnly complete this node responsibility. Do not talk to other Agents; return everything to the hidden dispatcher.\nOnly complete this node responsibility. Do not talk to other",
+      "created_at": "2026-07-02T15:44:19.300Z",
+      "updated_at": "2026-07-02T15:44:19.300Z",
+      "depends_on": []
+    }
+  ],
+  "claims": [],
+  "agents": [],
+  "coordination_mode": "semi"
+}

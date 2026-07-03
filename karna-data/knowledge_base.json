@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "config": {
+    "folders": [
+      "D:\\Agent\\projects\\karna-hermes\\karna-data\\knowledge"
+    ],
+    "recursive": true,
+    "auto_inject": true,
+    "top_k": 5,
+    "chunk_size": 1200,
+    "chunk_overlap": 160,
+    "embedding_model_id": ""
+  },
+  "documents": [],
+  "chunks": [],
+  "last_indexed_at": null
+}
