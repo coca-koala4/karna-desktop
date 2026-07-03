@@ -35,7 +35,12 @@ const WS_BRIDGE_HOST = '127.0.0.1'
 const WS_BRIDGE_PORT = 17891 // local WS bridge port
 const BACKEND_STARTUP_TIMEOUT_MS = 30_000
 const HEALTH_CHECK_INTERVAL_MS = 500
-const KARNA_DATA_ROOT = process.env.KARNA_DESKTOP_DATA_DIR || path.resolve(__dirname, '..', '..', '..', 'karna-data')
+// All data directory paths are derived from karna/paths.cjs — single source of
+// truth for dev vs packaged data location. The legacy KARNA_DESKTOP_DATA_DIR
+// env var is preserved for backwards compatibility but routes through
+// paths.dataRoot() so the override semantics match.
+const karnaPaths = require('./karna/paths')
+const KARNA_DATA_ROOT = karnaPaths.dataRoot({ env: { ...process.env, KARNA_DATA_DIR: process.env.KARNA_DESKTOP_DATA_DIR || process.env.KARNA_DATA_DIR } })
 
 let karnaBackendUrl = `http://${KARNA_BACKEND_HOST}:${KARNA_BACKEND_PORT}`
 let wsBridgeUrl = `ws://${WS_BRIDGE_HOST}:${WS_BRIDGE_PORT}`
@@ -207,6 +212,11 @@ const writeCustomModels = models => {
 }
 
 const getBackendDataDir = () => KARNA_DATA_ROOT
+// Named-index readers — every persistent store goes through paths.cjs so the
+// dev / packaged data location is centralised. Phase 1 Task 1.2 AC: no
+// hardcoded 'karna-data' string literals outside paths.cjs itself.
+const getWriterProjectsIndexPath = () => karnaPaths.writerProjectsIndexFile()
+const getSoulWorkshopIndexPath    = () => karnaPaths.soulWorkshopIndexFile()
 const backendDataPath = filename => path.join(getBackendDataDir(), filename)
 const readBackendJson = (filename, fallback) => {
   try {
@@ -1339,7 +1349,7 @@ const BUILTIN_MCP_SERVERS = {
 const withBuiltinMcpServers = servers => ({ ...BUILTIN_MCP_SERVERS, ...(servers || {}) })
 
 
-const getKnowledgeDefaultFolder = () => path.join(getBackendDataDir(), 'knowledge')
+const getKnowledgeDefaultFolder = () => karnaPaths.knowledgeBaseFile({}).replace(/knowledge_base\.json$/, 'knowledge')
 const readKnowledgeBase = () => readBackendJson('knowledge_base.json', {
   version: 1,
   config: { folders: [getKnowledgeDefaultFolder()], recursive: true, auto_inject: true, top_k: 5, chunk_size: 1200, chunk_overlap: 160, embedding_model_id: '' },
@@ -1556,7 +1566,7 @@ const callBuiltinMcpTool = async (tool, args = {}) => {
 
 const readWriterProjects = () => readBackendJson('writer_projects.json', { version: 1, active_project_id: '', projects: [] })
 const writeWriterProjects = store => writeBackendJson('writer_projects.json', { version: 1, active_project_id: store.active_project_id || '', projects: Array.isArray(store.projects) ? store.projects : [] })
-const getWriterProjectsRoot = () => path.join(getBackendDataDir(), 'writer-projects')
+const getWriterProjectsRoot = () => karnaPaths.writerProjectsDir()
 const projectAgentId = (projectId, index) => `agent_${index + 1}_${crypto.randomBytes(3).toString('hex')}`
 const normalizeAgentStatusLabel = label => {
   const text = String(label || '').trim()
@@ -2837,7 +2847,7 @@ const rewriteWriterPreview = (ref, input = {}) => {
 
 
 
-const getSoulWorkshopRoot = () => path.join(getBackendDataDir(), 'soul-workshop')
+const getSoulWorkshopRoot = () => karnaPaths.soulWorkshopDir()
 const soulAuthorsRoot = () => path.join(getSoulWorkshopRoot(), 'authors')
 const readSoulStore = () => readBackendJson('soul_workshop.json', { version: 1, active_author_id: '', authors: [] })
 const writeSoulStore = store => writeBackendJson('soul_workshop.json', { version: 1, active_author_id: store.active_author_id || '', authors: Array.isArray(store.authors) ? store.authors : [] })
