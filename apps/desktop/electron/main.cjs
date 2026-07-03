@@ -406,11 +406,11 @@ const BOOT_FAKE_STEP_MS = (() => {
   if (!Number.isFinite(raw) || raw <= 0) return 650
   return Math.max(120, raw)
 })()
-// Karna is the user-facing product name; the Hermes runtime is the upstream
-// agent framework. See package.json productName / appId. The strings below
-// only affect user-visible identity (window title, About panel, Windows
-// AppUserModelID). Runtime paths, env vars, IPC channels, and CLI flags still
-// use "hermes" — those wire into the Python backend and are out of scope here.
+// Karna is the user-facing product name. Powered by Hermes Agent runtime.
+// See package.json productName / appId. The strings below only affect
+// user-visible identity (window title, About panel, Windows AppUserModelID).
+// Runtime paths, env vars, IPC channels, and CLI flags still use "hermes" —
+// those wire into the Python backend and are out of scope here.
 const APP_NAME = 'Karna'
 const TITLEBAR_HEIGHT = 34
 const MACOS_TRAFFIC_LIGHTS_HEIGHT = 14

@@ -3,7 +3,7 @@
   "productName": "Karna",
   "private": true,
   "version": "0.17.0",
-  "description": "Native desktop shell for Karna Agent, powered by Hermes Agent.",
+  "description": "Native desktop shell for Karna Agent. Powered by Hermes Agent runtime.",
   "author": "Karna",
   "type": "module",
   "main": "electron/main.cjs",
