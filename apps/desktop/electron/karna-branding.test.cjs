@@ -422,6 +422,76 @@ if (!fs.existsSync(upstreamAgentsMd)) {
   }
 }
 
+// 12. scripts/install.sh and scripts/install.ps1 seed HERMES_HOME/SOUL.md on
+//     first install. They MUST be byte-identical to
+//     hermes_cli/default_soul.py DEFAULT_SOUL_MD. Otherwise a fresh install
+//     ends up with the upstream "I am Hermes Agent..." English persona, and
+//     the runtime's `_ensure_default_soul_md` only upgrades the legacy
+//     comment-only scaffold — not the upstream English persona — so the user
+//     has to discover and edit SOUL.md by hand.
+const installSh = path.join(REPO, 'scripts', 'install.sh');
+const installPs1 = path.join(REPO, 'scripts', 'install.ps1');
+const defaultSoulFile = path.join(REPO, 'hermes_cli', 'default_soul.py');
+
+function extractHeredocSoul(filePath) {
+  const src = fs.readFileSync(filePath, 'utf8');
+  // POSIX: cat > ... << 'SOUL_EOF'\n<text>\nSOUL_EOF
+  const posix = src.match(/<<\s*'SOUL_EOF'\s*\n([\s\S]*?)\nSOUL_EOF/);
+  if (posix) return posix[1].replace(/\s+/g, ' ').trim();
+  // PowerShell: anchor to "$soulContent = @"" to skip the `& $pythonExe -c @"`
+  // heredocs (install.ps1 has three @" ..."@ blocks total, only the last is SOUL.md).
+  const ps = src.match(/\$soulContent\s*=\s*@"\s*\n([\s\S]*?)\n"@/);
+  if (ps) return ps[1].replace(/\s+/g, ' ').trim();
+  return null;
+}
+
+const expectedSoul = (() => {
+  const src = fs.readFileSync(defaultSoulFile, 'utf8');
+  // Pull the body of DEFAULT_SOUL_MD = ( "<chunks>" ). Use a non-greedy match
+  // that requires a newline before the closing paren, so any ')' inside a
+  // string literal doesn't terminate the capture early. Then join the
+  // adjacent Python string literals.
+  const match = src.match(/DEFAULT_SOUL_MD\s*=\s*\(([\s\S]*?)\n\)/);
+  if (!match) return null;
+  const body = match[1];
+  const chunks = [];
+  const re = /"((?:[^"\\\n]|\\.)*)"/g;
+  let m;
+  while ((m = re.exec(body)) !== null) chunks.push(m[1]);
+  if (chunks.length === 0) return null;
+  return chunks.join('').replace(/\s+/g, ' ').trim();
+})();
+
+if (!expectedSoul) {
+  console.error('FAIL  could not parse DEFAULT_SOUL_MD from hermes_cli/default_soul.py');
+  failures += 1;
+}
+
+for (const [file, scope] of [[installSh, 'scripts/install.sh'], [installPs1, 'scripts/install.ps1']]) {
+  if (!fs.existsSync(file)) {
+    console.error(`FAIL  ${scope} is missing`);
+    failures += 1;
+    continue;
+  }
+  const actual = extractHeredocSoul(file);
+  if (!actual) {
+    console.error(`FAIL  ${scope} heredoc not found (could not parse SOUL body)`);
+    failures += 1;
+    continue;
+  }
+  if (actual !== expectedSoul) {
+    console.error(`FAIL  ${scope} SOUL.md heredoc has drifted from DEFAULT_SOUL_MD`);
+    console.error(`        expected (first 60): ${JSON.stringify(expectedSoul.slice(0, 60))}`);
+    console.error(`        actual   (first 60): ${JSON.stringify(actual.slice(0, 60))}`);
+    failures += 1;
+  } else if (actual.includes('You are Hermes Agent') || actual.includes('Nous Research')) {
+    console.error(`FAIL  ${scope} still contains the upstream "Hermes Agent" boilerplate`);
+    failures += 1;
+  } else {
+    console.log(`OK    ${scope} heredoc matches DEFAULT_SOUL_MD (Karna persona)`);
+  }
+}
+
 console.log('--- summary ---');
 if (failures === 0) {
   console.log('PASS  All branding checks green.');
