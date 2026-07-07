@@ -423,9 +423,9 @@ const WINDOW_BUTTON_POSITION = {
 // It's only the pre-layout fallback — the renderer measures the exact overlay
 // width live via the Window Controls Overlay API.
 const APP_ICON_PATHS = [
-  path.join(APP_ROOT, 'public', 'apple-touch-icon.png'),
-  path.join(APP_ROOT, 'dist', 'apple-touch-icon.png'),
-  path.join(unpackedPathFor(APP_ROOT), 'dist', 'apple-touch-icon.png')
+  path.join(APP_ROOT, 'public', 'Karna.png'),
+  path.join(APP_ROOT, 'dist', 'Karna.png'),
+  path.join(unpackedPathFor(APP_ROOT), 'dist', 'Karna.png')
 ]
 
 let rendererTitleBarTheme = null
@@ -3926,6 +3926,27 @@ function getAppIconPath() {
   return APP_ICON_PATHS.find(fileExists)
 }
 
+// Return the Karna app icon as a nativeImage, not a filesystem path. Windows
+// taskbar and macOS dock both honour nativeImage objects but a bare .png path
+// only sets the in-window icon — the taskbar / alt-tab entry falls back to
+// Electron's default unless we hand the OS a real image object.
+let _cachedIconImage = null
+let _cachedIconPath = null
+function getAppIconImage() {
+  const path = getAppIconPath()
+  if (!path) return null
+  if (_cachedIconImage && _cachedIconPath === path) return _cachedIconImage
+  try {
+    const img = nativeImage.createFromPath(path)
+    if (img.isEmpty()) return null
+    _cachedIconImage = img
+    _cachedIconPath = path
+    return img
+  } catch {
+    return null
+  }
+}
+
 function sendOpenUpdatesRequested() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const { webContents } = mainWindow
@@ -5691,7 +5712,7 @@ function focusWindow(win) {
 }
 
 function spawnSecondaryWindow({ sessionId, watch, newSession } = {}) {
-  const icon = getAppIconPath()
+  const icon = getAppIconImage() ?? getAppIconPath()
   const win = new BrowserWindow({
     width: SESSION_WINDOW_MIN_WIDTH,
     height: SESSION_WINDOW_MIN_HEIGHT,
@@ -5752,6 +5773,67 @@ function createSessionWindow(sessionId, { watch = false } = {}) {
 // later converts to a real session must not get refocused as if it were blank.
 function createNewSessionWindow() {
   return spawnSecondaryWindow({ newSession: true })
+}
+
+// Agent Flow Workshop window — a dedicated IDE-style window for the multi-agent
+// flow editor. Unlike session windows (one per chat), there's at most one agent
+// flow window at a time: re-opening focuses the existing one. The window loads
+// the same SPA renderer but navigates to the /workshops/agent-flow route.
+const AGENT_FLOW_WINDOW_MIN_WIDTH = 1200
+const AGENT_FLOW_WINDOW_MIN_HEIGHT = 800
+let agentFlowWindow = null
+
+function spawnAgentFlowWindow() {
+  // If the window is already open, just focus it.
+  if (agentFlowWindow && !agentFlowWindow.isDestroyed()) {
+    focusWindow(agentFlowWindow)
+    return agentFlowWindow
+  }
+
+  const icon = getAppIconImage() ?? getAppIconPath()
+  const win = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: AGENT_FLOW_WINDOW_MIN_WIDTH,
+    minHeight: AGENT_FLOW_WINDOW_MIN_HEIGHT,
+    fullscreenable: true,
+    title: 'Karna 多智能体流程工坊',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: getTitleBarOverlayOptions(),
+    trafficLightPosition: IS_MAC ? WINDOW_BUTTON_POSITION : undefined,
+    vibrancy: IS_MAC ? 'sidebar' : undefined,
+    opacity: windowOpacity(),
+    icon,
+    show: false,
+    backgroundColor: getWindowBackgroundColor(),
+    webPreferences: chatWindowWebPreferences(path.join(__dirname, 'preload.cjs'))
+  })
+
+  if (IS_MAC) {
+    win.setWindowButtonPosition?.(WINDOW_BUTTON_POSITION)
+  }
+
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.show()
+  })
+
+  win.on('closed', () => {
+    if (agentFlowWindow === win) agentFlowWindow = null
+  })
+
+  wireCommonWindowHandlers(win)
+
+  // Build the URL: same renderer, ?win=agent-flow query flag, #/workshops/agent-flow route.
+  const query = '?win=agent-flow'
+  const route = '#/workshops/agent-flow'
+  const url = DEV_SERVER
+    ? `${DEV_SERVER.endsWith('/') ? DEV_SERVER.slice(0, -1) : DEV_SERVER}/${query}${route}`
+    : `${pathToFileURL(resolveRendererIndex()).toString()}${query}${route}`
+
+  win.loadURL(url)
+
+  agentFlowWindow = win
+  return win
 }
 
 // The pet overlay: a single transparent, frameless, always-on-top window that
@@ -5891,7 +5973,7 @@ function closePetOverlay() {
 }
 
 function createWindow() {
-  const icon = getAppIconPath()
+  const icon = getAppIconImage() ?? getAppIconPath()
   const savedWindowState = readWindowState()
   mainWindow = new BrowserWindow({
     ...computeWindowOptions(savedWindowState, screen.getAllDisplays()),
@@ -6079,6 +6161,11 @@ ipcMain.handle('hermes:window:openSession', async (_event, sessionId, opts) => {
 })
 ipcMain.handle('hermes:window:openNewSession', async () => {
   createNewSessionWindow()
+
+  return { ok: true }
+})
+ipcMain.handle('hermes:window:openAgentFlow', async () => {
+  spawnAgentFlowWindow()
 
   return { ok: true }
 })
