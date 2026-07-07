@@ -89,7 +89,7 @@ if (fs.existsSync(KARNA_ADAPTER)) {
 console.log('--- Test 3: karna-adapter.cjs requires karna/paths.cjs ---');
 if (fs.existsSync(KARNA_ADAPTER)) {
   const content = fs.readFileSync(KARNA_ADAPTER, 'utf8');
-  if (!/require\(['"]\.\/karna\/paths['"]\)/.test(content)) {
+  if (!/require\(['"]\.\/karna\/paths(?:\.cjs)?['"]\)/.test(content)) {
     console.error("FAIL  karna-adapter.cjs does not require('./karna/paths')");
     failures += 1;
   } else {
