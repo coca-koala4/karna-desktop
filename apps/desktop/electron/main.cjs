@@ -428,6 +428,64 @@ const APP_ICON_PATHS = [
   path.join(unpackedPathFor(APP_ROOT), 'dist', 'Karna.png')
 ]
 
+// Dev mode: Electron's `setIcon(pngPath)` paints the in-window icon but the
+// Windows taskbar / alt-tab entry uses the OS-cached App User Model icon,
+// which is a real .ico file — not a PNG. Packaged builds ship
+// `build/icon.ico`; dev has no such file, so the taskbar falls back to
+// Electron's default. Synthesize a multi-size .ico from `public/Karna.png`
+// once per launch and inject it at the top of APP_ICON_PATHS so every
+// BrowserWindow + the macOS dock pick it up. The generated file is
+// process-local (userData/) — no repo state, no rebuild.
+function ensureDevIconIco() {
+  if (process.env.NODE_ENV === 'production') return
+  if (IS_MAC) return
+  try {
+    const pngPath = path.join(APP_ROOT, 'public', 'Karna.png')
+    if (!fs.existsSync(pngPath)) return
+    const src = nativeImage.createFromPath(pngPath)
+    if (src.isEmpty()) return
+    const icoPath = path.join(app.getPath('userData'), 'karna-dev-icon.ico')
+    const sizes = [16, 24, 32, 48, 64, 128, 256]
+    const variants = sizes.map(size => src.resize({ width: size, height: size, quality: 'best' }))
+    const icoBytes = buildIcoBuffer(variants)
+    fs.writeFileSync(icoPath, icoBytes)
+    APP_ICON_PATHS.unshift(icoPath)
+  } catch (error) {
+    rememberLog(`[icon] failed to synthesize dev .ico: ${error.message}`)
+  }
+}
+
+// Minimal ICONDIR / ICONDIRENTRY builder for the PNG-in-ICO format (each
+// entry stores a PNG; Vista+ reads them natively). 7 sizes is overkill but
+// cheap and keeps the Windows icon cache happy at every DPI.
+function buildIcoBuffer(images) {
+  const count = images.length
+  const headerSize = 6 + count * 16
+  let offset = headerSize
+  const entries = []
+  const buffers = []
+  for (const img of images) {
+    const size = img.getSize()
+    const png = img.toPNG()
+    const dim = size.width >= 256 ? 0 : size.width
+    entries.push(
+      Buffer.from([
+        dim, dim, 0, 0,
+        1, 0, 32, 0,
+        png.length & 0xff, (png.length >> 8) & 0xff, (png.length >> 16) & 0xff, (png.length >> 24) & 0xff,
+        offset & 0xff, (offset >> 8) & 0xff, (offset >> 16) & 0xff, (offset >> 24) & 0xff
+      ])
+    )
+    buffers.push(png)
+    offset += png.length
+  }
+  const header = Buffer.alloc(6)
+  header.writeUInt16LE(0, 0) // reserved
+  header.writeUInt16LE(1, 2) // type: 1 = ico
+  header.writeUInt16LE(count, 4)
+  return Buffer.concat([header, ...entries, ...buffers])
+}
+
 let rendererTitleBarTheme = null
 const terminalSessions = new Map()
 
@@ -7638,6 +7696,11 @@ app.on('open-url', (event, url) => {
 })
 
 app.whenReady().then(() => {
+  // Generate a real .ico for the taskbar / alt-tab before any window is
+  // created — once Electron calls BrowserWindow({ icon }), the OS has already
+  // cached the App User Model icon and a later fix won't repaint the entry
+  // until the user kills and relaunches the app.
+  ensureDevIconIco()
   if (IS_MAC) {
     Menu.setApplicationMenu(buildApplicationMenu())
   } else {
