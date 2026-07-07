@@ -124,6 +124,10 @@ export const $sidebarPinsOpen = atom(true)
 // rows on `sidebarOpen || this`.
 export const $sidebarOverlayMounted = atom(false)
 export const $sidebarRecentsOpen = atom(true)
+// Two independent "会话" and "项目" sections, rendered stacked. Each carries
+// its own open state so collapsing one never touches the other.
+export const $sidebarSessionsOpen = atom(true)
+export const $sidebarProjectsOpen = atom(true)
 // Cron-job sessions live in their own section below recents, collapsed by
 // default (it only renders at all when cron sessions exist) so the
 // scheduler's `[IMPORTANT: …]` first-message previews don't spam recents.
@@ -239,6 +243,14 @@ export function setSidebarOverlayMounted(mounted: boolean) {
 
 export function setSidebarRecentsOpen(open: boolean) {
   $sidebarRecentsOpen.set(open)
+}
+
+export function setSidebarSessionsOpen(open: boolean) {
+  $sidebarSessionsOpen.set(open)
+}
+
+export function setSidebarProjectsOpen(open: boolean) {
+  $sidebarProjectsOpen.set(open)
 }
 
 export function setSidebarCronOpen(open: boolean) {
