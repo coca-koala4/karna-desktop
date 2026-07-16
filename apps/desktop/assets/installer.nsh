@@ -1,6 +1,6 @@
 ﻿!include "nsDialogs.nsh"
 !include "LogicLib.nsh"
-!include "StrRep.nsh"
+!include "WordFunc.nsh"
 
 Var KarnaOptionsDialog
 Var KarnaWorkspaceField
@@ -81,7 +81,7 @@ FunctionEnd
     CreateDirectory "$APPDATA\Karna"
     CreateDirectory "$KarnaWorkspace"
 
-    ${StrRep} $0 "$KarnaWorkspace" "\" "/"
+    ${WordReplace} "$KarnaWorkspace" "\" "/" "+" $0
     FileOpen $1 "$APPDATA\Karna\installer-options.json" w
     FileWrite $1 '{$\r$\n'
     FileWrite $1 '  $\"schemaVersion$\": 1,$\r$\n'
