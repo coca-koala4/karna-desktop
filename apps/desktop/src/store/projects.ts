@@ -11,7 +11,15 @@ import { activeGateway, ensureActiveGatewayOpen } from '@/store/gateway'
 import { setSidebarAgentsGrouped } from '@/store/layout'
 import { notify } from '@/store/notifications'
 import { requestFreshSession } from '@/store/profile'
-import { $selectedStoredSessionId, $sessions, setSessions, setSessionsTotal, workspaceCwdForNewSession } from '@/store/session'
+import {
+  $selectedStoredSessionId,
+  $sessions,
+  getConfiguredDefaultProjectDir,
+  setSessions,
+  setSessionsTotal,
+  syncConfiguredDefaultProjectDir,
+  workspaceCwdForNewSession
+} from '@/store/session'
 import type { ProjectInfo, ProjectsPayload } from '@/types/hermes'
 
 // First-class, per-profile Projects (named, multi-folder workspaces). State is
@@ -326,7 +334,17 @@ export async function scanAndRecordRepos(force = false): Promise<void> {
   $reposScanning.set(true)
 
   try {
-    const repos = await scan([])
+    // Never crawl the user's home/Documents tree. The old empty-root call
+    // treated every existing Git checkout (Codex, unrelated experiments,
+    // music projects, etc.) as a Karna project. Discovery is scoped to the
+    // configured Karna workspace; users can add another folder explicitly in
+    // the project wizard.
+    await syncConfiguredDefaultProjectDir()
+    const workspace = getConfiguredDefaultProjectDir()
+    if (!workspace) {
+      return
+    }
+    const repos = await scan([workspace], { maxDepth: 4 })
     await gatewayRequest('projects.record_repos', { repos })
     // The disk scan may surface new zero-session repos; refold them into the tree.
     await refreshProjectTree()
