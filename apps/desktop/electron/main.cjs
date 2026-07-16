@@ -28,6 +28,19 @@ const Module = require('node:module')
 const { pathToFileURL } = require('node:url')
 const { execFileSync, spawn } = require('node:child_process')
 
+// Establish release storage isolation before loading Karna services. Some
+// services resolve paths at module-load time; doing this later made installed
+// builds write `karna-data` beside Karna.exe.
+const USER_DATA_OVERRIDE = process.env.HERMES_DESKTOP_USER_DATA_DIR
+if (USER_DATA_OVERRIDE) {
+  const resolvedUserData = path.resolve(USER_DATA_OVERRIDE)
+  fs.mkdirSync(resolvedUserData, { recursive: true })
+  app.setPath('userData', resolvedUserData)
+}
+if (app.isPackaged && !process.env.KARNA_DATA_DIR && !process.env.KARNA_DESKTOP_DATA_DIR) {
+  process.env.KARNA_DATA_DIR = path.join(app.getPath('userData'), 'karna-data')
+}
+
 // electron-builder intentionally ships a narrow runtime dependency closure
 // under resources/native-deps/vendor/node_modules. Add that directory to
 // Node's package search path before loading any local Electron modules: the
@@ -61,6 +74,7 @@ const { serializeJsonBody, setJsonRequestHeaders } = require('./oauth-net-reques
 const { fetchMarketplaceThemes, searchMarketplaceThemes } = require('./vscode-marketplace.cjs')
 const { buildDesktopBackendEnv, normalizeHermesHomeRoot } = require('./backend-env.cjs')
 const { readWindowsUserEnvVar } = require('./windows-user-env.cjs')
+const { resolveKarnaRuntimeHome } = require('./karna-runtime-home.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
 const { nativeOverlayWidth: computeNativeOverlayWidth } = require('./titlebar-overlay-width.cjs')
 const { readDirForIpc } = require('./fs-read-dir.cjs')
@@ -193,13 +207,6 @@ try {
     nodePty = null
     nodePtyDir = null
   }
-}
-
-const USER_DATA_OVERRIDE = process.env.HERMES_DESKTOP_USER_DATA_DIR
-if (USER_DATA_OVERRIDE) {
-  const resolvedUserData = path.resolve(USER_DATA_OVERRIDE)
-  fs.mkdirSync(resolvedUserData, { recursive: true })
-  app.setPath('userData', resolvedUserData)
 }
 
 const DEV_SERVER = process.env.HERMES_DESKTOP_DEV_SERVER
@@ -343,27 +350,16 @@ if (INSTALL_STAMP) {
 // HERMES_HOME beneath the throwaway userData dir so a fresh-install run never
 // touches the user's real ~/.hermes / %LOCALAPPDATA%\hermes.
 function resolveHermesHome() {
-  if (process.env.HERMES_HOME) return normalizeHermesHomeRoot(process.env.HERMES_HOME)
-  if (USER_DATA_OVERRIDE) return path.join(path.resolve(USER_DATA_OVERRIDE), 'hermes-home')
-  if (IS_WINDOWS) {
-    // A GUI app launched from Explorer inherits the environment block captured
-    // at login, so a HERMES_HOME set via `setx` AFTER login is invisible in
-    // process.env even though the CLI (a fresh shell) sees it. Without this the
-    // backend silently falls back to %LOCALAPPDATA%\hermes and reports "No
-    // inference provider configured" despite a valid configured home (#45471).
-    // Consult the live User-scoped registry value before the default below.
-    const fromRegistry = readWindowsUserEnvVar('HERMES_HOME')
-    if (fromRegistry) return normalizeHermesHomeRoot(fromRegistry)
-  }
-  if (IS_WINDOWS && process.env.LOCALAPPDATA) {
-    const localappdata = path.join(process.env.LOCALAPPDATA, 'hermes')
-    const legacy = path.join(app.getPath('home'), '.hermes')
-    // Migrate transparently to LOCALAPPDATA, but honour an existing legacy
-    // ~/.hermes setup (no LOCALAPPDATA install yet) so users don't lose state.
-    if (!directoryExists(localappdata) && directoryExists(legacy)) return legacy
-    return localappdata
-  }
-  return path.join(app.getPath('home'), '.hermes')
+  return resolveKarnaRuntimeHome({
+    env: process.env,
+    isPackaged: IS_PACKAGED,
+    isWindows: IS_WINDOWS,
+    userDataOverride: USER_DATA_OVERRIDE,
+    homeDir: app.getPath('home'),
+    normalize: normalizeHermesHomeRoot,
+    directoryExists,
+    readWindowsUserEnvVar
+  })
 }
 
 const HERMES_HOME = resolveHermesHome()
@@ -3051,7 +3047,13 @@ function resolveHermesBackend(backendArgs) {
   //    do NOT write a bootstrap marker; the user did this themselves and we
   //    don't want to take ownership of an install we didn't perform.
   //    HERMES_DESKTOP_IGNORE_EXISTING=1 forces the bootstrap path for testing.
-  if (process.env.HERMES_DESKTOP_IGNORE_EXISTING !== '1') {
+  // A packaged Karna install must never attach to a globally installed
+  // Hermes CLI. That fallback carries the other installation's HERMES_HOME,
+  // projects, sessions, model selection and credentials into a supposedly
+  // fresh Karna install. Development builds may still use an explicitly
+  // installed CLI for backwards compatibility; packaged builds go through
+  // the pinned Karna bootstrap below instead.
+  if (!IS_PACKAGED && process.env.HERMES_DESKTOP_IGNORE_EXISTING !== '1') {
     let hermesCommand = null
     const hermesOverride = process.env.HERMES_DESKTOP_HERMES
 
@@ -3111,7 +3113,7 @@ function resolveHermesBackend(backendArgs) {
   // 5. Last-ditch: pip-installed hermes_cli module via system Python.
   //    Same rationale as #4 -- the user installed this; we use it but don't
   //    take ownership.
-  const python = findSystemPython()
+  const python = !IS_PACKAGED ? findSystemPython() : null
   if (python) {
     // Same smoke-test rationale as step 4: a system Python in the
     // SUPPORTED_VERSIONS range can be registered (PEP 514) without
