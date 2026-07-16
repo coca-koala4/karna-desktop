@@ -1,6 +1,7 @@
 ﻿!include "nsDialogs.nsh"
 !include "LogicLib.nsh"
 !include "WordFunc.nsh"
+!include "FileFunc.nsh"
 
 Var KarnaOptionsDialog
 Var KarnaWorkspaceField
@@ -10,11 +11,17 @@ Var KarnaDesktopShortcutCheckbox
 Var KarnaWorkspace
 Var KarnaAutostart
 Var KarnaDesktopShortcut
+Var KarnaIsUpdate
 
 !macro customInit
   StrCpy $KarnaWorkspace "$DOCUMENTS\Karna"
   StrCpy $KarnaAutostart ${BST_UNCHECKED}
   StrCpy $KarnaDesktopShortcut ${BST_CHECKED}
+  StrCpy $KarnaIsUpdate ""
+  ${GetOptions} "$CMDLINE" "--updated" $KarnaIsUpdate
+  ${If} $KarnaIsUpdate == ""
+    ${GetOptions} "$CMDLINE" "/updated" $KarnaIsUpdate
+  ${EndIf}
 !macroend
 
 !macro customPageAfterChangeDir
@@ -22,7 +29,7 @@ Var KarnaDesktopShortcut
 !macroend
 
 Function KarnaOptionsPage
-  ${If} ${isUpdated}
+  ${If} $KarnaIsUpdate != ""
     Abort
   ${EndIf}
 
@@ -77,7 +84,7 @@ Function KarnaOptionsLeave
 FunctionEnd
 
 !macro customInstall
-  ${IfNot} ${isUpdated}
+  ${If} $KarnaIsUpdate == ""
     CreateDirectory "$APPDATA\Karna"
     CreateDirectory "$KarnaWorkspace"
 
