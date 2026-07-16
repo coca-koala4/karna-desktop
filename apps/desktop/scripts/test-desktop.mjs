@@ -31,7 +31,7 @@ const APP = (() => {
     const unpacked = path.join(RELEASE_ROOT, 'win-unpacked')
     return {
       appPath: unpacked,
-      binary: path.join(unpacked, 'Hermes.exe'),
+      binary: path.join(unpacked, 'Karna.exe'),
       resourcesPath: path.join(unpacked, 'resources'),
       asarPath: path.join(unpacked, 'resources', 'app.asar'),
       unpackedDistIndex: path.join(unpacked, 'resources', 'app.asar.unpacked', 'dist', 'index.html')
@@ -139,7 +139,7 @@ function resolveDmgPath() {
 }
 
 function resolveNsisPath() {
-  // electron-builder NSIS artifactName template is 'Hermes-${version}-${os}-${arch}.${ext}'
+  // electron-builder NSIS artifactName template is 'Karna-${version}-${os}-${arch}.${ext}'
   if (!exists(RELEASE_ROOT)) return null
   const candidates = fs
     .readdirSync(RELEASE_ROOT)
