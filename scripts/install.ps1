@@ -1508,10 +1508,16 @@ function Install-Repository {
                 Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
                 # GitHub ZIPs extract to repo-branch/ subdirectory
-                $extractedDir = Get-ChildItem $extractPath -Directory | Select-Object -First 1
+                $extractedDir = Get-ChildItem $extractPath -Directory -Force | Select-Object -First 1
                 if ($extractedDir) {
                     New-Item -ItemType Directory -Force -Path (Split-Path $InstallDir) -ErrorAction SilentlyContinue | Out-Null
-                    Move-Item $extractedDir.FullName $InstallDir -Force
+                    # Move-Item is unreliable for GitHub archives containing
+                    # dotfiles on Windows (it can report a missing .dockerignore
+                    # even though the archive extracted correctly). Copy the
+                    # complete tree, including hidden files, then remove the
+                    # temporary extraction directory.
+                    if (Test-Path $InstallDir) { Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue }
+                    Copy-Item -LiteralPath $extractedDir.FullName -Destination $InstallDir -Recurse -Force
                     Write-Success "Downloaded and extracted"
 
                     # Initialize git repo so updates work later
