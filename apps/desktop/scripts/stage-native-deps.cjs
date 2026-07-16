@@ -99,6 +99,12 @@ function ensureDir(target) {
   fs.mkdirSync(target, { recursive: true })
 }
 
+function isRuntimeFile(file) {
+  const normalized = file.replace(/\\/g, '/')
+  return !/(^|\/)(?:tests?|__tests__)(\/|$)/i.test(normalized) &&
+    !/\.(?:test|spec)\.[cm]?[jt]sx?(?:\.map)?$/i.test(normalized)
+}
+
 function walk(root) {
   const results = []
   const stack = [root]
@@ -155,7 +161,7 @@ function stageOne(spec) {
   for (const abs of files) {
     const rel = path.relative(spec.from, abs)
     const included = spec.include.some(g => matchGlob(rel, g))
-    if (!included) continue
+    if (!included || !isRuntimeFile(rel)) continue
     const dest = path.join(spec.to, rel)
     ensureDir(path.dirname(dest))
     fs.copyFileSync(abs, dest)
@@ -261,7 +267,7 @@ function stageJsClosure(roots) {
     // closure is flattened, so nested copies would just bloat the bundle.
     fs.cpSync(fromDir, dest, {
       recursive: true,
-      filter: src => path.basename(src) !== 'node_modules'
+      filter: src => path.basename(src) !== 'node_modules' && isRuntimeFile(path.relative(fromDir, src))
     })
     staged += 1
   }

@@ -17,5 +17,5 @@ description: 创建可持久化的 Karna 本地技能，生成标准 SKILL.md，
 
 1. 明确技能名、描述、触发场景、执行步骤。
 2. 调用 `/api/skills/create` 或 `/create-skill 名称 :: 描述 :: 步骤`。
-3. 将技能写入 `D:\Agent\skills\<name>\SKILL.md`。
+3. 将技能写入当前用户的 Karna Skills 目录（例如 `%APPDATA%\Karna\skills\<name>\SKILL.md`）。
 4. 创建成功后提示路径，并确认技能页可见、可启用、可读取。

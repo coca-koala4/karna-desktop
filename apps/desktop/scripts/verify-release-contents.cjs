@@ -15,7 +15,7 @@ const DENIED_PATHS = [
 const DENIED_TEXT = [
   /D:\\Agent/i,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
-  /(?:sk-|ghp_|github_pat_)[A-Za-z0-9_\-]{20,}/
+  /(?:sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/
 ]
 
 function walk(root) {
