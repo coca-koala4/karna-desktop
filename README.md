@@ -22,9 +22,9 @@
 
 ## Download
 
-The current Windows acceptance build is **Karna 0.17.2**:
+The current Windows acceptance build is **Karna 0.17.3**:
 
-**[Download Karna for Windows](https://github.com/123abcbjs/karna-desktop/releases/download/v0.17.2/Karna-0.17.2-win-x64.exe)**
+**[Download Karna for Windows](https://github.com/123abcbjs/karna-desktop/releases/download/v0.17.3/Karna-0.17.3-win-x64.exe)**
 
 This is an unsigned pre-release for acceptance testing. The stable release pipeline refuses to publish without a Windows code-signing certificate.
 

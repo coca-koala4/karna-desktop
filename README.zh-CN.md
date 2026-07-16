@@ -22,9 +22,9 @@
 
 ## 下载
 
-当前 Windows 验收版为 **Karna 0.17.2**：
+当前 Windows 验收版为 **Karna 0.17.3**：
 
-**[下载 Karna Windows 安装器](https://github.com/123abcbjs/karna-desktop/releases/download/v0.17.2/Karna-0.17.2-win-x64.exe)**
+**[下载 Karna Windows 安装器](https://github.com/123abcbjs/karna-desktop/releases/download/v0.17.3/Karna-0.17.3-win-x64.exe)**
 
 当前版本为未签名 Pre-release，仅用于验收。正式稳定版发布流程在缺少 Windows 代码签名证书时会直接失败。
 
