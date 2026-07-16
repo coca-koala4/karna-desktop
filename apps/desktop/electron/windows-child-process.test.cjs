@@ -90,9 +90,9 @@ test('desktop backend teardown tree-kills Windows backend descendants', () => {
   assert.match(resetSnippet, /stopBackendChild\(hermesProcess\)/)
   assert.doesNotMatch(resetSnippet, /hermesProcess\.kill\('SIGTERM'\)/)
 
-  const quitIndex = source.indexOf("app.on('before-quit'")
+  const quitIndex = source.lastIndexOf("app.on('before-quit'")
   assert.notEqual(quitIndex, -1, 'missing before-quit handler')
-  const quitSnippet = source.slice(quitIndex, quitIndex + 900)
+  const quitSnippet = source.slice(quitIndex, quitIndex + 1800)
   assert.match(quitSnippet, /stopBackendChild\(hermesProcess\)/)
   assert.doesNotMatch(quitSnippet, /hermesProcess\.kill\('SIGTERM'\)/)
 })
