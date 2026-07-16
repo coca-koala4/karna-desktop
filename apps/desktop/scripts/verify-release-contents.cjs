@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { listPackage, extractFile } = require('@electron/asar')
 
 const DENIED_PATHS = [
   /(^|\/)karna-data(\/|$)/i,
@@ -54,6 +55,34 @@ function verifyUnpacked(appOutDir) {
   if (fs.existsSync(workflowManifest)) {
     const parsed = JSON.parse(fs.readFileSync(workflowManifest, 'utf8'))
     if (parsed.workflows?.length !== 2) problems.push(`expected exactly 2 built-in workflows, got ${parsed.workflows?.length ?? 0}`)
+  }
+
+  // Validate the static CommonJS closure inside app.asar. Electron-builder's
+  // explicit files allowlist can otherwise omit a relative dependency while
+  // still producing a valid installer, causing a main-process crash only on a
+  // clean installed machine.
+  const asarPath = path.join(resources, 'app.asar')
+  if (fs.existsSync(asarPath)) {
+    const archiveEntries = new Map(listPackage(asarPath).map(original => {
+      const normalized = original.replace(/^[/\\]+/, '').replace(/\\/g, '/')
+      return [normalized, normalized.split('/').join(path.sep)]
+    }))
+    const entries = new Set(archiveEntries.keys())
+    const candidatesFor = (from, request) => {
+      const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), request))
+      return [base, `${base}.cjs`, `${base}.js`, `${base}.json`, `${base}/index.cjs`, `${base}/index.js`]
+    }
+    for (const entry of entries) {
+      if (!/^electron\/.+\.cjs$/i.test(entry)) continue
+      const source = extractFile(asarPath, archiveEntries.get(entry)).toString('utf8')
+      for (const match of source.matchAll(/require\(['"](\.{1,2}\/[^'"]+)['"]\)/g)) {
+        if (!candidatesFor(entry, match[1]).some(candidate => entries.has(candidate))) {
+          problems.push(`missing packaged require: ${entry} -> ${match[1]}`)
+        }
+      }
+    }
+  } else {
+    problems.push('missing required resource: app.asar')
   }
   if (problems.length) throw new Error(`Release privacy verification failed:\n${problems.map(row => `  - ${row}`).join('\n')}`)
   console.log(`[release-verify] clean resources inventory (${walk(resources).length} files)`)
