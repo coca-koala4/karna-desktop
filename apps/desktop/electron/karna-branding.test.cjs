@@ -517,6 +517,24 @@ for (const [file, scope] of [[installSh, 'scripts/install.sh'], [installPs1, 'sc
   }
 }
 
+// Windows branding must use the Karna icon for both the installer and the
+// installed executable. This catches regressions where the old Hermes .ico
+// remains in assets even though the renderer uses public/Karna.png.
+const desktopPackage = JSON.parse(fs.readFileSync(path.join(REPO, 'apps', 'desktop', 'package.json'), 'utf8'));
+const exeIdentity = fs.readFileSync(path.join(REPO, 'apps', 'desktop', 'scripts', 'set-exe-identity.cjs'), 'utf8');
+if (desktopPackage.build?.nsis?.installerIcon !== 'assets/icon.ico' || desktopPackage.build?.nsis?.uninstallerIcon !== 'assets/icon.ico') {
+  console.error('FAIL  NSIS installer/uninstaller icons are not pinned to assets/icon.ico');
+  failures += 1;
+} else {
+  console.log('OK    NSIS installer and uninstaller use the Karna .ico asset');
+}
+if (!/ProductName:\s*'Karna'/.test(exeIdentity) || /ProductName:\s*'Hermes'/.test(exeIdentity)) {
+  console.error('FAIL  installed executable identity is not Karna');
+  failures += 1;
+} else {
+  console.log('OK    installed executable metadata is stamped as Karna');
+}
+
 console.log('--- summary ---');
 if (failures === 0) {
   console.log('PASS  All branding checks green.');
