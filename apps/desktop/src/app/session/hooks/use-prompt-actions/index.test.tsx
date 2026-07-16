@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { textPart } from '@/lib/chat-messages'
 import { $composerAttachments, type ComposerAttachment } from '@/store/composer'
+import { setKarnaPermissionLevelStore } from '@/store/karna-permission'
 import { $busy, $connection, $messages, $sessions, setSessions } from '@/store/session'
 import type { SessionInfo } from '@/types/hermes'
 
@@ -342,7 +343,34 @@ describe('usePromptActions desktop slash pickers', () => {
 describe('usePromptActions submit / queue drain semantics', () => {
   afterEach(() => {
     cleanup()
+    setKarnaPermissionLevelStore('restricted')
     vi.restoreAllMocks()
+  })
+
+  it('sends elevated permission as trusted RPC metadata instead of prompt text', async () => {
+    setKarnaPermissionLevelStore('computer')
+    const requestGateway = vi.fn(async () => ({}))
+    let handle: HarnessHandle | null = null
+
+    render(
+      <Harness
+        onReady={h => (handle = h)}
+        refreshSessions={async () => undefined}
+        requestGateway={requestGateway as any}
+      />
+    )
+
+    await handle!.submitText('查看磁盘信息')
+
+    expect(requestGateway).toHaveBeenCalledWith(
+      'prompt.submit',
+      {
+        permission_mode: 'computer',
+        session_id: RUNTIME_SESSION_ID,
+        text: '查看磁盘信息'
+      },
+      1_800_000
+    )
   })
 
   it('clears a leftover interrupted flag on a fresh submit (so the new turn streams)', async () => {

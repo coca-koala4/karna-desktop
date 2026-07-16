@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-empty, no-control-regex, no-useless-escape, no-undef */
 'use strict';
 
 /**

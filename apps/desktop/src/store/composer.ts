@@ -15,6 +15,21 @@ export interface ComposerAttachment {
    * workspace (remote upload or local stage), and 'error' if that failed.
    * Drives the spinner / error state on the composer attachment card. */
   uploadState?: 'uploading' | 'error'
+  /** Document ingest parse state. 'pending' = queued, 'parsing' = in progress,
+   * 'parsed' = successfully parsed, 'partial' = parsed with warnings, 'failed' = error. */
+  parseState?: 'pending' | 'parsing' | 'parsed' | 'partial' | 'failed'
+  /** Backend ingest job ID for tracking progress. */
+  parseJobId?: string
+  /** Short human-readable parse status message (e.g. "OCR page 6/20"). */
+  parseMessage?: string
+  /** Parse progress 0-1. */
+  parseProgress?: number
+  /** Parser engine used (e.g. 'fast', 'mineru', 'ocr', 'vision'). */
+  parseEngine?: string
+  /** Number of pages for PDFs, duration for videos, etc. */
+  parseDetail?: string
+  /** Warnings from parse (e.g. low OCR confidence). */
+  parseWarnings?: string[]
 }
 
 export const $composerDraft = atom('')
@@ -24,7 +39,7 @@ export const $composerTerminalSelections = atom<Record<string, string>>({})
 // Per-thread draft stash for the decoupled composer. Session lifecycle never
 // touches this — only ChatBar's scope swap reads/writes it. Text mirrors to
 // localStorage; attachments are memory-only (blobs, upload state).
-export const SESSION_DRAFTS_STORAGE_KEY = 'hermes:composer-drafts:v3'
+export const SESSION_DRAFTS_STORAGE_KEY = 'hermes:composer-drafts:v4'
 
 const NEW_SESSION_DRAFT_KEY = '__new__'
 const MAX_PERSISTED_DRAFTS = 50
@@ -42,7 +57,16 @@ const cloneDraft = (draft: SessionDraft): SessionDraft => ({
   text: draft.text
 })
 
-function loadPersistedDraftTexts(): [string, SessionDraft][] {
+interface PersistedDraftV4 {
+  text: string
+  attachments: Array<Pick<ComposerAttachment,
+    | 'id' | 'kind' | 'label' | 'detail' | 'refText' | 'path'
+    | 'parseState' | 'parseJobId' | 'parseMessage' | 'parseProgress'
+    | 'parseEngine' | 'parseDetail' | 'parseWarnings'
+  >>
+}
+
+function loadPersistedDrafts(): [string, SessionDraft][] {
   try {
     const raw = window.localStorage.getItem(SESSION_DRAFTS_STORAGE_KEY)
 
@@ -50,23 +74,75 @@ function loadPersistedDraftTexts(): [string, SessionDraft][] {
       return []
     }
 
-    return Object.entries(JSON.parse(raw) as Record<string, string>).map(([key, text]) => [
-      key,
-      { attachments: [], text }
-    ])
+    const parsed = JSON.parse(raw)
+
+    if (typeof parsed === 'object' && parsed !== null) {
+      const entries: [string, SessionDraft][] = []
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'string') {
+          entries.push([key, { attachments: [], text: value }])
+        } else if (value && typeof value === 'object' && 'text' in value) {
+          const v = value as PersistedDraftV4
+          entries.push([
+            key,
+            {
+              text: v.text || '',
+              attachments: (v.attachments || []).map(a => ({
+                id: a.id,
+                kind: a.kind,
+                label: a.label,
+                detail: a.detail,
+                refText: a.refText,
+                path: a.path,
+                parseState: a.parseState,
+                parseJobId: a.parseJobId,
+                parseMessage: a.parseMessage,
+                parseProgress: a.parseProgress,
+                parseEngine: a.parseEngine,
+                parseDetail: a.parseDetail,
+                parseWarnings: a.parseWarnings
+              }))
+            }
+          ])
+        }
+      }
+      return entries
+    }
+
+    return []
   } catch {
     return []
   }
 }
 
-const draftsBySession = new Map<string, SessionDraft>(loadPersistedDraftTexts())
+const draftsBySession = new Map<string, SessionDraft>(loadPersistedDrafts())
 
-function persistDraftTexts() {
+function persistDrafts() {
   try {
     const entries = [...draftsBySession]
-      .filter(([, draft]) => draft.text)
+      .filter(([, draft]) => draft.text || draft.attachments.length > 0)
       .slice(-MAX_PERSISTED_DRAFTS)
-      .map(([key, draft]) => [key, draft.text] as const)
+      .map(([key, draft]) => {
+        const persisted: PersistedDraftV4 = {
+          text: draft.text,
+          attachments: draft.attachments.map(a => ({
+            id: a.id,
+            kind: a.kind,
+            label: a.label,
+            detail: a.detail,
+            refText: a.refText,
+            path: a.path,
+            parseState: a.parseState,
+            parseJobId: a.parseJobId,
+            parseMessage: a.parseMessage,
+            parseProgress: a.parseProgress,
+            parseEngine: a.parseEngine,
+            parseDetail: a.parseDetail,
+            parseWarnings: a.parseWarnings
+          }))
+        }
+        return [key, persisted] as const
+      })
 
     if (entries.length === 0) {
       window.localStorage.removeItem(SESSION_DRAFTS_STORAGE_KEY)
@@ -88,7 +164,7 @@ export function stashSessionDraft(scope: string | null | undefined, text: string
     draftsBySession.set(key, cloneDraft({ attachments, text }))
   }
 
-  persistDraftTexts()
+  persistDrafts()
 }
 
 export function takeSessionDraft(scope: string | null | undefined): SessionDraft {
@@ -187,6 +263,24 @@ export function setComposerAttachmentUploadState(id: string, uploadState?: Compo
   const next = [...current]
   next[index] = { ...next[index]!, uploadState }
   $composerAttachments.set(next)
+}
+
+/** Update the parse state of an existing attachment. */
+export function setComposerAttachmentParseState(
+  id: string,
+  updates: Partial<Pick<ComposerAttachment, 'parseState' | 'parseJobId' | 'parseMessage' | 'parseProgress' | 'parseEngine' | 'parseDetail' | 'parseWarnings'>>
+) {
+  const current = $composerAttachments.get()
+  const index = current.findIndex(attachment => attachment.id === id)
+
+  if (index < 0) {
+    return false
+  }
+
+  const next = [...current]
+  next[index] = { ...next[index]!, ...updates }
+  $composerAttachments.set(next)
+  return true
 }
 
 const TERMINAL_REF_RE = /@terminal:(`[^`\n]+`|"[^"\n]+"|'[^'\n]+'|\S+)/g

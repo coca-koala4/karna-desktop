@@ -12,7 +12,6 @@ import {
   isDesktopSlashCommand,
   resolveDesktopCommand
 } from '@/lib/desktop-slash-commands'
-import { setSessionYolo } from '@/lib/yolo-session'
 import { openCommandPalettePage } from '@/store/command-palette'
 import { type ComposerAttachment, setComposerDraft } from '@/store/composer'
 import { notify, notifyError } from '@/store/notifications'
@@ -22,11 +21,9 @@ import { $activeGatewayProfile, $newChatProfile, ensureGatewayProfile, normalize
 import {
   $connection,
   $sessions,
-  $yoloActive,
   setModelPickerOpen,
   setSessionPickerOpen,
-  setSessions,
-  setYoloActive
+  setSessions
 } from '@/store/session'
 
 import type { BrowserManageResponse, SessionTitleResponse, SlashExecResponse } from '../../../types'
@@ -231,27 +228,6 @@ export function useSlashCommand(deps: SlashCommandDeps) {
         },
         branch: async () => {
           await branchCurrentSession()
-        },
-        // /yolo maps to the status-bar YOLO control — a per-session approval
-        // bypass, same scope as the TUI's Shift+Tab. With no session yet we arm
-        // it locally; the session-create path applies it on the first message.
-        yolo: async ({ sessionHint }) => {
-          const sid = sessionHint || activeSessionIdRef.current
-          const next = !$yoloActive.get()
-
-          if (!sid) {
-            setYoloActive(next)
-            notify({ kind: 'success', message: next ? copy.yoloArmed : copy.yoloOff })
-
-            return
-          }
-
-          try {
-            const active = await setSessionYolo(requestGateway, sid, next)
-            appendSessionTextMessage(sid, 'system', copy.yoloSystem(active))
-          } catch {
-            notify({ kind: 'error', title: copy.yoloTitle, message: copy.yoloToggleFailed })
-          }
         },
         // /handoff hands this session to a messaging platform. The platform is
         // completed inline in the slash popover (backend _handoff_completions),

@@ -1,0 +1,37 @@
+manifest_version: 2
+name: neon
+description: Neon数据库MCP服务器是一个开源工具，允许您使用自然语言与Neon Postgres数据库进行交互
+source: https://www.mcp-cn.com/server/122
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@neondatabase/mcp-server-neon'
+auth:
+  type: api_key
+  env:
+  - name: NEON_API_KEY
+    prompt: neon API Key
+    required: true
+    secret: true
+post_install: 'neon MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: neon
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@neondatabase/mcp-server-neon'
+permissions:
+- network:outbound
+- database:read
+- database:write
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

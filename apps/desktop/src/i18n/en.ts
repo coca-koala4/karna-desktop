@@ -1,4 +1,4 @@
-﻿import { FIELD_DESCRIPTIONS, FIELD_LABELS } from '@/app/settings/constants'
+import { FIELD_DESCRIPTIONS, FIELD_LABELS } from '@/app/settings/constants'
 
 import type { Translations } from './types'
 
@@ -306,9 +306,11 @@ export const en: Translations = {
       keysTools: 'Tools',
       keysSettings: 'Settings',
       mcp: 'MCP',
+      remote: 'Mobile & Remote',
       archivedChats: 'Archived Chats',
       about: 'About',
-      notifications: 'Notifications'
+      notifications: 'Notifications',
+      soul: 'Karna Personality'
     },
     notifications: {
       title: 'Notifications',
@@ -348,6 +350,86 @@ export const en: Translations = {
       completionSoundDesc: 'Plays when an agent turn finishes. Pick a preset and preview it here.',
       completionSoundPreview: 'Preview'
     },
+    soul: {
+      title: 'Karna Personality',
+      intro:
+        'Edit Karna’s tone, working preferences, and creative method. Safety, privacy, tool permissions, credential handling, and project isolation stay enforced by the built-in Core Policy.',
+      loading: 'Loading Karna Soul…',
+      loadFailed: 'Karna Soul failed to load',
+      editorTitle: 'Editable Soul',
+      editorDesc:
+        'This text is injected after the non-editable Core Policy. It can shape style and workflow preferences, but cannot override security or permissions.',
+      charCount: (count, max) => `${count}/${max} characters`,
+      preview: 'Preview injection',
+      previewTitle: 'Prompt injection order',
+      coreSummary: 'Core Policy summary',
+      coreTitle: 'Non-editable Core Policy',
+      restoreDefault: 'Restore default',
+      resetConfirm: 'Restore the default Karna Soul? Your current Soul will be backed up first.',
+      resetTitle: 'Default Soul restored',
+      savedTitle: 'Karna Soul saved',
+      savedMessage: 'New chats will use the updated Soul.',
+      saveFailed: 'Karna Soul could not be saved',
+      resetFailed: 'Default Soul could not be restored'
+    },
+    remote: {
+      title: 'Mobile & Remote Control',
+      intro: 'Pair mobile devices over your local network to access and control Karna remotely. All connections are end-to-end encrypted, with per-device permission management.',
+      enableRemoteAccess: 'Enable Remote Access',
+      enableRemoteAccessDesc: 'When enabled, trusted devices on the same local network can connect to and control Karna.',
+      listenAddress: 'Listen Address',
+      listenAddressDesc: 'Select the network interface to accept mobile device connections on.',
+      selectInterface: 'Select interface...',
+      lanAddress: 'LAN Address',
+      lanAddressDesc: 'Mobile devices need to connect to this address for pairing.',
+      addDevice: 'Add Device',
+      pairedDevices: 'Paired Devices',
+      noDevices: 'No paired devices yet',
+      addDeviceHint: 'Click "Add Device" and scan the QR code with the mobile app to start pairing.',
+      deviceName: 'Device Name',
+      lastSeen: 'Last Seen',
+      fingerprint: 'Fingerprint',
+      lastIp: 'Last IP',
+      permissions: 'Permissions',
+      actions: 'Actions',
+      pause: 'Pause',
+      resume: 'Resume',
+      revoke: 'Revoke',
+      revokeConfirm: 'Are you sure you want to revoke this device? It will need to be re-paired to connect again.',
+      repair: 'Re-pair',
+      auditLog: 'Audit Log',
+      viewAuditLog: 'View Audit Log',
+      viewAuditLogDesc: 'View connection and activity logs for all remote devices.',
+      emergencyDisconnect: 'Emergency Disconnect All Devices',
+      emergencyDisconnectConfirm: 'Are you sure you want to disconnect all paired mobile devices? This will immediately terminate all remote connections.',
+      emergencyConfirmTitle: 'Confirm Emergency Disconnect',
+      qrPairing: 'QR Pairing',
+      waitingForDevice: 'Waiting for device to connect...',
+      scanQrHint: 'Scan the QR code using the mobile app',
+      confirmationCode: 'Confirmation Code',
+      confirmationCodeHint: 'Confirm both devices show the same code, then click Confirm.',
+      codeMatch: 'Codes Match',
+      codeMismatch: 'Codes Do Not Match',
+      deviceConnected: 'Device connected',
+      deviceConnectedNamed: '"{0}" connected',
+      confirming: 'Confirming pairing...',
+      pairingSuccess: 'Pairing Successful',
+      pairingSuccessDesc: 'Device has been paired successfully and can now use remote control.',
+      pairingFailed: 'Pairing Failed',
+      pairingFailedDesc: 'An error occurred during pairing. Please try again.',
+      creatingPairing: 'Creating pairing session...',
+      devicePaired: 'Device has been added to paired devices list',
+      devicePairedNamed: '"{0}" has been added to paired devices list',
+      permissionFull: 'Full Access',
+      permissionReadonly: 'Read Only',
+      never: 'Never connected',
+      justNow: 'Just now',
+      minutesAgo: '{0} minutes ago',
+      hoursAgo: '{0} hours ago',
+      daysAgo: '{0} days ago',
+      relayNotConfiguredTitle: 'Relay Not Configured',
+      relayNotConfiguredDesc: 'Public relay service is not configured. Mobile devices can only connect within the same local network. Configure a relay server for external access.'
+    },
     sections: {
       model: 'Model',
       chat: 'Chat',
@@ -364,6 +446,7 @@ export const en: Translations = {
       gateway: 'Gateway connection...',
       keys: 'Search API keys...',
       mcp: 'Search MCP servers...',
+      remote: 'Search remote settings...',
       sessions: 'Search archived sessions...'
     },
     modeOptions: {
@@ -1075,7 +1158,27 @@ export const en: Translations = {
         help: 'Recommended. Comma-separated phone numbers or WhatsApp IDs.'
       }
     },
-    platformIntro: {}
+    platformIntro: {
+      telegram: 'Create a bot with @BotFather in Telegram, copy its token, then obtain your numeric user ID from @userinfobot.',
+      discord: 'Create an application in the Discord Developer Portal, add a Bot, copy its token, and invite it to your server with the required scopes.',
+      slack: 'Create a Slack app, enable Socket Mode, install it to your workspace, then copy the bot token and app-level token.',
+      mattermost: 'Create a bot account or personal access token on your Mattermost server, then enter the server URL and token here.',
+      matrix: 'Sign in to your homeserver with a bot account, then copy its access token, user ID, and homeserver URL.',
+      signal: 'Run a reachable signal-cli REST bridge, then configure its URL and registered phone number in Karna.',
+      whatsapp: 'Start Karna’s bundled WhatsApp bridge, scan the QR code on first run, then enable the platform.',
+      bluebubbles: 'Run BlueBubbles Server on a Mac with iMessage, expose its API, then configure its URL and server password.',
+      homeassistant: 'Open your Home Assistant profile, create a long-lived access token, and enter it together with your HA URL.',
+      email: 'Use a dedicated mailbox. For Gmail or Workspace, create an app password and use the IMAP and SMTP endpoints.',
+      sms: 'Get your Account SID, Auth Token, and a send-capable phone number from the Twilio console.',
+      dingtalk: 'Create a DingTalk app in its developer console, then copy its Client ID (App key) and Client Secret.',
+      feishu: 'Create a Feishu or Lark app, enable its bot capability, then copy the App ID, App Secret, and event encryption key.',
+      wecom: 'Add a group bot in WeCom and use its webhook key as WECOM_BOT_ID. For two-way messaging, use the WeCom app option.',
+      wecom_callback: 'Configure a self-built WeCom application and provide its callback URL, corp ID, secret, agent ID, and AES key.',
+      weixin: 'Run `karna gateway setup`, choose Weixin, and scan the QR code with your personal WeChat account to authorize it.',
+      qqbot: 'Register an application on the QQ Open Platform, then copy its App ID and Client Secret.',
+      api_server: 'Expose Karna as an OpenAI-compatible API: set an authentication key and point Open WebUI or LobeChat at host:port.',
+      webhook: 'Create an inbound webhook endpoint, set a shared secret, and configure the calling service to POST events to it.'
+    }
   },
 
   profiles: {
@@ -1837,6 +1940,9 @@ export const en: Translations = {
       inferenceNotReady: 'Inference not ready',
       checkingInference: 'Checking inference',
       disconnected: 'Disconnected',
+      browserDemo: 'Browser demo',
+      browserDemoReady: 'Local preview ready',
+      browserDemoHint: 'Browser demo mode uses local preview data and does not start a real gateway. Open the desktop app to configure a model gateway and run live work.',
       openSystem: 'Open system panel',
       connection: label => `Connection: ${label}`,
       recentActivity: 'Recent activity',
@@ -1860,6 +1966,7 @@ export const en: Translations = {
       showTerminal: 'Show terminal',
       hideTerminal: 'Hide terminal',
       gateway: 'Gateway',
+      gatewayBrowserDemo: 'browser demo',
       gatewayReady: 'ready',
       gatewayNeedsSetup: 'needs setup',
       gatewayChecking: 'checking',
@@ -1900,8 +2007,6 @@ export const en: Translations = {
       openContextUsage: 'Open context usage breakdown',
       session: 'Session',
       runtimeSessionElapsed: 'Runtime session elapsed',
-      yoloOn: 'YOLO on — auto-approving dangerous commands. Click to turn off. Shift+click toggles it globally.',
-      yoloOff: 'YOLO off — click to auto-approve dangerous commands. Shift+click toggles it globally.',
       modelNone: 'none',
       noModel: 'no model',
       switchModel: 'Switch model',
@@ -2213,11 +2318,6 @@ export const en: Translations = {
     desktopCommands: 'Desktop commands',
     skillCommandsAvailable: count => `${count} skill commands available.`,
     warningLine: message => `warning: ${message}`,
-    yoloArmed: 'YOLO armed for this chat',
-    yoloOff: 'YOLO off',
-    yoloSystem: active => `YOLO ${active ? 'on' : 'off'} for this session`,
-    yoloTitle: 'YOLO',
-    yoloToggleFailed: 'Could not toggle YOLO',
     profileStatus: current =>
       `Profile: ${current}. Use /profile <name> or the "New session" picker to start a chat in another profile.`,
     unknownProfile: 'Unknown profile',

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "karna.ocr",
+  "name": "OCR",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Optical character recognition from images and scanned PDFs with page/region references",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "documents",
+    "icon": "assets/icon.png",
+    "capabilities": ["read"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "filesystem:project",
+    "filesystem:read"
+  ],
+  "dependencies": {}
+}

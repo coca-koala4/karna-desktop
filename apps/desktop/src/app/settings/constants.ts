@@ -485,41 +485,28 @@ export const FIELD_DESCRIPTIONS: Record<string, string> = defineFieldCopy({
   }
 })
 
+export type SettingsTier = 'default' | 'advanced'
+
 // Curated desktop config surface: only fields a user might tune from the app.
 export const SECTIONS: DesktopConfigSection[] = [
   {
     id: 'model',
-    label: 'Model',
+    label: '模型',
     icon: codiconIcon('hubot'),
-    keys: ['model_context_length', 'fallback_providers']
-  },
-  {
-    id: 'chat',
-    label: 'Chat',
-    icon: MessageCircle,
-    keys: ['display.personality', 'timezone', 'display.show_reasoning', 'agent.image_input_mode']
-  },
-  {
-    id: 'appearance',
-    label: 'Appearance',
-    icon: Palette,
-    keys: []
+    keys: ['model', 'model_context_length', 'fallback_providers']
   },
   {
     id: 'workspace',
-    label: 'Workspace',
+    label: '工作区',
     icon: Monitor,
     keys: [
       'terminal.cwd',
-      'code_execution.mode',
-      'terminal.persistent_shell',
-      'terminal.env_passthrough',
-      'file_read_max_chars'
+      'timezone'
     ]
   },
   {
     id: 'safety',
-    label: 'Safety',
+    label: '安全与权限',
     icon: Lock,
     keys: [
       'approvals.mode',
@@ -528,16 +515,45 @@ export const SECTIONS: DesktopConfigSection[] = [
       'command_allowlist',
       'security.redact_secrets',
       'security.allow_private_urls',
-      'browser.allow_private_urls',
-      'browser.auto_local_for_private_urls',
       'checkpoints.enabled'
     ]
   },
   {
-    id: 'memory',
-    label: 'Memory & Context',
-    icon: Brain,
+    id: 'appearance',
+    label: '外观',
+    icon: Palette,
+    keys: []
+  },
+  {
+    id: 'chat',
+    label: '对话',
+    icon: MessageCircle,
+    keys: ['display.show_reasoning', 'agent.image_input_mode', 'code_execution.mode', 'file_read_max_chars']
+  },
+  {
+    id: 'advanced',
+    label: '高级配置',
+    icon: Wrench,
     keys: [
+      'toolsets',
+      'terminal.backend',
+      'terminal.persistent_shell',
+      'terminal.env_passthrough',
+      'terminal.timeout',
+      'terminal.docker_image',
+      'terminal.singularity_image',
+      'terminal.modal_image',
+      'terminal.daytona_image',
+      'tool_output.max_bytes',
+      'tool_output.max_lines',
+      'tool_output.max_line_length',
+      'checkpoints.max_snapshots',
+      'agent.max_turns',
+      'agent.api_max_retries',
+      'agent.service_tier',
+      'agent.tool_use_enforcement',
+      'browser.allow_private_urls',
+      'browser.auto_local_for_private_urls',
       'memory.memory_enabled',
       'memory.user_profile_enabled',
       'memory.memory_char_limit',
@@ -547,14 +563,13 @@ export const SECTIONS: DesktopConfigSection[] = [
       'compression.enabled',
       'compression.threshold',
       'compression.target_ratio',
-      'compression.protect_last_n'
-    ]
-  },
-  {
-    id: 'voice',
-    label: 'Voice',
-    icon: Mic,
-    keys: [
+      'compression.protect_last_n',
+      'delegation.model',
+      'delegation.provider',
+      'delegation.max_iterations',
+      'delegation.max_concurrent_children',
+      'delegation.child_timeout_seconds',
+      'delegation.reasoning_effort',
       'tts.provider',
       'stt.enabled',
       'stt.provider',
@@ -587,39 +602,13 @@ export const SECTIONS: DesktopConfigSection[] = [
       'stt.elevenlabs.tag_audio_events',
       'stt.elevenlabs.diarize',
       'voice.record_key',
-      'voice.max_recording_seconds'
-    ]
-  },
-  {
-    id: 'advanced',
-    label: 'Advanced',
-    icon: Wrench,
-    keys: [
-      'toolsets',
-      'terminal.backend',
-      'terminal.timeout',
-      'terminal.docker_image',
-      'terminal.singularity_image',
-      'terminal.modal_image',
-      'terminal.daytona_image',
-      'tool_output.max_bytes',
-      'tool_output.max_lines',
-      'tool_output.max_line_length',
-      'checkpoints.max_snapshots',
-      'agent.max_turns',
-      'agent.api_max_retries',
-      'agent.service_tier',
-      'agent.tool_use_enforcement',
-      'delegation.model',
-      'delegation.provider',
-      'delegation.max_iterations',
-      'delegation.max_concurrent_children',
-      'delegation.child_timeout_seconds',
-      'delegation.reasoning_effort',
+      'voice.max_recording_seconds',
       'updates.non_interactive_local_changes'
     ]
   }
 ]
+
+export const ADVANCED_NAV_ITEMS = ['providers', 'gateway', 'keys', 'mcp', 'remote', 'sessions'] as const
 
 export interface ModeOption {
   id: ThemeMode

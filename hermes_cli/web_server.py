@@ -254,6 +254,13 @@ from hermes_cli.memory_oauth import router as _memory_oauth_router  # noqa: E402
 
 app.include_router(_memory_oauth_router)
 
+# Karna Plugin Platform v1 routes
+try:
+    from hermes_cli.karna_plugins_api import router as _karna_plugins_router
+    app.include_router(_karna_plugins_router)
+except Exception as e:
+    _log.warning(f"Failed to load Karna plugins API routes: {e}")
+
 # ---------------------------------------------------------------------------
 # Session token for protecting sensitive endpoints (reveal).
 # The desktop shell mints the token and injects it via
@@ -14064,6 +14071,14 @@ _mount_plugin_api_routes()
 # not whether the routes exist.
 from hermes_cli.dashboard_auth.routes import router as _dashboard_auth_router  # noqa: E402
 app.include_router(_dashboard_auth_router)
+
+try:
+    from agent.context.api.context_memory_api import create_context_memory_app  # noqa: E402
+    _context_memory_app = create_context_memory_app()
+    app.mount("/api/context", _context_memory_app)
+except Exception as _ctx_exc:
+    import logging as _ctx_log
+    _ctx_log.getLogger(__name__).warning("Failed to mount Context Memory API: %s", _ctx_exc)
 
 mount_spa(app)
 

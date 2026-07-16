@@ -1,0 +1,380 @@
+asyncapi: 3.0.0
+info:
+  title: Karna Remote Events
+  description: |
+    Karna Remote Protocol v1 WebSocket Event Stream.
+    
+    Real-time event streaming connection for receiving agent responses,
+    tool progress, interaction requests, and status updates.
+    
+    All events are wrapped in event envelopes with HMAC-SHA256 (HS256)
+    integrity verification. Connection is authenticated using the session
+    token obtained during REST pairing.
+    
+    Protocol version: 1.x
+  version: 1.0.0
+  contact:
+    name: Karna Team
+  license:
+    name: Proprietary
+
+servers:
+  production:
+    host: {host}/remote/v1/events
+    protocol: wss
+    description: Karna WebSocket event endpoint (WSS)
+    variables:
+      host:
+        default: localhost:9000
+        description: Karna server hostname
+
+defaultContentType: application/json
+
+channels:
+  events:
+    address: /
+    description: |
+      Main event stream channel. All server-to-client events are delivered
+      here. Client-to-server commands (ping, subscribe) are also sent here.
+    messages:
+      connection.ready:
+        $ref: '#/components/messages/connection.ready'
+      session.started:
+        $ref: '#/components/messages/session.started'
+      session.status:
+        $ref: '#/components/messages/session.status'
+      message.delta:
+        $ref: '#/components/messages/message.delta'
+      message.complete:
+        $ref: '#/components/messages/message.complete'
+      tool.start:
+        $ref: '#/components/messages/tool.start'
+      tool.complete:
+        $ref: '#/components/messages/tool.complete'
+      interaction.request:
+        $ref: '#/components/messages/interaction.request'
+      interaction.resolved:
+        $ref: '#/components/messages/interaction.resolved'
+      run.update:
+        $ref: '#/components/messages/run.update'
+      node.update:
+        $ref: '#/components/messages/node.update'
+      file.upload_progress:
+        $ref: '#/components/messages/file.upload_progress'
+      file.download_ready:
+        $ref: '#/components/messages/file.download_ready'
+      session.error:
+        $ref: '#/components/messages/session.error'
+      ping:
+        $ref: '#/components/messages/ping'
+      pong:
+        $ref: '#/components/messages/pong'
+      client.subscribe:
+        $ref: '#/components/messages/client.subscribe'
+      client.unsubscribe:
+        $ref: '#/components/messages/client.unsubscribe'
+
+operations:
+  onEvent:
+    action: receive
+    channel:
+      $ref: '#/channels/events'
+    summary: Receive real-time events from server
+    description: |
+      Server sends events as they occur. Clients must handle events in order.
+      Each event envelope includes an HMAC for integrity verification.
+  sendCommand:
+    action: send
+    channel:
+      $ref: '#/channels/events'
+    summary: Send client commands to server
+    description: |
+      Clients can send ping, subscribe, and unsubscribe commands.
+      All client messages must be properly signed.
+
+components:
+  messages:
+    connection.ready:
+      name: connection.ready
+      title: Connection Ready
+      summary: Sent immediately after WebSocket connection is authenticated
+      description: |
+        This is the first event sent after successful WebSocket handshake
+        and authentication. It contains server info and the assigned
+        WebSocket session ID.
+      payload:
+        $ref: 'schemas/events.json#/definitions/ConnectionReadyEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    session.started:
+      name: session.started
+      title: Session Started
+      summary: A new session has been created and is ready
+      payload:
+        $ref: 'schemas/events.json#/definitions/SessionStartedEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    session.status:
+      name: session.status
+      title: Session Status Update
+      summary: Session status changed (idle, thinking, working, etc.)
+      payload:
+        type: object
+        required:
+          - status
+        properties:
+          status:
+            type: string
+            enum:
+              - idle
+              - starting
+              - thinking
+              - waiting_approval
+              - working
+              - error
+              - completed
+          message:
+            type: string
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    message.delta:
+      name: message.delta
+      title: Message Delta
+      summary: Incremental text chunk for streaming assistant response
+      description: |
+        Sent as the model generates text. Multiple delta events make up
+        a complete message. Deltas should be concatenated in order.
+      payload:
+        $ref: 'schemas/events.json#/definitions/MessageDeltaEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    message.complete:
+      name: message.complete
+      title: Message Complete
+      summary: Assistant message generation is complete
+      description: |
+        Sent when the full message is generated. Contains the complete
+        content, token usage, and finish reason.
+      payload:
+        $ref: 'schemas/events.json#/definitions/MessageCompleteEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    tool.start:
+      name: tool.start
+      title: Tool Call Started
+      summary: Agent is invoking a tool
+      payload:
+        $ref: 'schemas/events.json#/definitions/ToolStartEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    tool.complete:
+      name: tool.complete
+      title: Tool Call Completed
+      summary: Tool invocation finished (success or failure)
+      payload:
+        $ref: 'schemas/events.json#/definitions/ToolCompleteEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    interaction.request:
+      name: interaction.request
+      title: Interaction Request
+      summary: Server requires user input (approval, clarification, secret)
+      description: |
+        Sent when the agent needs user input. Types include:
+        - approval: Confirm a tool execution or command
+        - clarification: Answer a question from the agent
+        - secret: Provide a secret value (API key, password)
+        - sudo: Approve a privileged/sensitive operation
+      payload:
+        $ref: 'schemas/events.json#/definitions/InteractionRequestEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    interaction.resolved:
+      name: interaction.resolved
+      title: Interaction Resolved
+      summary: An interaction has been responded to (by this or another client)
+      payload:
+        $ref: 'schemas/events.json#/definitions/InteractionResolvedEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    run.update:
+      name: run.update
+      title: Workflow Run Update
+      summary: Status update for a workflow run
+      payload:
+        $ref: 'schemas/events.json#/definitions/RunUpdateEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    node.update:
+      name: node.update
+      title: Workflow Node Update
+      summary: Status update for a workflow node
+      payload:
+        $ref: 'schemas/events.json#/definitions/NodeUpdateEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    file.upload_progress:
+      name: file.upload_progress
+      title: File Upload Progress
+      summary: Progress update during file upload
+      payload:
+        $ref: 'schemas/events.json#/definitions/FileUploadProgressEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    file.download_ready:
+      name: file.download_ready
+      title: File Download Ready
+      summary: Requested file is ready for download
+      payload:
+        type: object
+        required:
+          - fileId
+          - downloadUrl
+          - expiresAt
+        properties:
+          fileId:
+            $ref: 'schemas/common.json#/definitions/FileId'
+          downloadUrl:
+            type: string
+            format: uri
+            description: Time-limited signed download URL
+          expiresAt:
+            $ref: 'schemas/common.json#/definitions/Timestamp'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    session.error:
+      name: session.error
+      title: Session Error
+      summary: An error occurred in the session
+      payload:
+        $ref: 'schemas/events.json#/definitions/SessionErrorEvent'
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+
+    ping:
+      name: ping
+      title: Ping
+      summary: Keep-alive ping (client or server initiated)
+      payload:
+        type: object
+        properties:
+          ts:
+            $ref: 'schemas/common.json#/definitions/Timestamp'
+      headers:
+        type: object
+        properties:
+          X-Message-Id:
+            type: string
+
+    pong:
+      name: pong
+      title: Pong
+      summary: Response to ping keep-alive
+      payload:
+        type: object
+        properties:
+          ts:
+            $ref: 'schemas/common.json#/definitions/Timestamp'
+          pingTs:
+            $ref: 'schemas/common.json#/definitions/Timestamp'
+            description: Timestamp from the ping being responded to
+
+    client.subscribe:
+      name: client.subscribe
+      title: Client Subscribe
+      summary: Subscribe to events for a specific session
+      payload:
+        type: object
+        required:
+          - sessionId
+        properties:
+          sessionId:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+          types:
+            type: array
+            items:
+              type: string
+            description: Optional list of event types to filter (default: all)
+      headers:
+        $ref: '#/components/schemas/ClientHeaders'
+
+    client.unsubscribe:
+      name: client.unsubscribe
+      title: Client Unsubscribe
+      summary: Unsubscribe from a session's events
+      payload:
+        type: object
+        required:
+          - sessionId
+        properties:
+          sessionId:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+      headers:
+        $ref: '#/components/schemas/ClientHeaders'
+
+  schemas:
+    EventHeaders:
+      type: object
+      required:
+        - X-Event-Id
+        - X-Event-Timestamp
+      properties:
+        X-Event-Id:
+          type: string
+          pattern: ^evt_[a-zA-Z0-9]{16}$
+        X-Event-Timestamp:
+          type: integer
+          format: int64
+        X-Session-Id:
+          $ref: 'schemas/common.json#/definitions/SessionId'
+        X-MAC:
+          type: string
+          description: HMAC-SHA256 of event body (base64url encoded)
+
+    ClientHeaders:
+      type: object
+      required:
+        - X-Message-Id
+        - X-Timestamp
+        - X-Device-Id
+        - X-Signature
+      properties:
+        X-Message-Id:
+          type: string
+          pattern: ^req_[a-zA-Z0-9]{16}$
+        X-Timestamp:
+          type: integer
+          format: int64
+        X-Device-Id:
+          $ref: 'schemas/common.json#/definitions/DeviceId'
+        X-Signature:
+          type: string
+          description: ECDSA P-256 signature of message body (ES256, base64url)
+
+  securitySchemes:
+    WssAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: SessionToken
+      description: |
+        WebSocket connection authentication:
+        1. Connect to wss://host/remote/v1/events?token=SESSION_TOKEN
+        2. Or send token as first message after connect
+        3. Connection is closed with code 4401 if authentication fails
+        
+        After connection:
+        - All server events include X-MAC header with HMAC-SHA256
+        - All client messages must include X-Signature header with ES256

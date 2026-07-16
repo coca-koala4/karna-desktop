@@ -80,8 +80,8 @@ export function ListRow({
   return (
     <div
       className={cn(
-        'grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)] sm:items-center',
-        wide && 'sm:grid-cols-1 sm:items-start'
+        'grid gap-3 py-3 min-[62rem]:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)] min-[62rem]:items-center',
+        wide && 'min-[62rem]:grid-cols-1 min-[62rem]:items-start'
       )}
     >
       <div className="min-w-0">
@@ -94,7 +94,7 @@ export function ListRow({
         {hint && <div className="mt-1 block font-mono text-[0.68rem] text-muted-foreground/45">{hint}</div>}
         {below}
       </div>
-      {action && <div className={cn('min-w-0', !wide && 'sm:justify-self-end')}>{action}</div>}
+      {action && <div className={cn('min-w-0', !wide && 'min-[62rem]:justify-self-end')}>{action}</div>}
     </div>
   )
 }

@@ -19,6 +19,7 @@ Improvements over v2:
 import hashlib
 import json
 import logging
+import os
 import sqlite3
 import re
 import time
@@ -26,6 +27,8 @@ from typing import Any, Dict, List, Optional
 
 from agent.auxiliary_client import call_llm, _is_connection_error, aux_interrupt_protection
 from agent.context_engine import ContextEngine
+from agent.context.context_envelope import get_current_envelope
+from agent.context.quality import validate_coverage, CoverageReport
 from agent.model_metadata import (
     MINIMUM_CONTEXT_LENGTH,
     get_model_context_length,
@@ -650,6 +653,7 @@ class ContextCompressor(ContextEngine):
         self._summary_failure_cooldown_until = 0.0  # transient errors must not block a fresh session
         self._last_summary_error = None
         self._last_compress_aborted = False
+        self._last_coverage_report: Optional[CoverageReport] = None
         self.last_real_prompt_tokens = 0
         self.last_compression_rough_tokens = 0
         self.last_rough_tokens_when_real_prompt_fit = 0
@@ -684,6 +688,7 @@ class ContextCompressor(ContextEngine):
         self._ineffective_compression_count = 0
         self._summary_failure_cooldown_until = 0.0
         self._last_compress_aborted = False
+        self._last_coverage_report = None
         self._context_probed = False
         self._context_probe_persistable = False
         self.last_real_prompt_tokens = 0
@@ -818,9 +823,16 @@ class ContextCompressor(ContextEngine):
         # compressor stays calibrated after a model switch (e.g. 200K → 32K).
         target_tokens = int(self.threshold_tokens * self.summary_target_ratio)
         self.tail_token_budget = target_tokens
-        self.max_summary_tokens = min(
-            int(context_length * 0.05), _SUMMARY_TOKENS_CEILING,
-        )
+
+        if self.profile_max_summary_tokens is not None and self._profile_max_summary_ratio is not None:
+            self.max_summary_tokens = min(
+                int(context_length * self._profile_max_summary_ratio),
+                self.profile_max_summary_tokens,
+            )
+        else:
+            self.max_summary_tokens = min(
+                int(context_length * 0.05), _SUMMARY_TOKENS_CEILING,
+            )
 
         # Reset cross-call calibration state captured under the PREVIOUS model.
         # These fields encode "the provider proved this prompt fit" / "preflight
@@ -843,6 +855,88 @@ class ContextCompressor(ContextEngine):
         self.last_compression_rough_tokens = 0
         self.awaiting_real_usage_after_compression = False
         self._ineffective_compression_count = 0
+
+    def apply_compression_profile(self, profile: Any) -> None:
+        """Apply a Context OS profile to the *live* compressor.
+
+        Profiles are turn-scoped policy, not UI metadata.  Recompute every
+        dependent budget so switching between chat, research and long-form
+        writing changes the actual compaction trigger and protected tail.
+        """
+        if isinstance(profile, str):
+            from agent.context.compressor.compression_profiles import get_profile
+            profile = get_profile(profile)
+        if profile is None:
+            return
+        self._compression_profile = profile
+        self.threshold_percent = float(profile.threshold)
+        self.protect_last_n = int(profile.protect_last_n)
+        self.summary_target_ratio = max(0.10, min(float(profile.target_ratio), 0.80))
+        self.profile_max_summary_tokens = int(profile.max_summary_tokens)
+        self._profile_max_summary_ratio = float(profile.max_summary_ratio)
+        self.threshold_tokens = self._compute_threshold_tokens(
+            self.context_length, self.threshold_percent, self.max_tokens,
+        )
+        self.tail_token_budget = int(self.threshold_tokens * self.summary_target_ratio)
+        self.max_summary_tokens = min(
+            int(self.context_length * self._profile_max_summary_ratio),
+            self.profile_max_summary_tokens,
+        )
+
+    def enable_context_os(
+        self,
+        workspace_id: Optional[str] = None,
+        module: Optional[str] = None,
+        default_profile: str = "longform_writing",
+    ) -> bool:
+        """Enable Karna Context OS integration (opt-in).
+
+        Injects the ContextOrchestrator so compression also extracts
+        structured memory, auto-pins critical constraints, and maintains
+        a machine-readable summary alongside the human-readable one.
+
+        Returns True if initialization succeeded.
+        """
+        try:
+            from agent.context.context_orchestrator import ContextOrchestrator
+
+            # One orchestrator per agent/session.  A process-global mutable
+            # envelope/summary can leak project state between concurrent chats.
+            self._context_orchestrator = ContextOrchestrator()
+            self._context_os_enabled = True
+            self.abort_on_summary_failure = True
+
+            envelope = get_current_envelope()
+            if envelope:
+                self._context_os_workspace_id = envelope.workspace_id or workspace_id
+                self._context_os_module = envelope.module or module
+                effective_profile = envelope.get_effective_profile()
+                self.apply_compression_profile(effective_profile)
+                if self._context_orchestrator:
+                    self._context_orchestrator.set_profile(effective_profile)
+            else:
+                self._context_os_workspace_id = workspace_id
+                self._context_os_module = module
+                if default_profile and self._context_orchestrator:
+                    self._context_orchestrator.set_profile(default_profile)
+                    self.apply_compression_profile(default_profile)
+
+            logger.info(
+                "Context OS enabled: workspace=%s module=%s profile=%s",
+                self._context_os_workspace_id or "none",
+                self._context_os_module or "none",
+                default_profile,
+            )
+            return True
+        except Exception as exc:
+            logger.warning("Failed to enable Context OS: %s", exc)
+            self._context_os_enabled = False
+            self._context_orchestrator = None
+            return False
+
+    def get_context_orchestrator(self) -> Any:
+        """Return the bound ContextOrchestrator or None if disabled."""
+        return self._context_orchestrator if self._context_os_enabled else None
 
     # When the MINIMUM_CONTEXT_LENGTH floor meets/exceeds a small context
     # window, compacting at the percentage (50% → 32K of a 64K window) wastes
@@ -926,16 +1020,31 @@ class ContextCompressor(ContextEngine):
         api_mode: str = "",
         abort_on_summary_failure: bool = False,
         max_tokens: int | None = None,
+        compression_profile: Any = None,
     ):
         self.model = model
         self.base_url = base_url
         self.api_key = api_key
         self.provider = provider
         self.api_mode = api_mode
-        self.threshold_percent = threshold_percent
-        self.protect_first_n = protect_first_n
-        self.protect_last_n = protect_last_n
-        self.summary_target_ratio = max(0.10, min(summary_target_ratio, 0.80))
+
+        if compression_profile is not None:
+            self._compression_profile = compression_profile
+            self.threshold_percent = compression_profile.threshold
+            self.protect_first_n = protect_first_n
+            self.protect_last_n = compression_profile.protect_last_n
+            self.summary_target_ratio = max(0.10, min(compression_profile.target_ratio, 0.80))
+            self.profile_max_summary_tokens = compression_profile.max_summary_tokens
+            self._profile_max_summary_ratio = compression_profile.max_summary_ratio
+        else:
+            self._compression_profile = None
+            self.threshold_percent = threshold_percent
+            self.protect_first_n = protect_first_n
+            self.protect_last_n = protect_last_n
+            self.summary_target_ratio = max(0.10, min(summary_target_ratio, 0.80))
+            self.profile_max_summary_tokens = None
+            self._profile_max_summary_ratio = None
+
         self.quiet_mode = quiet_mode
         # Output-token reservation: the provider carves max_tokens out of the
         # context window, so the usable input budget is context_length -
@@ -962,25 +1071,34 @@ class ContextCompressor(ContextEngine):
         # guards the degenerate case where the floor would equal/exceed the
         # window (small models), so auto-compression can still fire (#14690).
         self.threshold_tokens = self._compute_threshold_tokens(
-            self.context_length, threshold_percent, self.max_tokens,
+            self.context_length, self.threshold_percent, self.max_tokens,
         )
         self.compression_count = 0
 
         # Derive token budgets: ratio is relative to the threshold, not total context
         target_tokens = int(self.threshold_tokens * self.summary_target_ratio)
         self.tail_token_budget = target_tokens
-        self.max_summary_tokens = min(
-            int(self.context_length * 0.05), _SUMMARY_TOKENS_CEILING,
-        )
+
+        if self.profile_max_summary_tokens is not None and self._profile_max_summary_ratio is not None:
+            self.max_summary_tokens = min(
+                int(self.context_length * self._profile_max_summary_ratio),
+                self.profile_max_summary_tokens,
+            )
+        else:
+            self.max_summary_tokens = min(
+                int(self.context_length * 0.05), _SUMMARY_TOKENS_CEILING,
+            )
 
         if not quiet_mode:
+            profile_name = self._compression_profile.name if self._compression_profile else "default"
             logger.info(
                 "Context compressor initialized: model=%s context_length=%d "
                 "threshold=%d (%.0f%%) target_ratio=%.0f%% tail_budget=%d "
-                "provider=%s base_url=%s",
+                "profile=%s provider=%s base_url=%s",
                 model, self.context_length, self.threshold_tokens,
-                threshold_percent * 100, self.summary_target_ratio * 100,
+                self.threshold_percent * 100, self.summary_target_ratio * 100,
                 self.tail_token_budget,
+                profile_name,
                 provider or "none", base_url or "none",
             )
         self._context_probed = False  # True after a step-down from context error
@@ -1014,6 +1132,7 @@ class ContextCompressor(ContextEngine):
         # this flag to know "compression was attempted but aborted, freeze
         # the chat until the user manually retries via /compress".
         self._last_compress_aborted: bool = False
+        self._last_coverage_report: Optional[CoverageReport] = None
         # Set True when the summary call failed with an authentication /
         # permission error (HTTP 401/403). Auth failures are non-recoverable
         # at the request level — the credential or endpoint is broken — so
@@ -1031,11 +1150,26 @@ class ContextCompressor(ContextEngine):
         # strictly better than discarding context for a transient blip
         # (#29559, #25585). Independent of abort_on_summary_failure.
         self._last_summary_network_failure: bool = False
+
+        # Karna Context OS integration — opt-in only, None = disabled
+        self._context_orchestrator: Any = None
+        self._context_os_enabled: bool = False
+        self._context_os_workspace_id: Optional[str] = None
+        self._context_os_module: Optional[str] = None
         # retrying on the main model, record the failure so gateway /
         # CLI callers can still warn the user even though compression
         # succeeded.  Silent recovery would hide the broken config.
         self._last_aux_model_failure_error: Optional[str] = None
         self._last_aux_model_failure_model: Optional[str] = None
+
+        # Auto-enable Context OS when running under Karna Desktop
+        # (detected via KARNA_CONTEXT_DIR or HERMES_DESKTOP env vars).
+        if os.environ.get("KARNA_CONTEXT_DIR") or os.environ.get("HERMES_DESKTOP") == "1":
+            try:
+                default_profile = os.environ.get("KARNA_CONTEXT_PROFILE", "agent_chat")
+                self.enable_context_os(default_profile=default_profile)
+            except Exception as _auto_exc:
+                logger.debug("Context OS auto-enable skipped: %s", _auto_exc)
 
     def update_from_response(self, usage: Dict[str, Any]):
         """Update tracked token usage from API response."""
@@ -2686,6 +2820,66 @@ This compaction should PRIORITISE preserving all information related to the focu
 
         display_tokens = current_tokens if current_tokens else self.last_prompt_tokens or estimate_messages_tokens_rough(messages)
 
+        # Context OS: extract structured memory before compression
+        envelope = get_current_envelope()
+        if self._context_os_enabled and self._context_orchestrator:
+            effective_workspace_id = (
+                envelope.get_scope_id() if envelope else self._context_os_workspace_id
+            )
+            effective_module = envelope.module if envelope else self._context_os_module
+            try:
+                from agent.context.context_orchestrator import ContextOrchestrator
+                orch: ContextOrchestrator = self._context_orchestrator
+                session_id = getattr(self, "_session_id", "")
+                if envelope and envelope.session_id:
+                    session_id = envelope.session_id
+                source_kind = envelope.source_kind if envelope else None
+                extracted_ids = []
+                if effective_workspace_id:
+                    extracted_ids = orch.extract_and_store_context(
+                        messages,
+                        workspace_id=effective_workspace_id,
+                        module=effective_module,
+                        session_id=session_id,
+                        source_kind=source_kind,
+                    )
+                if extracted_ids and not self.quiet_mode:
+                    logger.debug(
+                        "Context OS: extracted %d memory items before compression",
+                        len(extracted_ids),
+                    )
+            except Exception as exc:
+                logger.debug("Context OS pre-compression extraction failed: %s", exc)
+
+            try:
+                orch = self._context_orchestrator
+                session_id = getattr(self, "_session_id", "")
+                if envelope and envelope.session_id:
+                    session_id = envelope.session_id
+                externalized = orch.scan_and_externalize_tool_outputs(
+                    messages,
+                    session_id=session_id,
+                    workspace_id=effective_workspace_id,
+                    task_id=effective_module,
+                )
+                if externalized and not self.quiet_mode:
+                    logger.info(
+                        "Context OS: externalized %d large tool output(s) before compression",
+                        externalized,
+                    )
+            except Exception as exc:
+                logger.debug("Context OS tool output externalization failed: %s", exc)
+
+            if envelope:
+                try:
+                    orch = self._context_orchestrator
+                    effective_profile = envelope.get_effective_profile()
+                    orch.set_profile(effective_profile)
+                    self.apply_compression_profile(effective_profile)
+                    self.abort_on_summary_failure = True
+                except Exception as exc:
+                    logger.debug("Context OS profile sync failed: %s", exc)
+
         # Phase 1: Prune old tool results (cheap, no LLM call)
         messages, pruned_count = self._prune_old_tool_results(
             messages, protect_tail_count=self.protect_last_n,
@@ -2859,6 +3053,68 @@ This compaction should PRIORITISE preserving all information related to the focu
                 reason=self._last_summary_error,
             )
 
+        # ExpectedCoverage quality validation: verify critical info is preserved
+        preserved_messages = messages[:compress_start] + messages[compress_end:]
+        pinned_contexts = None
+        if self._context_os_enabled and self._context_orchestrator:
+            try:
+                pinned_contexts = self._context_orchestrator.get_pinned_contexts()
+            except Exception:
+                pinned_contexts = None
+
+        coverage_report = validate_coverage(
+            original_messages=messages,
+            summary_text=summary,
+            preserved_messages=preserved_messages,
+            threshold=0.85,
+            pinned_contexts=pinned_contexts,
+        )
+
+        self._last_coverage_report = coverage_report
+
+        # One deterministic repair pass before aborting.  This is cheaper and
+        # safer than a second model call: append only the exact critical anchors
+        # the validator found missing, then validate again.
+        if not coverage_report.meets_threshold and coverage_report.missed_items:
+            try:
+                from agent.context.security import redact_text
+                repair_items = [redact_text(item) for item in coverage_report.missed_items[:20]]
+                summary = summary + "\n\n## Coverage repair anchors\n" + "\n".join(
+                    f"- {item}" for item in repair_items
+                )
+                coverage_report = validate_coverage(
+                    original_messages=messages,
+                    summary_text=summary,
+                    preserved_messages=preserved_messages,
+                    threshold=0.85,
+                    pinned_contexts=pinned_contexts,
+                )
+                self._last_coverage_report = coverage_report
+            except Exception as exc:
+                logger.debug("Coverage repair pass failed: %s", exc)
+
+        if not coverage_report.meets_threshold:
+            if self._context_os_enabled and self.abort_on_summary_failure:
+                self._last_compress_aborted = True
+                if not self.quiet_mode:
+                    logger.warning(
+                        "Context compression quality check failed (coverage=%.2f < %.2f): %d missed critical items. Aborting compression, keeping original messages.",
+                        coverage_report.coverage_ratio,
+                        coverage_report.threshold,
+                        coverage_report.missed_count,
+                    )
+                return messages
+            else:
+                if not self.quiet_mode:
+                    logger.warning(
+                        "Context compression quality check: coverage=%.2f < %.2f, %d missed critical items. Adding warning annotation to summary.",
+                        coverage_report.coverage_ratio,
+                        coverage_report.threshold,
+                        coverage_report.missed_count,
+                    )
+                coverage_warning = "\n\n[NOTE: Some critical context may be missing from this summary. Refer to pinned items and recent messages for full details.]"
+                summary = summary + coverage_warning
+
         _merge_summary_into_tail = False
         last_head_role = messages[compress_start - 1].get("role", "user") if compress_start > 0 else "user"
         first_tail_role = messages[compress_end].get("role", "user") if compress_end < n_messages else "user"
@@ -2968,5 +3224,60 @@ This compaction should PRIORITISE preserving all information related to the focu
                 savings_pct,
             )
             logger.info("Compression #%d complete", self.compression_count)
+
+        # Context OS: parse and store the new summary
+        if self._context_os_enabled and self._context_orchestrator and self._previous_summary:
+            try:
+                from agent.context.context_orchestrator import ContextOrchestrator
+                orch: ContextOrchestrator = self._context_orchestrator
+                orch.load_summary_from_markdown(self._previous_summary)
+            except Exception as exc:
+                logger.debug("Context OS summary update failed: %s", exc)
+
+        if self._context_os_enabled and self._context_orchestrator:
+            try:
+                orch = self._context_orchestrator
+                session_id = getattr(self, "_session_id", "")
+                if envelope and envelope.session_id:
+                    session_id = envelope.session_id
+                workspace_id = self._context_os_workspace_id
+                if envelope and envelope.workspace_id:
+                    workspace_id = envelope.workspace_id
+                profile_name = self._context_orchestrator._profile_name
+                if envelope:
+                    profile_name = envelope.get_effective_profile()
+                quality_score = None
+                quality_details_json = None
+                missing_fields_json = None
+                abort_reason = None
+
+                if self._last_coverage_report is not None:
+                    quality_score = self._last_coverage_report.coverage_ratio
+                    quality_details_json = json.dumps(self._last_coverage_report.to_dict())
+                    if self._last_coverage_report.missed_items:
+                        missing_fields_json = json.dumps(self._last_coverage_report.missed_items[:20])
+
+                if self._last_compress_aborted and self._last_coverage_report and not self._last_coverage_report.meets_threshold:
+                    abort_reason = f"coverage_check_failed: coverage={self._last_coverage_report.coverage_ratio:.2f} < {self._last_coverage_report.threshold:.2f}, missed={self._last_coverage_report.missed_count} items"
+
+                orch.memory_service.record_compression_event(
+                    session_id=session_id,
+                    profile_name=profile_name,
+                    model_used=self.summary_model or self.model,
+                    before_tokens=display_tokens,
+                    after_tokens=new_estimate,
+                    before_message_count=n_messages,
+                    after_message_count=len(compressed),
+                    workspace_id=workspace_id,
+                    envelope_version=envelope.version if envelope else 1,
+                    summary_tokens=estimate_messages_tokens_rough([{"role": "user", "content": summary}]) if summary else None,
+                    aborted=1 if self._last_compress_aborted else 0,
+                    abort_reason=abort_reason,
+                    quality_score=quality_score,
+                    quality_details_json=quality_details_json,
+                    missing_fields_json=missing_fields_json,
+                )
+            except Exception as exc:
+                logger.debug("Context OS compression event recording failed: %s", exc)
 
         return compressed

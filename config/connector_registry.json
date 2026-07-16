@@ -1,0 +1,815 @@
+[
+  {
+    "id": "writer_workspace",
+    "name": "writer.workspace",
+    "displayName": "本地 Workspace",
+    "description": "读取和管理当前写作项目文件、章节、选区与版本 diff。",
+    "category": "creative_core",
+    "icon": "edit",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.writer_workspace"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.writer_workspace"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "workspace.read",
+        "label": "读取项目文件",
+        "riskLevel": "low"
+      },
+      {
+        "id": "workspace.write",
+        "label": "写入项目文件",
+        "riskLevel": "high"
+      },
+      {
+        "id": "workspace.diff",
+        "label": "生成和应用 diff",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_projects",
+        "description": "列出所有写作项目",
+        "riskLevel": "low"
+      },
+      {
+        "name": "create_project",
+        "description": "创建新的写作项目",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_project_info",
+        "description": "获取项目详细信息",
+        "riskLevel": "low"
+      },
+      {
+        "name": "list_files",
+        "description": "列出项目中的文件",
+        "riskLevel": "low"
+      },
+      {
+        "name": "read_file",
+        "description": "读取项目文件内容",
+        "riskLevel": "low"
+      },
+      {
+        "name": "write_file",
+        "description": "写入或创建项目文件",
+        "riskLevel": "high"
+      },
+      {
+        "name": "delete_file",
+        "description": "删除项目文件",
+        "riskLevel": "high"
+      },
+      {
+        "name": "search_content",
+        "description": "在项目中搜索文本内容",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_project_stats",
+        "description": "获取项目统计信息",
+        "riskLevel": "low"
+      },
+      {
+        "name": "export_project",
+        "description": "导出项目为指定格式",
+        "riskLevel": "medium"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    }
+  },
+  {
+    "id": "story_bible",
+    "name": "writer.story_bible",
+    "displayName": "Story Bible",
+    "description": "管理人物、地点、组织、道具、世界规则、事件、伏笔与冲突。",
+    "category": "creative_core",
+    "icon": "people",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.story_bible"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.story_bible"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "bible.read",
+        "label": "读取设定集",
+        "riskLevel": "low"
+      },
+      {
+        "id": "bible.write",
+        "label": "更新设定集",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_characters",
+        "description": "列出所有角色",
+        "riskLevel": "low"
+      },
+      {
+        "name": "create_character",
+        "description": "创建新角色",
+        "riskLevel": "low"
+      },
+      {
+        "name": "update_character",
+        "description": "更新角色信息",
+        "riskLevel": "high"
+      },
+      {
+        "name": "delete_character",
+        "description": "删除角色",
+        "riskLevel": "high"
+      },
+      {
+        "name": "list_plots",
+        "description": "列出所有情节线",
+        "riskLevel": "low"
+      },
+      {
+        "name": "create_plot",
+        "description": "创建新情节线",
+        "riskLevel": "low"
+      },
+      {
+        "name": "update_plot",
+        "description": "更新情节线",
+        "riskLevel": "high"
+      },
+      {
+        "name": "get_relationships",
+        "description": "获取角色关系列表",
+        "riskLevel": "low"
+      },
+      {
+        "name": "add_relationship",
+        "description": "添加角色关系",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "extract_story_bible_from_chapter",
+        "description": "从章节文本中抽取候选人物和事件",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    }
+  },
+  {
+    "id": "narrative_state",
+    "name": "writer.narrative_state",
+    "displayName": "Narrative State",
+    "description": "追踪人物状态、关系变化、冲突生命周期、主题演化与 OOC 风险。",
+    "category": "creative_core",
+    "icon": "timeline-events",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.narrative_state"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.narrative_state"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "narrative.read",
+        "label": "读取叙事状态",
+        "riskLevel": "low"
+      },
+      {
+        "id": "narrative.update",
+        "label": "更新叙事状态",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "track_scene",
+        "description": "记录/追踪一个场景",
+        "riskLevel": "low"
+      },
+      {
+        "name": "list_scenes",
+        "description": "列出所有已追踪的场景",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_story_timeline",
+        "description": "获取故事时间线",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_progress",
+        "description": "获取写作进度",
+        "riskLevel": "low"
+      },
+      {
+        "name": "update_progress",
+        "description": "更新写作进度",
+        "riskLevel": "high"
+      },
+      {
+        "name": "get_narrative_arc",
+        "description": "获取叙事弧线分析",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    }
+  },
+  {
+    "id": "living_wiki",
+    "name": "writer.living_wiki",
+    "displayName": "Living Wiki",
+    "description": "维护项目自动百科、章节摘要、未解决线索、角色和主题 wiki。",
+    "category": "creative_core",
+    "icon": "library",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.living_wiki"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.living_wiki"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wiki.read",
+        "label": "读取 Living Wiki",
+        "riskLevel": "low"
+      },
+      {
+        "id": "wiki.write",
+        "label": "更新 Living Wiki",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_articles",
+        "description": "列出所有百科文章",
+        "riskLevel": "low"
+      },
+      {
+        "name": "create_article",
+        "description": "创建新百科文章",
+        "riskLevel": "low"
+      },
+      {
+        "name": "update_article",
+        "description": "更新百科文章",
+        "riskLevel": "high"
+      },
+      {
+        "name": "delete_article",
+        "description": "删除百科文章",
+        "riskLevel": "high"
+      },
+      {
+        "name": "search_articles",
+        "description": "搜索百科文章",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_article_links",
+        "description": "获取文章关联",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    }
+  },
+  {
+    "id": "creative_search",
+    "name": "writer.creative_search",
+    "displayName": "Creative Search",
+    "description": "按场景、对白、情绪、主题、符号、伏笔与关系变化做叙事级搜索。",
+    "category": "creative_core",
+    "icon": "search-fuzzy",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.creative_search"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.creative_search"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "creative.search",
+        "label": "搜索创作资料",
+        "riskLevel": "low"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "unified_search",
+        "description": "统一搜索（跨所有连接器数据）",
+        "riskLevel": "low"
+      },
+      {
+        "name": "search_by_type",
+        "description": "按类型搜索",
+        "riskLevel": "low"
+      },
+      {
+        "name": "search_by_tags",
+        "description": "按标签搜索",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_trending_tags",
+        "description": "获取热门标签",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    }
+  },
+  {
+    "id": "soul_workshop",
+    "name": "writer.soul_workshop",
+    "displayName": "Soul Workshop",
+    "description": "作家、批评家、编剧方法论蒸馏与风格安全审阅。",
+    "category": "creative_core",
+    "icon": "smiley",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "A",
+    "status": "beta",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.soul_workshop"
+      ]
+    },
+    "mcpServer": {
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "tools.connector_servers.soul_workshop"
+      ]
+    },
+    "permissions": [
+      {
+        "id": "soul.read",
+        "label": "读取灵魂档案",
+        "riskLevel": "low"
+      },
+      {
+        "id": "soul.distill",
+        "label": "蒸馏方法论",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_personas",
+        "description": "列出所有角色人格",
+        "riskLevel": "low"
+      },
+      {
+        "name": "create_persona",
+        "description": "创建新角色人格",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "update_persona",
+        "description": "更新角色人格",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "delete_persona",
+        "description": "删除角色人格",
+        "riskLevel": "high"
+      },
+      {
+        "name": "dialogue_with_character",
+        "description": "与角色对话",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": false,
+      "riskLevel": "medium"
+    }
+  },
+  {
+    "id": "obsidian_vault",
+    "name": "obsidian.vault",
+    "displayName": "Obsidian",
+    "description": "连接本地 Obsidian Vault，读取和同步 Markdown 笔记、双链与写作资料。",
+    "category": "docs_storage",
+    "icon": "notebook",
+    "provider": "Obsidian",
+    "type": "local_path",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "local_path",
+      "fields": [
+        {
+          "key": "vaultPath",
+          "label": "Vault 路径",
+          "type": "directory_path",
+          "required": true,
+          "placeholder": "选择 Obsidian 仓库文件夹"
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "obsidian.read",
+        "label": "读取 Markdown 笔记",
+        "riskLevel": "low"
+      },
+      {
+        "id": "obsidian.write",
+        "label": "创建和更新笔记",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_notes",
+        "description": "列出笔记",
+        "riskLevel": "low"
+      },
+      {
+        "name": "search_notes",
+        "description": "搜索笔记",
+        "riskLevel": "low"
+      },
+      {
+        "name": "get_backlinks",
+        "description": "获取双链关系",
+        "riskLevel": "low"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    },
+    "docsUrl": "https://obsidian.md/"
+  },
+  {
+    "id": "wps_docs",
+    "name": "wps.docs",
+    "displayName": "WPS",
+    "description": "连接 WPS 文档或本地文档目录，用于导入、检索和备份稿件资料。",
+    "category": "docs_storage",
+    "icon": "file",
+    "provider": "WPS",
+    "type": "local_path",
+    "priority": "A",
+    "status": "beta",
+    "auth": {
+      "mode": "local_path",
+      "fields": [
+        {
+          "key": "docsPath",
+          "label": "文档目录",
+          "type": "directory_path",
+          "required": true,
+          "placeholder": "选择 WPS/稿件资料目录"
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wps.read",
+        "label": "读取文档",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "wps.import",
+        "label": "导入资料",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_documents",
+        "description": "列出文档",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "search_documents",
+        "description": "搜索文档",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "import_document",
+        "description": "导入文档文本",
+        "riskLevel": "medium"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": true,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "medium"
+    }
+  },
+  {
+    "id": "baidu_netdisk",
+    "name": "baidu.netdisk",
+    "displayName": "百度网盘",
+    "description": "连接百度网盘，支持浏览、搜索、下载创作资料和同步备份。",
+    "category": "docs_storage",
+    "icon": "cloud",
+    "provider": "百度网盘",
+    "type": "mcp_sse",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "access_token",
+      "fields": [
+        {
+          "key": "accessToken",
+          "label": "Access Token",
+          "type": "password",
+          "required": true,
+          "placeholder": "输入百度网盘开放平台 Access Token"
+        },
+        {
+          "key": "serverUrl",
+          "label": "MCP SSE URL",
+          "type": "url",
+          "required": false,
+          "placeholder": "https://your-baidu-netdisk-mcp-server/sse"
+        }
+      ]
+    },
+    "server": {
+      "transport": "sse",
+      "url": "https://your-baidu-netdisk-mcp-server/sse",
+      "autoStart": false,
+      "timeoutMs": 30000,
+      "env": {
+        "BAIDU_NETDISK_ACCESS_TOKEN": "${accessToken}"
+      }
+    },
+    "permissions": [
+      {
+        "id": "netdisk.list",
+        "label": "浏览文件",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "netdisk.download",
+        "label": "下载文件",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "netdisk.upload",
+        "label": "上传文件",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_files",
+        "description": "浏览网盘目录",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "search_files",
+        "description": "搜索网盘文件",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "download_file",
+        "description": "下载文件",
+        "riskLevel": "medium"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    }
+  },
+  {
+    "id": "web_search",
+    "name": "web.search",
+    "displayName": "Web Search",
+    "description": "联网搜索作家、作品、访谈、评论、资料与背景信息。",
+    "category": "research",
+    "icon": "globe",
+    "provider": "联网搜索",
+    "type": "api_key",
+    "priority": "S",
+    "status": "available",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "provider",
+          "label": "搜索服务",
+          "type": "select",
+          "required": true,
+          "placeholder": "Tavily / SerpAPI / Bing / SearxNG",
+          "options": [
+            "Tavily",
+            "SerpAPI",
+            "Bing",
+            "SearxNG"
+          ]
+        },
+        {
+          "key": "apiKey",
+          "label": "API Key / Base URL",
+          "type": "password",
+          "required": true
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "web.search",
+        "label": "联网搜索",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_web",
+        "description": "搜索网页资料",
+        "riskLevel": "medium"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    }
+  },
+  {
+    "id": "browser_reader",
+    "name": "browser.reader",
+    "displayName": "Browser Reader",
+    "description": "读取网页正文、访谈、评论和背景资料，抽取可引用证据。",
+    "category": "research",
+    "icon": "browser",
+    "provider": "Writer OS",
+    "type": "builtin",
+    "priority": "A",
+    "status": "available",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "permissions": [
+      {
+        "id": "browser.read",
+        "label": "读取网页内容",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "read_webpage",
+        "description": "读取网页正文",
+        "riskLevel": "medium"
+      },
+      {
+        "name": "extract_evidence",
+        "description": "抽取证据片段",
+        "riskLevel": "medium"
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": false,
+      "riskLevel": "medium"
+    }
+  }
+]

@@ -42,16 +42,27 @@ export default defineConfig({
     postcss: { plugins: [] }
   },
   build: {
-    // Keep desktop packaging stable: Shiki ships many dynamic chunks by
-    // default, and electron-builder can OOM scanning thousands of files.
-    // Collapsing to a single chunk is intentional, so the renderer bundle is
-    // large by design (~22 MB). Raise the warning ceiling above that so the
-    // cosmetic "chunk larger than 500 kB" nag stays quiet, while still acting
-    // as a regression alarm if the bundle balloons well past today's size.
-    chunkSizeWarningLimit: 25000,
+    // Route views are already lazy-loaded in DesktopController. Shiki is a
+    // deliberately lazy, language-complete editor payload (~19 MB); its
+    // isolated chunk gets a higher warning ceiling while assert-renderer-
+    // budget.cjs enforces a much stricter 4 MB initial-renderer budget.
+    chunkSizeWarningLimit: 20_000,
     rolldownOptions: {
       output: {
-        codeSplitting: false
+        codeSplitting: true,
+        manualChunks(id) {
+          // Shiki and Mermaid expose hundreds of dynamic language/diagram
+          // modules. Group each ecosystem so lazy route chunks stay useful
+          // without creating thousands of tiny files for electron-builder.
+          if (id.includes('/node_modules/@shikijs/') || id.includes('/node_modules/shiki/')) {
+            return 'shiki'
+          }
+          if (id.includes('/node_modules/mermaid/')) {
+            return 'mermaid'
+          }
+
+          return undefined
+        }
       }
     }
   },

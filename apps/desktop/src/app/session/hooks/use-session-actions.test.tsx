@@ -363,6 +363,7 @@ describe('resumeSession failure recovery', () => {
             awaitingResponse: false,
             branch: '',
             busy: false,
+            conversationScope: 'standalone' as const,
             cwd: '',
             fast: false,
             interrupted: false,
@@ -371,6 +372,8 @@ describe('resumeSession failure recovery', () => {
             needsInput: false,
             pendingBranchGroup: null,
             personality: '',
+            permissionMode: 'restricted' as const,
+            projectName: null,
             provider: '',
             reasoningEffort: '',
             sawAssistantPayload: false,
@@ -378,6 +381,8 @@ describe('resumeSession failure recovery', () => {
             storedSessionId: 'stored-1',
             streamId: null,
             turnStartedAt: null,
+            workspaceId: null,
+            writerProjectId: null,
             yolo: false
           }
         ]

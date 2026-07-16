@@ -51,7 +51,8 @@ import {
   $profileScope,
   refreshActiveProfile
 } from '../store/profile'
-import { $startWorkSessionRequest, followActiveSessionCwd, resolveNewSessionCwd } from '../store/projects'
+import type { ProjectInfo } from '../types/hermes'
+import { $projects, $startWorkSessionRequest, followActiveSessionCwd, resolveNewSessionCwd } from '../store/projects'
 import { $reviewOpen, REVIEW_PANE_ID } from '../store/review'
 import {
   $activeSessionId,
@@ -106,7 +107,7 @@ import { $terminalTakeover } from './right-sidebar/store'
 import { TerminalPaneChrome } from './right-sidebar/terminal/chrome'
 import { PersistentTerminal } from './right-sidebar/terminal/persistent'
 import { closeActiveTerminal } from './right-sidebar/terminal/terminals'
-import { CRON_ROUTE, NEW_CHAT_ROUTE, routeSessionId, sessionRoute, SETTINGS_ROUTE } from './routes'
+import { CRON_ROUTE, IDE_ROUTE, KARNA_FLOW_ROUTE, NEW_CHAT_ROUTE, routeSessionId, sessionRoute, SETTINGS_ROUTE, workspaceIdFromIdeRoute } from './routes'
 import { SessionPickerOverlay } from './session-picker-overlay'
 import { SessionSwitcher } from './session-switcher'
 import { useContextSuggestions } from './session/hooks/use-context-suggestions'
@@ -131,18 +132,22 @@ import { useGroupRegistry } from './shell/use-group-registry'
 import { UpdatesOverlay } from './updates-overlay'
 
 const AgentsView = lazy(async () => ({ default: (await import('./agents')).AgentsView }))
-const ArtifactsView = lazy(async () => ({ default: (await import('./artifacts')).ArtifactsView }))
 const CommandCenterView = lazy(async () => ({ default: (await import('./command-center')).CommandCenterView }))
 const CronView = lazy(async () => ({ default: (await import('./cron')).CronView }))
 const KarnaAgentsWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaAgentsWorkshopView }))
 const KarnaWriterWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaWriterWorkshopView }))
 const KarnaSoulWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaSoulWorkshopView }))
+const KarnaFlowWorkshopView = lazy(async () => ({ default: (await import('./agent-flow')).AgentFlowWorkshopPage }))
 const KarnaMcpWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaMcpWorkshopView }))
+const KarnaPluginsView = lazy(async () => ({ default: (await import('./plugins')).PluginsView }))
+const KarnaHomeDemoView = lazy(async () => ({ default: (await import('./karna-workshop/home-demo')).KarnaHomeDemoView }))
 const StarmapView = lazy(async () => ({ default: (await import('./starmap')).StarmapView }))
 const MessagingView = lazy(async () => ({ default: (await import('./messaging')).MessagingView }))
 const ProfilesView = lazy(async () => ({ default: (await import('./profiles')).ProfilesView }))
 const SettingsView = lazy(async () => ({ default: (await import('./settings')).SettingsView }))
 const SkillsView = lazy(async () => ({ default: (await import('./skills')).SkillsView }))
+const WriterIDEShell = lazy(async () => ({ default: (await import('./writer-ide')).WriterIDEShell }))
+const NotFoundView = lazy(async () => ({ default: (await import('./not-found')).NotFoundView }))
 
 // Latest cron-job sessions surfaced in the collapsed "Cron jobs" section. The
 // Cron sessions are written by a background scheduler tick (the desktop
@@ -295,7 +300,7 @@ export function DesktopController() {
     return () => unsubscribe?.()
   }, [])
 
-  // hermes:// deep links (e.g. a docs "Send to App" button for an automation blueprint).
+  // karna:// deep links; the main process also accepts legacy hermes:// URLs.
   // Build the equivalent /blueprint slash command from the payload and drop
   // it into the composer — the user reviews/edits, then sends; the agent (or
   // the shared command handler) creates the job. Signal readiness so a link
@@ -580,6 +585,37 @@ export function DesktopController() {
     startFreshSessionDraft()
   }, [freshSessionRequest, startFreshSessionDraft])
 
+  const urlScopeHandledRef = useRef(false)
+  useEffect(() => {
+    if (location.pathname !== NEW_CHAT_ROUTE) {
+      urlScopeHandledRef.current = false
+      return
+    }
+
+    if (urlScopeHandledRef.current) {
+      return
+    }
+
+    const searchParams = new URLSearchParams(location.search)
+    const scope = searchParams.get('scope')
+    const workspaceId = searchParams.get('workspace_id')
+
+    if (scope === 'project' && workspaceId) {
+      const projects = $projects.get()
+      const project = projects.find(p => p.id === workspaceId)
+      if (project && project.primary_path) {
+        urlScopeHandledRef.current = true
+        startFreshSessionDraft(true, {
+          scope: 'project',
+          projectId: project.id,
+          projectName: project.name,
+          projectPath: project.primary_path,
+          workspaceId: project.id
+        })
+      }
+    }
+  }, [location.pathname, location.search, startFreshSessionDraft])
+
   // Swapping the live gateway to another profile must re-pull that profile's
   // global model + active-profile pill. Both are nanostores, so the blanket
   // invalidateQueries() the profile store fires on swap doesn't touch them —
@@ -664,20 +700,38 @@ export function DesktopController() {
   )
 
   const startSessionInWorkspace = useCallback(
-    (path: null | string) => {
-      startFreshSessionDraft()
-
-      // A worktree lane carries its own path; the trunk "+" can be path-less (the
-      // main checkout is implicit), so fall back to the active project's root
-      // instead of no-op'ing on null — that was "+ on main does nothing".
-      const target = path?.trim() || resolveNewSessionCwd()
+    (path: null | string, opts?: { follow?: boolean }) => {
+      const follow = opts?.follow !== false
+      const inputPath = path?.trim()
+      const target = inputPath || resolveNewSessionCwd()
 
       if (!target) {
         return
       }
 
-      // The next message creates the backend session in $currentCwd, so seed
-      // it (and the branch) from the workspace the user clicked the + on.
+      let matchedProject: ProjectInfo | null = null
+      if (inputPath) {
+        const projects = $projects.get()
+        const normalizedTarget = target.replace(/\\/g, '/').replace(/\/$/, '')
+        matchedProject = projects.find(p => {
+          if (!p.primary_path) return false
+          const primaryPath = p.primary_path.replace(/\\/g, '/').replace(/\/$/, '')
+          return normalizedTarget === primaryPath || normalizedTarget.startsWith(primaryPath + '/')
+        }) || null
+      }
+
+      if (matchedProject && matchedProject.primary_path) {
+        startFreshSessionDraft(false, {
+          scope: 'project',
+          projectId: matchedProject.id,
+          projectName: matchedProject.name,
+          projectPath: matchedProject.primary_path,
+          workspaceId: matchedProject.id
+        })
+      } else {
+        startFreshSessionDraft()
+      }
+
       setCurrentCwd(target)
       void requestGateway<{ branch?: string; cwd?: string }>('config.get', { key: 'project', cwd: target })
         .then(info => {
@@ -686,14 +740,7 @@ export function DesktopController() {
           setCurrentCwd(resolved)
           setCurrentBranch(info.branch || '')
 
-          // An EXPLICIT target (a worktree/lane path — e.g. just-created via
-          // "convert a branch" / "new worktree") drills the sidebar into that
-          // project so the new lane is visible at once. Without this, a brand-new
-          // worktree session is invisible from the all-projects overview (the
-          // live overlay skips `.worktrees` rows, and the session.info cwd-follow
-          // only fires on a same-session move, not a fresh session). The
-          // path-less trunk "+" keeps the current scope untouched.
-          if (path?.trim()) {
+          if (follow && inputPath) {
             restoreWorktree(resolved)
             void followActiveSessionCwd(resolved)
           }
@@ -1159,19 +1206,85 @@ export function DesktopController() {
     </Pane>
   )
 
+  const isFlowRoute =
+    location.pathname === KARNA_FLOW_ROUTE ||
+    location.pathname === KARNA_FLOW_ROUTE + '/'
+
+  const currentIdeWorkspaceId = workspaceIdFromIdeRoute(location.pathname)
+  const isIdeRoute = currentIdeWorkspaceId !== null
+
+  const ideChatView = (
+    <ChatView
+      gateway={gatewayRef.current}
+      maxVoiceRecordingSeconds={voiceMaxRecordingSeconds}
+      modelMenuContent={modelMenuContent}
+      variant="embedded"
+      onAddContextRef={composer.addContextRefAttachment}
+      onAddUrl={url => composer.addContextRefAttachment(`@url:${formatRefValue(url)}`, url)}
+      onAttachDroppedItems={composer.attachDroppedItems}
+      onAttachImageBlob={composer.attachImageBlob}
+      onBranchInNewChat={branchInNewChat}
+      onCancel={cancelRun}
+      onDeleteSelectedSession={() => {
+        if (selectedStoredSessionId) {
+          void removeSession(selectedStoredSessionId)
+        }
+      }}
+      onDismissError={dismissError}
+      onEdit={editMessage}
+      onPasteClipboardImage={opts => composer.pasteClipboardImage(opts)}
+      onPickFiles={() => void composer.pickContextPaths('file')}
+      onPickFolders={() => void composer.pickContextPaths('folder')}
+      onPickImages={() => void composer.pickImages()}
+      onReload={reloadFromMessage}
+      onRemoveAttachment={id => void composer.removeAttachment(id)}
+      onRestoreToMessage={restoreToMessage}
+      onRetryResume={sessionId => void resumeSession(sessionId, true)}
+      onSteer={steerPrompt}
+      onSubmit={submitText}
+      onThreadMessagesChange={handleThreadMessagesChange}
+      onToggleSelectedPin={toggleSelectedPin}
+      onTranscribeAudio={transcribeVoiceAudio}
+    />
+  )
+
+  if (isFlowRoute) {
+    return (
+      <AppShell
+        onOpenSettings={openSettings}
+        overlays={overlays}
+        statusbarItems={[]}
+        titlebarMode="writer-ide"
+      >
+        <PaneMain className="absolute inset-0">
+          <Suspense fallback={null}>
+            <KarnaFlowWorkshopView />
+          </Suspense>
+        </PaneMain>
+      </AppShell>
+    )
+  }
+
+  const showSidebar = !isSecondaryWindow() && !isIdeRoute
+  const showTerminalPane = terminalSidebarOpen && !isIdeRoute
+  const showPreviewPane = chatOpen && Boolean(previewTarget || filePreviewTarget) && !isIdeRoute
+  const showFileBrowserPane = chatOpen && !narrowViewport && fileBrowserOpen && !isIdeRoute
+  const showReviewPane = chatOpen && Boolean(currentCwd.trim()) && !narrowViewport && reviewOpen && !isIdeRoute
+
   return (
     <AppShell
-      leftStatusbarItems={leftStatusbarItems}
-      leftTitlebarTools={titlebarToolGroups.flat.left}
-      mainOverlays={mainOverlays}
+      leftStatusbarItems={isIdeRoute ? [] : leftStatusbarItems}
+      leftTitlebarTools={isIdeRoute ? [] : titlebarToolGroups.flat.left}
+      mainOverlays={isIdeRoute ? null : mainOverlays}
       onOpenSettings={openSettings}
       overlays={overlays}
-      previewPaneOpen={chatOpen && Boolean(previewTarget || filePreviewTarget)}
-      statusbarItems={statusbarItems}
-      terminalPaneOpen={terminalSidebarOpen}
-      titlebarTools={titlebarToolGroups.flat.right}
+      previewPaneOpen={!isIdeRoute && chatOpen && Boolean(previewTarget || filePreviewTarget)}
+      statusbarItems={isIdeRoute ? [] : statusbarItems}
+      terminalPaneOpen={!isIdeRoute && terminalSidebarOpen}
+      titlebarTools={isIdeRoute ? [] : titlebarToolGroups.flat.right}
+      titlebarMode={isIdeRoute ? 'writer-ide' : 'default'}
     >
-      {!isSecondaryWindow() && (
+      {showSidebar && (
         <Pane
           forceCollapsed={narrowViewport}
           hoverReveal
@@ -1186,7 +1299,7 @@ export function DesktopController() {
           {sidebar}
         </Pane>
       )}
-      <PaneMain>
+      <PaneMain className={isIdeRoute ? 'absolute inset-0' : ''}>
         <Routes>
           <Route element={chatView} index />
           <Route element={chatView} path=":sessionId" />
@@ -1206,15 +1319,8 @@ export function DesktopController() {
             }
             path="messaging"
           />
-          <Route
-            element={
-              <Suspense fallback={null}>
-                <ArtifactsView setStatusbarItemGroup={setStatusbarItemGroup} />
-              </Suspense>
-            }
-            path="artifacts"
-          />
-          <Route element={<Navigate replace to="/karna/agents" />} path="karna" />
+          <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="artifacts" />
+          <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="karna" />
           <Route
             element={
               <Suspense fallback={null}>
@@ -1242,10 +1348,44 @@ export function DesktopController() {
           <Route
             element={
               <Suspense fallback={null}>
+                <KarnaFlowWorkshopView />
+              </Suspense>
+            }
+            path="karna/flow"
+          />
+          <Route
+            element={
+              <Suspense fallback={null}>
                 <KarnaMcpWorkshopView />
               </Suspense>
             }
             path="karna/mcp"
+          />
+          <Route
+            element={
+              <Suspense fallback={null}>
+                <KarnaPluginsView />
+              </Suspense>
+            }
+            path="karna/plugins"
+          />
+          <Route
+            element={
+              <Suspense fallback={null}>
+                <KarnaHomeDemoView />
+              </Suspense>
+            }
+            path="karna/home-demo"
+          />
+          <Route
+            element={
+              <Suspense fallback={null}>
+                {currentIdeWorkspaceId && (
+                  <WriterIDEShell chatView={ideChatView} workspaceId={currentIdeWorkspaceId} />
+                )}
+              </Suspense>
+            }
+            path={IDE_ROUTE}
           />
           <Route element={null} path="cron" />
           <Route element={null} path="profiles" />
@@ -1254,7 +1394,14 @@ export function DesktopController() {
           <Route element={null} path="agents" />
           <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="new" />
           <Route element={<LegacySessionRedirect />} path="sessions/:sessionId" />
-          <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="*" />
+          <Route
+            element={
+              <Suspense fallback={null}>
+                <NotFoundView />
+              </Suspense>
+            }
+            path="*"
+          />
         </Routes>
       </PaneMain>
       {/*
@@ -1263,10 +1410,10 @@ export function DesktopController() {
         mirror to file-browser | preview | terminal | main so terminal stays
         adjacent to the chat.
       */}
-      {panesFlipped ? fileBrowserPane : terminalPane}
-      {previewPane}
-      {reviewPane}
-      {panesFlipped ? terminalPane : fileBrowserPane}
+      {panesFlipped ? (showFileBrowserPane ? fileBrowserPane : null) : (showTerminalPane ? terminalPane : null)}
+      {showPreviewPane ? previewPane : null}
+      {showReviewPane ? reviewPane : null}
+      {panesFlipped ? (showTerminalPane ? terminalPane : null) : (showFileBrowserPane ? fileBrowserPane : null)}
     </AppShell>
   )
 }

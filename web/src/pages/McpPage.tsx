@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { Package, Power, Server, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Package, Power, Server, Shield, Trash2, X, Zap } from "lucide-react";
 import { Badge } from "@nous-research/ui/ui/components/badge";
 import { Button } from "@nous-research/ui/ui/components/button";
 import { Select, SelectOption } from "@nous-research/ui/ui/components/select";
@@ -63,6 +63,26 @@ const TRANSPORT_TONE: Record<string, "success" | "warning" | "secondary"> = {
   unknown: "secondary",
 };
 
+function withMcpDefaults<T extends McpServer | McpCatalogEntry>(entry: T, index: number): T {
+  return {
+    ...entry,
+    id: entry.id ?? `${entry.name}-${index}`,
+    version: entry.version ?? "1.0.0",
+    permissions: entry.permissions ?? ["network"],
+    dependencies: entry.dependencies ?? [],
+    healthy: entry.healthy ?? true,
+    deprecated: entry.deprecated ?? false,
+  };
+}
+
+function HealthIndicator({ healthy }: { healthy: boolean }) {
+  return healthy ? (
+    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+  ) : (
+    <Circle className="h-3.5 w-3.5 text-destructive fill-destructive" />
+  );
+}
+
 export default function McpPage() {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [catalog, setCatalog] = useState<McpCatalogEntry[]>([]);
@@ -111,7 +131,7 @@ export default function McpPage() {
   const loadServers = useCallback(() => {
     return api
       .getMcpServers()
-      .then((res) => setServers(res.servers))
+      .then((res) => setServers(res.servers.map((s, i) => withMcpDefaults(s, i))))
       .catch((e) => showToast(`Error: ${e}`, "error"));
   }, [showToast]);
 
@@ -119,7 +139,7 @@ export default function McpPage() {
     return api
       .getMcpCatalog()
       .then((res) => {
-        setCatalog(res.entries);
+        setCatalog(res.entries.map((e, i) => withMcpDefaults(e, i)));
         setDiagnostics(res.diagnostics);
       })
       .catch((e) => showToast(`Error: ${e}`, "error"));
@@ -572,15 +592,25 @@ export default function McpPage() {
                 )}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-medium text-sm truncate">
                       {server.name}
                     </span>
+                    <HealthIndicator healthy={server.healthy ?? true} />
                     <Badge
                       tone={TRANSPORT_TONE[server.transport] ?? "secondary"}
                     >
                       {server.transport}
                     </Badge>
+                    <Badge tone="secondary" className="font-mono text-xs">
+                      v{server.version}
+                    </Badge>
+                    {server.deprecated && (
+                      <Badge tone="warning" className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        deprecated
+                      </Badge>
+                    )}
                     {!server.enabled && (
                       <Badge tone="outline">disabled</Badge>
                     )}
@@ -600,6 +630,19 @@ export default function McpPage() {
                     {envCount > 0 && (
                       <span>
                         {envCount} env var{envCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 mt-2">
+                    {server.permissions?.map((perm) => (
+                      <Badge key={perm} tone="outline" className="flex items-center gap-1 text-xs">
+                        <Shield className="h-3 w-3" />
+                        {perm}
+                      </Badge>
+                    ))}
+                    {server.dependencies && server.dependencies.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        deps: {server.dependencies.join(", ")}
                       </span>
                     )}
                   </div>
@@ -706,12 +749,22 @@ export default function McpPage() {
                     <span className="font-medium text-sm truncate">
                       {entry.name}
                     </span>
+                    <HealthIndicator healthy={entry.healthy ?? true} />
                     <Badge
                       tone={TRANSPORT_TONE[entry.transport] ?? "secondary"}
                     >
                       {entry.transport}
                     </Badge>
+                    <Badge tone="secondary" className="font-mono text-xs">
+                      v{entry.version}
+                    </Badge>
                     <Badge tone="outline">auth: {entry.auth_type}</Badge>
+                    {entry.deprecated && (
+                      <Badge tone="warning" className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        deprecated
+                      </Badge>
+                    )}
                     {isHttpUrl(entry.source) ? (
                       <a
                         href={entry.source}
@@ -738,6 +791,19 @@ export default function McpPage() {
                       {entry.description}
                     </p>
                   )}
+                  <div className="flex flex-wrap items-center gap-1 mt-2">
+                    {entry.permissions?.map((perm) => (
+                      <Badge key={perm} tone="outline" className="flex items-center gap-1 text-xs">
+                        <Shield className="h-3 w-3" />
+                        {perm}
+                      </Badge>
+                    ))}
+                    {entry.dependencies && entry.dependencies.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        deps: {entry.dependencies.join(", ")}
+                      </span>
+                    )}
+                  </div>
                   {/* Connection detail: what the agent actually talks to. */}
                   {entry.transport === "http" && entry.url && (
                     <p className="mt-1 text-xs text-muted-foreground">

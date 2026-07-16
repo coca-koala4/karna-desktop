@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "workflows": [
+    { "id": "builtin.basic-writing", "file": "basic-writing.json", "version": 1, "node_count": 5 },
+    { "id": "builtin.critic-revision", "file": "critic-revision.json", "version": 1, "node_count": 11 }
+  ]
+}

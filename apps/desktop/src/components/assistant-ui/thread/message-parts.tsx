@@ -8,6 +8,7 @@ import { useElapsedSeconds } from '@/components/chat/activity-timer'
 import { ActivityTimerText } from '@/components/chat/activity-timer-text'
 import { DisclosureRow } from '@/components/chat/disclosure-row'
 import { GeneratedImage } from '@/components/chat/generated-image-result'
+import { KarnaThinkingMark } from '@/components/ui/karna-animations'
 import { useI18n } from '@/i18n'
 import { useEnterAnimation } from '@/lib/use-enter-animation'
 import { cn } from '@/lib/utils'
@@ -96,6 +97,7 @@ const ThinkingDisclosure: FC<{
     >
       <DisclosureRow onToggle={() => setUserOpen(!open)} open={open}>
         <span className="flex min-w-0 items-baseline gap-1.5">
+          {pending && <KarnaThinkingMark className="text-[var(--theme-primary)] !text-[0.7rem] align-middle" />}
           <span
             className={cn(
               'text-[length:var(--conversation-tool-font-size)] font-medium leading-(--conversation-line-height) text-(--ui-text-secondary)',

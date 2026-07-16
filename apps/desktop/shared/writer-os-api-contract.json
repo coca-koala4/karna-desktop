@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "pathTemplate": "/api/writer/projects/{projectRef}/os/{module}",
+  "modules": [
+    { "id": "story-bible", "aliases": ["bible"], "responseKeys": ["story_bible"] },
+    { "id": "living-wiki", "aliases": ["wiki"], "responseKeys": ["wiki"] },
+    { "id": "knowledge-graph", "aliases": ["graph"], "responseKeys": ["nodes", "edges"] },
+    { "id": "narrative-state", "aliases": ["state"], "responseKeys": ["state"] },
+    { "id": "critic-council", "aliases": ["critic"], "responseKeys": ["council"] },
+    { "id": "safety", "aliases": [], "responseKeys": ["report"] },
+    { "id": "creative-memory", "aliases": ["memory"], "responseKeys": ["memories"] },
+    { "id": "creative-search", "aliases": ["search"], "responseKeys": ["results"] },
+    { "id": "documents", "aliases": [], "responseKeys": ["documents"] },
+    { "id": "rag", "aliases": [], "responseKeys": ["status"] },
+    { "id": "benchmark", "aliases": [], "responseKeys": ["runs"] },
+    { "id": "guide", "aliases": ["bootstrap", "repair"], "responseKeys": ["checklist"] },
+    { "id": "delivery", "aliases": ["artifacts"], "responseKeys": ["package"] },
+    { "id": "verify", "aliases": ["loop"], "responseKeys": ["status"] }
+  ]
+}

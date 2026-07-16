@@ -2063,6 +2063,106 @@ def invoke_tool(agent, function_name: str, function_args: dict, effective_task_i
             pass
         return result
 
+    try:
+        from tools.capability_sandbox import (
+            authorize_tool_call,
+            get_scope,
+            log_authorization_decision,
+            canonicalize_path,
+            extract_target_path,
+        )
+        from tools.capability_sandbox.tool_registry import get_tool_metadata
+        from tools.capability_sandbox.models import AuthorizationDecision
+
+        session_id = getattr(agent, "session_id", "") or ""
+        scope = get_scope(session_id)
+        auth_result = authorize_tool_call(function_name, function_args, scope)
+
+        log_authorization_decision(
+            session_id=session_id,
+            scope=scope,
+            tool_name=function_name,
+            tool_args=function_args,
+            result=auth_result,
+        )
+
+        if auth_result.decision == AuthorizationDecision.deny:
+            permission_error = auth_result.reason + " 您可以通过切换模式来获得更多权限。"
+            result = json.dumps({"error": permission_error}, ensure_ascii=False)
+            try:
+                from model_tools import _emit_post_tool_call_hook
+                _emit_post_tool_call_hook(
+                    function_name=function_name,
+                    function_args=function_args,
+                    result=result,
+                    task_id=effective_task_id or "",
+                    session_id=session_id,
+                    tool_call_id=tool_call_id or "",
+                    turn_id=getattr(agent, "_current_turn_id", "") or "",
+                    api_request_id=getattr(agent, "_current_api_request_id", "") or "",
+                    status="blocked",
+                    error_type="permission_denied",
+                    error_message=auth_result.reason,
+                    middleware_trace=list(_tool_middleware_trace),
+                )
+            except Exception:
+                pass
+            return result
+        elif auth_result.decision == AuthorizationDecision.require_confirmation:
+            confirm_error = "此操作需要用户确认，确认流程暂未实现。"
+            result = json.dumps({"error": confirm_error}, ensure_ascii=False)
+            try:
+                from model_tools import _emit_post_tool_call_hook
+                _emit_post_tool_call_hook(
+                    function_name=function_name,
+                    function_args=function_args,
+                    result=result,
+                    task_id=effective_task_id or "",
+                    session_id=session_id,
+                    tool_call_id=tool_call_id or "",
+                    turn_id=getattr(agent, "_current_turn_id", "") or "",
+                    api_request_id=getattr(agent, "_current_api_request_id", "") or "",
+                    status="blocked",
+                    error_type="confirmation_required",
+                    error_message=auth_result.reason,
+                    middleware_trace=list(_tool_middleware_trace),
+                )
+            except Exception:
+                pass
+            return result
+        else:
+            tool_metadata = get_tool_metadata(function_name)
+            if tool_metadata is not None and tool_metadata.requires_path_access:
+                target_path = extract_target_path(function_name, function_args, tool_metadata)
+                if target_path and isinstance(target_path, str):
+                    canonical_path = canonicalize_path(target_path)
+                    if canonical_path != target_path:
+                        path_arg_names = ['file_path', 'path', 'directory', 'src', 'dst', 'target',
+                                          'filename', 'filepath', 'dir', 'source', 'destination',
+                                          'input_path', 'output_path', 'folder']
+                        if tool_metadata.target_path_arg and tool_metadata.target_path_arg in function_args:
+                            function_args[tool_metadata.target_path_arg] = canonical_path
+                        else:
+                            for arg_name in path_arg_names:
+                                if arg_name in function_args and function_args[arg_name] == target_path:
+                                    function_args[arg_name] = canonical_path
+                                    break
+
+            try:
+                from tools.capability_sandbox import protect_file_operation
+                protect_file_operation(function_name, function_args, scope)
+            except Exception as _protect_err:
+                logger.debug("file protection error: %s", _protect_err)
+    except Exception as e:
+        # Permission enforcement is a security boundary.  A broken or missing
+        # gateway must never degrade into unrestricted tool execution.
+        logger.exception("capability sandbox check failed closed: %s", e)
+        return json.dumps({
+            "status": "blocked",
+            "error_type": "permission_gateway_failure",
+            "error": "权限网关检查失败，已按安全策略拒绝执行该工具。",
+        }, ensure_ascii=False)
+
     tool_start_time = time.monotonic()
 
     def _finish_agent_tool(result: Any, observed_args: Optional[dict] = None) -> Any:

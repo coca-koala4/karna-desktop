@@ -1,0 +1,1113 @@
+import type { DocumentObjectType } from '@/types/writer-project-catalog'
+
+export interface WorkflowTemplate {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: 'creation' | 'review' | 'research' | 'planning' | 'publication'
+  applicableDocTypes: DocumentObjectType[]
+  applicableFormIds?: string[]
+  minComplexity: 'simple' | 'medium' | 'complex'
+  estimatedSteps: number
+  tags: string[]
+  recommendedFor: string[]
+  nodes: Array<{ id: string; type: string; label: string }>
+}
+
+export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    id: 'narrative-long-form',
+    name: '长篇创作工作流',
+    description: '从大纲到完稿的全流程长篇小说创作工作流',
+    icon: 'book',
+    category: 'creation',
+    applicableDocTypes: ['narrative_prose'],
+    applicableFormIds: ['web-novel', 'literary-novel', 'biography', 'book-publishing'],
+    minComplexity: 'complex',
+    estimatedSteps: 8,
+    tags: ['长篇', '小说', '创作'],
+    recommendedFor: ['网络小说', '长篇小说', '传记', '图书出版'],
+    nodes: [
+      { id: 'outline', type: 'planning', label: '大纲规划' },
+      { id: 'character', type: 'creation', label: '人物设定' },
+      { id: 'worldbuilding', type: 'creation', label: '世界观构建' },
+      { id: 'drafting', type: 'creation', label: '初稿写作' },
+      { id: 'review', type: 'review', label: '内容审阅' },
+      { id: 'revision', type: 'revision', label: '修订润色' },
+      { id: 'continuity', type: 'review', label: '连续性检查' },
+      { id: 'finalize', type: 'publication', label: '定稿输出' }
+    ]
+  },
+  {
+    id: 'narrative-character-consistency',
+    name: '人物一致性检查',
+    description: '检查全文人物性格、语言风格、行为逻辑的一致性',
+    icon: 'users',
+    category: 'review',
+    applicableDocTypes: ['narrative_prose', 'script_dialogue', 'interactive_narrative'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['人物', '一致性', '审阅'],
+    recommendedFor: ['长篇小说', '剧本', '互动叙事'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取人物档案' },
+      { id: 'analyze', type: 'analysis', label: '分析人物表现' },
+      { id: 'identify', type: 'review', label: '识别不一致点' },
+      { id: 'report', type: 'output', label: '生成修订建议' }
+    ]
+  },
+  {
+    id: 'narrative-pacing-assessment',
+    name: '情节节奏评估',
+    description: '评估故事节奏分布，识别拖沓或仓促段落',
+    icon: 'chart-line',
+    category: 'review',
+    applicableDocTypes: ['narrative_prose', 'script_dialogue'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['节奏', '情节', '评估'],
+    recommendedFor: ['小说', '剧本'],
+    nodes: [
+      { id: 'segment', type: 'analysis', label: '分段解析' },
+      { id: 'tension', type: 'analysis', label: '张力曲线分析' },
+      { id: 'pacing', type: 'analysis', label: '节奏分布评估' },
+      { id: 'issues', type: 'review', label: '问题定位' },
+      { id: 'suggestions', type: 'output', label: '优化建议' }
+    ]
+  },
+  {
+    id: 'narrative-chapter-continuity',
+    name: '章节连续性校对',
+    description: '检查章节之间的情节、人物、时间线连续性',
+    icon: 'link',
+    category: 'review',
+    applicableDocTypes: ['narrative_prose'],
+    applicableFormIds: ['web-novel', 'literary-novel'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['章节', '连续性', '校对'],
+    recommendedFor: ['连载小说', '长篇小说'],
+    nodes: [
+      { id: 'summary', type: 'analysis', label: '章节摘要提取' },
+      { id: 'timeline', type: 'analysis', label: '时间线梳理' },
+      { id: 'check', type: 'review', label: '连续性检查' },
+      { id: 'report', type: 'output', label: '问题报告' }
+    ]
+  },
+  {
+    id: 'script-development',
+    name: '剧本开发工作流',
+    description: '从概念到分场的完整剧本开发流程',
+    icon: 'device-camera-video',
+    category: 'creation',
+    applicableDocTypes: ['script_dialogue'],
+    applicableFormIds: ['feature-film', 'tv-script', 'animation-script', 'stage-play'],
+    minComplexity: 'complex',
+    estimatedSteps: 7,
+    tags: ['剧本', '开发', '创作'],
+    recommendedFor: ['电影剧本', '电视剧本', '动画剧本', '话剧剧本'],
+    nodes: [
+      { id: 'logline', type: 'planning', label: '一句话概念' },
+      { id: 'treatment', type: 'planning', label: '故事梗概' },
+      { id: 'outline', type: 'planning', label: '剧本大纲' },
+      { id: 'character', type: 'creation', label: '人物小传' },
+      { id: 'scenelist', type: 'planning', label: '分场大纲' },
+      { id: 'draft', type: 'creation', label: '初稿写作' },
+      { id: 'polish', type: 'revision', label: '润色定稿' }
+    ]
+  },
+  {
+    id: 'script-dialogue-polish',
+    name: '对白润色',
+    description: '优化对白的口语化、个性化和潜台词表达',
+    icon: 'message',
+    category: 'review',
+    applicableDocTypes: ['script_dialogue'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['对白', '润色', '语言'],
+    recommendedFor: ['所有剧本类型'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '对白分析' },
+      { id: 'polish', type: 'revision', label: '润色优化' },
+      { id: 'review', type: 'review', label: '质量检查' }
+    ]
+  },
+  {
+    id: 'script-scene-pacing',
+    name: '场景节奏检查',
+    description: '评估场景长度、冲突密度和视觉节奏',
+    icon: 'clock',
+    category: 'review',
+    applicableDocTypes: ['script_dialogue'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['场景', '节奏', '审阅'],
+    recommendedFor: ['影视剧本', '舞台剧本'],
+    nodes: [
+      { id: 'timing', type: 'analysis', label: '时长估算' },
+      { id: 'conflict', type: 'analysis', label: '冲突密度分析' },
+      { id: 'visual', type: 'analysis', label: '视觉节奏评估' },
+      { id: 'report', type: 'output', label: '调整建议' }
+    ]
+  },
+  {
+    id: 'script-scene-outline',
+    name: '分场大纲生成',
+    description: '从故事大纲自动生成详细的分场大纲',
+    icon: 'list',
+    category: 'planning',
+    applicableDocTypes: ['script_dialogue', 'outline'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['分场', '大纲', '规划'],
+    recommendedFor: ['影视剧本', '舞台剧本'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '大纲分析' },
+      { id: 'breakdown', type: 'planning', label: '场次拆解' },
+      { id: 'detail', type: 'creation', label: '场次细化' },
+      { id: 'output', type: 'output', label: '分场表输出' }
+    ]
+  },
+  {
+    id: 'interactive-branch-design',
+    name: '分支剧情设计',
+    description: '设计和构建多分支互动叙事结构',
+    icon: 'git-branch',
+    category: 'creation',
+    applicableDocTypes: ['interactive_narrative'],
+    applicableFormIds: ['interactive-fiction', 'murder-mystery', 'game-main-story'],
+    minComplexity: 'complex',
+    estimatedSteps: 6,
+    tags: ['分支', '互动', '设计'],
+    recommendedFor: ['互动小说', '剧本杀', '游戏剧情'],
+    nodes: [
+      { id: 'trunk', type: 'planning', label: '主干剧情设计' },
+      { id: 'branches', type: 'planning', label: '分支点规划' },
+      { id: 'variables', type: 'planning', label: '状态变量设计' },
+      { id: 'writing', type: 'creation', label: '分支内容写作' },
+      { id: 'mapping', type: 'review', label: '分支映射检查' },
+      { id: 'finalize', type: 'output', label: '结构化输出' }
+    ]
+  },
+  {
+    id: 'interactive-branch-consistency',
+    name: '分支一致性检查',
+    description: '验证所有分支路径的逻辑一致性和完整性',
+    icon: 'git-merge',
+    category: 'review',
+    applicableDocTypes: ['interactive_narrative'],
+    minComplexity: 'complex',
+    estimatedSteps: 5,
+    tags: ['分支', '一致性', '检查'],
+    recommendedFor: ['互动叙事', '游戏剧情'],
+    nodes: [
+      { id: 'map', type: 'analysis', label: '构建分支图谱' },
+      { id: 'deadends', type: 'review', label: '死路检测' },
+      { id: 'logic', type: 'review', label: '逻辑一致性检查' },
+      { id: 'coverage', type: 'analysis', label: '路径覆盖分析' },
+      { id: 'report', type: 'output', label: '问题报告' }
+    ]
+  },
+  {
+    id: 'interactive-npc-dialogue',
+    name: 'NPC对话生成',
+    description: '批量生成符合人物设定的NPC对话内容',
+    icon: 'message-circle',
+    category: 'creation',
+    applicableDocTypes: ['interactive_narrative'],
+    applicableFormIds: ['game-main-story'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['NPC', '对话', '生成'],
+    recommendedFor: ['游戏剧情', '互动叙事'],
+    nodes: [
+      { id: 'profile', type: 'analysis', label: '人物档案提取' },
+      { id: 'topics', type: 'planning', label: '对话主题规划' },
+      { id: 'generate', type: 'creation', label: '对话内容生成' },
+      { id: 'quality', type: 'review', label: '质量校验' }
+    ]
+  },
+  {
+    id: 'interactive-state-validation',
+    name: '状态变量校验',
+    description: '检查状态变量的定义、使用和变更逻辑',
+    icon: 'database',
+    category: 'review',
+    applicableDocTypes: ['interactive_narrative'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['状态', '变量', '校验'],
+    recommendedFor: ['互动小说', '游戏剧情'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取变量定义' },
+      { id: 'usage', type: 'analysis', label: '变量使用分析' },
+      { id: 'validate', type: 'review', label: '变更逻辑校验' },
+      { id: 'report', type: 'output', label: '问题报告' }
+    ]
+  },
+  {
+    id: 'marketing-copy-workflow',
+    name: '文案创作工作流',
+    description: '从策略到成品的完整营销文案创作流程',
+    icon: 'megaphone',
+    category: 'creation',
+    applicableDocTypes: ['marketing_copy'],
+    applicableFormIds: ['brand-copywriting', 'ad-copywriting', 'ecommerce-copy', 'social-media', 'sales-copy'],
+    minComplexity: 'medium',
+    estimatedSteps: 6,
+    tags: ['文案', '营销', '创作'],
+    recommendedFor: ['品牌文案', '广告文案', '电商文案', '社交媒体'],
+    nodes: [
+      { id: 'brief', type: 'planning', label: '需求Brief分析' },
+      { id: 'strategy', type: 'planning', label: '传播策略制定' },
+      { id: 'concept', type: 'creation', label: '创意概念发想' },
+      { id: 'draft', type: 'creation', label: '文案初稿' },
+      { id: 'review', type: 'review', label: '效果评估' },
+      { id: 'finalize', type: 'revision', label: '优化定稿' }
+    ]
+  },
+  {
+    id: 'marketing-ab-variants',
+    name: 'A/B变体生成',
+    description: '生成多版本文案变体用于A/B测试',
+    icon: 'split',
+    category: 'creation',
+    applicableDocTypes: ['marketing_copy'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['A/B测试', '变体', '优化'],
+    recommendedFor: ['广告文案', '电商文案', '社媒文案'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '原文案分析' },
+      { id: 'generate', type: 'creation', label: '多变体生成' },
+      { id: 'package', type: 'output', label: '测试方案打包' }
+    ]
+  },
+  {
+    id: 'marketing-fact-check',
+    name: '事实声明核查',
+    description: '核查文案中的事实声明、数据引用和功效承诺',
+    icon: 'shield-check',
+    category: 'review',
+    applicableDocTypes: ['marketing_copy', 'informational_article'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['事实核查', '合规', '风险'],
+    recommendedFor: ['营销文案', '资讯文章'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取事实声明' },
+      { id: 'verify', type: 'research', label: '交叉验证' },
+      { id: 'risk', type: 'review', label: '风险评估' },
+      { id: 'report', type: 'output', label: '核查报告' }
+    ]
+  },
+  {
+    id: 'marketing-channel-adaptation',
+    name: '渠道适配优化',
+    description: '将核心文案适配到不同传播渠道的格式和风格',
+    icon: 'share-2',
+    category: 'publication',
+    applicableDocTypes: ['marketing_copy'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['渠道', '适配', '多平台'],
+    recommendedFor: ['全渠道营销'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '核心信息提取' },
+      { id: 'adapt', type: 'creation', label: '各渠道适配' },
+      { id: 'output', type: 'output', label: '多版本输出' }
+    ]
+  },
+  {
+    id: 'informational-article-workflow',
+    name: '科普文章工作流',
+    description: '从选题到成稿的科普/资讯文章创作流程',
+    icon: 'newspaper',
+    category: 'creation',
+    applicableDocTypes: ['informational_article'],
+    applicableFormIds: ['content-marketing', 'news-reporting', 'press-release'],
+    minComplexity: 'medium',
+    estimatedSteps: 6,
+    tags: ['科普', '资讯', '文章'],
+    recommendedFor: ['科普文章', '新闻报道', '内容营销'],
+    nodes: [
+      { id: 'topic', type: 'planning', label: '选题规划' },
+      { id: 'research', type: 'research', label: '资料研究' },
+      { id: 'outline', type: 'planning', label: '结构大纲' },
+      { id: 'draft', type: 'creation', label: '初稿写作' },
+      { id: 'factcheck', type: 'review', label: '事实核查' },
+      { id: 'polish', type: 'revision', label: '润色定稿' }
+    ]
+  },
+  {
+    id: 'informational-fact-check',
+    name: '事实核查',
+    description: '系统性核查文章中的事实、数据和引用',
+    icon: 'search-check',
+    category: 'review',
+    applicableDocTypes: ['informational_article', 'argumentative_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['事实核查', '准确性', '引用'],
+    recommendedFor: ['新闻报道', '学术论文', '科普文章'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取待核查项' },
+      { id: 'sources', type: 'research', label: '来源检索' },
+      { id: 'verify', type: 'review', label: '交叉验证' },
+      { id: 'cite', type: 'revision', label: '引用规范' },
+      { id: 'report', type: 'output', label: '核查报告' }
+    ]
+  },
+  {
+    id: 'informational-structure-optimization',
+    name: '结构优化',
+    description: '优化文章结构，提升可读性和信息传达效率',
+    icon: 'layout',
+    category: 'review',
+    applicableDocTypes: ['informational_article', 'argumentative_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['结构', '优化', '可读性'],
+    recommendedFor: ['资讯文章', '论文', '报告'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '结构分析' },
+      { id: 'evaluate', type: 'review', label: '逻辑性评估' },
+      { id: 'restructure', type: 'revision', label: '结构重构' },
+      { id: 'review', type: 'review', label: '效果验证' }
+    ]
+  },
+  {
+    id: 'informational-multi-version',
+    name: '多版本改写',
+    description: '基于同一主题生成不同角度和深度的文章版本',
+    icon: 'copy',
+    category: 'creation',
+    applicableDocTypes: ['informational_article'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['改写', '多版本', '内容矩阵'],
+    recommendedFor: ['内容营销', 'SEO文章'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '核心内容提取' },
+      { id: 'generate', type: 'creation', label: '多版本生成' },
+      { id: 'output', type: 'output', label: '版本输出' }
+    ]
+  },
+  {
+    id: 'argumentative-paper-workflow',
+    name: '论文写作工作流',
+    description: '学术论文从选题到投稿的完整写作流程',
+    icon: 'library',
+    category: 'creation',
+    applicableDocTypes: ['argumentative_document'],
+    applicableFormIds: ['academic-paper', 'research-report'],
+    minComplexity: 'complex',
+    estimatedSteps: 8,
+    tags: ['论文', '学术', '科研'],
+    recommendedFor: ['学术论文', '研究报告'],
+    nodes: [
+      { id: 'topic', type: 'planning', label: '选题确定' },
+      { id: 'literature', type: 'research', label: '文献综述' },
+      { id: 'methodology', type: 'planning', label: '研究方法设计' },
+      { id: 'outline', type: 'planning', label: '论文大纲' },
+      { id: 'draft', type: 'creation', label: '初稿写作' },
+      { id: 'logic', type: 'review', label: '论证逻辑检查' },
+      { id: 'citation', type: 'revision', label: '引文格式规范' },
+      { id: 'finalize', type: 'output', label: '定稿排版' }
+    ]
+  },
+  {
+    id: 'argumentative-logic-check',
+    name: '论证逻辑检查',
+    description: '检查论文论证的严密性、逻辑性和说服力',
+    icon: 'puzzle',
+    category: 'review',
+    applicableDocTypes: ['argumentative_document'],
+    minComplexity: 'complex',
+    estimatedSteps: 5,
+    tags: ['论证', '逻辑', '审阅'],
+    recommendedFor: ['学术论文', '研究报告'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取论证结构' },
+      { id: 'premises', type: 'review', label: '前提有效性检查' },
+      { id: 'reasoning', type: 'review', label: '推理过程分析' },
+      { id: 'fallacies', type: 'review', label: '逻辑谬误识别' },
+      { id: 'report', type: 'output', label: '改进建议' }
+    ]
+  },
+  {
+    id: 'argumentative-citation-check',
+    name: '引文格式校验',
+    description: '检查引文格式的一致性和规范性',
+    icon: 'quote',
+    category: 'review',
+    applicableDocTypes: ['argumentative_document', 'informational_article'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['引文', '格式', '规范'],
+    recommendedFor: ['学术论文', '研究报告'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取引用标记' },
+      { id: 'check', type: 'review', label: '格式校验' },
+      { id: 'fix', type: 'revision', label: '格式修正' }
+    ]
+  },
+  {
+    id: 'argumentative-counter-review',
+    name: '反方视角审阅',
+    description: '从反方视角审视论证，发现薄弱环节',
+    icon: 'scale',
+    category: 'review',
+    applicableDocTypes: ['argumentative_document', 'structured_business_doc'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['反方', '审阅', '批判性思维'],
+    recommendedFor: ['学术论文', '商业方案', '论证文档'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '识别核心论点' },
+      { id: 'counter', type: 'research', label: '构建反方论证' },
+      { id: 'weakness', type: 'review', label: '发现薄弱环节' },
+      { id: 'suggestions', type: 'output', label: '强化建议' }
+    ]
+  },
+  {
+    id: 'business-proposal-workflow',
+    name: '方案撰写工作流',
+    description: '商业/项目方案从需求到定稿的完整流程',
+    icon: 'briefcase',
+    category: 'creation',
+    applicableDocTypes: ['structured_business_doc'],
+    applicableFormIds: ['business-plan', 'proposal-bid', 'grant-writing', 'product-docs'],
+    minComplexity: 'complex',
+    estimatedSteps: 7,
+    tags: ['方案', '商业', '项目'],
+    recommendedFor: ['商业计划书', '项目方案', '投标书', '基金申请'],
+    nodes: [
+      { id: 'requirements', type: 'planning', label: '需求分析' },
+      { id: 'research', type: 'research', label: '背景调研' },
+      { id: 'structure', type: 'planning', label: '结构设计' },
+      { id: 'content', type: 'creation', label: '内容撰写' },
+      { id: 'risk', type: 'review', label: '风险评估' },
+      { id: 'stakeholder', type: 'review', label: '利益相关者分析' },
+      { id: 'finalize', type: 'revision', label: '润色定稿' }
+    ]
+  },
+  {
+    id: 'business-risk-assessment',
+    name: '风险评估',
+    description: '系统性识别和评估方案中的各类风险',
+    icon: 'alert-triangle',
+    category: 'review',
+    applicableDocTypes: ['structured_business_doc'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['风险', '评估', '管理'],
+    recommendedFor: ['商业计划', '项目方案', '投标书'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '风险识别' },
+      { id: 'analyze', type: 'analysis', label: '风险分析' },
+      { id: 'evaluate', type: 'review', label: '风险评估' },
+      { id: 'mitigation', type: 'planning', label: '应对策略' },
+      { id: 'report', type: 'output', label: '风险报告' }
+    ]
+  },
+  {
+    id: 'business-milestone-planning',
+    name: '里程碑规划',
+    description: '制定项目里程碑和关键时间节点',
+    icon: 'flag',
+    category: 'planning',
+    applicableDocTypes: ['structured_business_doc', 'outline'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['里程碑', '时间线', '规划'],
+    recommendedFor: ['项目方案', '商业计划'],
+    nodes: [
+      { id: 'goals', type: 'analysis', label: '目标拆解' },
+      { id: 'milestones', type: 'planning', label: '里程碑定义' },
+      { id: 'timeline', type: 'planning', label: '时间线规划' },
+      { id: 'output', type: 'output', label: '计划表输出' }
+    ]
+  },
+  {
+    id: 'business-stakeholder-analysis',
+    name: '利益相关者分析',
+    description: '识别和分析项目涉及的各方利益相关者',
+    icon: 'users',
+    category: 'research',
+    applicableDocTypes: ['structured_business_doc'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['利益相关者', '分析', '沟通'],
+    recommendedFor: ['商业方案', '项目计划'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '识别相关方' },
+      { id: 'analyze', type: 'analysis', label: '利益与影响力分析' },
+      { id: 'map', type: 'planning', label: '利益相关者地图' },
+      { id: 'strategy', type: 'planning', label: '沟通策略' }
+    ]
+  },
+  {
+    id: 'regulated-document-workflow',
+    name: '合规文档工作流',
+    description: '合规文档从起草到审核的完整流程',
+    icon: 'shield',
+    category: 'creation',
+    applicableDocTypes: ['regulated_document'],
+    applicableFormIds: ['legal-docs', 'government-docs', 'compliance-docs'],
+    minComplexity: 'complex',
+    estimatedSteps: 7,
+    tags: ['合规', '法律', '政务'],
+    recommendedFor: ['法律文书', '政务公文', '合规文档'],
+    nodes: [
+      { id: 'requirements', type: 'planning', label: '法规要求分析' },
+      { id: 'template', type: 'planning', label: '模板选择' },
+      { id: 'draft', type: 'creation', label: '初稿起草' },
+      { id: 'clause-review', type: 'review', label: '条款风险审查' },
+      { id: 'traceability', type: 'review', label: '依据溯源' },
+      { id: 'human-review', type: 'review', label: '人工确认流程' },
+      { id: 'finalize', type: 'output', label: '定稿用印' }
+    ]
+  },
+  {
+    id: 'regulated-clause-risk',
+    name: '条款风险审查',
+    description: '审查合同/协议条款的法律风险和漏洞',
+    icon: 'file-search',
+    category: 'review',
+    applicableDocTypes: ['regulated_document'],
+    minComplexity: 'complex',
+    estimatedSteps: 5,
+    tags: ['条款', '风险', '法律审查'],
+    recommendedFor: ['合同', '协议', '法律文书'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '关键条款提取' },
+      { id: 'risk-scan', type: 'review', label: '风险点扫描' },
+      { id: 'liability', type: 'review', label: '责任条款分析' },
+      { id: 'compliance', type: 'review', label: '合规性检查' },
+      { id: 'report', type: 'output', label: '风险报告' }
+    ]
+  },
+  {
+    id: 'regulated-traceability',
+    name: '依据溯源',
+    description: '为文档中的每个关键主张追溯法规和依据',
+    icon: 'git-compare',
+    category: 'research',
+    applicableDocTypes: ['regulated_document', 'argumentative_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['溯源', '依据', '合规'],
+    recommendedFor: ['合规文档', '法律文书', '政务公文'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取关键主张' },
+      { id: 'research', type: 'research', label: '法规依据检索' },
+      { id: 'mapping', type: 'review', label: '依据映射' },
+      { id: 'output', type: 'output', label: '溯源清单' }
+    ]
+  },
+  {
+    id: 'regulated-human-confirmation',
+    name: '人工确认流程',
+    description: '高风险条款的人工复核和确认工作流',
+    icon: 'user-check',
+    category: 'review',
+    applicableDocTypes: ['regulated_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['人工审核', '确认', '风险控制'],
+    recommendedFor: ['高风险合同', '重要公文'],
+    nodes: [
+      { id: 'flag', type: 'analysis', label: '高风险项标记' },
+      { id: 'assign', type: 'planning', label: '审核人分配' },
+      { id: 'review', type: 'review', label: '人工审核' },
+      { id: 'revise', type: 'revision', label: '修订反馈' },
+      { id: 'approve', type: 'output', label: '最终确认' }
+    ]
+  },
+  {
+    id: 'technical-api-workflow',
+    name: 'API文档工作流',
+    description: 'API接口文档的规划、编写和维护流程',
+    icon: 'code',
+    category: 'creation',
+    applicableDocTypes: ['technical_document'],
+    applicableFormIds: ['software-docs'],
+    minComplexity: 'medium',
+    estimatedSteps: 6,
+    tags: ['API', '接口', '技术文档'],
+    recommendedFor: ['软件项目文档', 'API文档'],
+    nodes: [
+      { id: 'plan', type: 'planning', label: '接口规划' },
+      { id: 'spec', type: 'planning', label: '接口定义' },
+      { id: 'write', type: 'creation', label: '文档编写' },
+      { id: 'example', type: 'creation', label: '示例代码' },
+      { id: 'validate', type: 'review', label: '一致性检查' },
+      { id: 'publish', type: 'publication', label: '发布更新' }
+    ]
+  },
+  {
+    id: 'technical-code-validation',
+    name: '示例代码验证',
+    description: '验证文档中的示例代码是否可运行和正确',
+    icon: 'terminal',
+    category: 'review',
+    applicableDocTypes: ['technical_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['代码', '验证', '示例'],
+    recommendedFor: ['技术文档', 'API文档'],
+    nodes: [
+      { id: 'extract', type: 'analysis', label: '提取示例代码' },
+      { id: 'syntax', type: 'review', label: '语法检查' },
+      { id: 'test', type: 'review', label: '可运行性测试' },
+      { id: 'report', type: 'output', label: '验证报告' }
+    ]
+  },
+  {
+    id: 'technical-interface-consistency',
+    name: '接口一致性检查',
+    description: '检查API文档与实际接口的一致性',
+    icon: 'link-2',
+    category: 'review',
+    applicableDocTypes: ['technical_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['接口', '一致性', '检查'],
+    recommendedFor: ['API文档', '技术文档'],
+    nodes: [
+      { id: 'extract-doc', type: 'analysis', label: '提取文档定义' },
+      { id: 'extract-code', type: 'analysis', label: '提取代码定义' },
+      { id: 'compare', type: 'review', label: '一致性对比' },
+      { id: 'report', type: 'output', label: '差异报告' }
+    ]
+  },
+  {
+    id: 'technical-changelog',
+    name: '版本变更记录',
+    description: '生成规范的版本变更记录和Release Notes',
+    icon: 'history',
+    category: 'publication',
+    applicableDocTypes: ['technical_document', 'revision_artifact'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['版本', '变更', '发布'],
+    recommendedFor: ['软件项目', '技术文档'],
+    nodes: [
+      { id: 'collect', type: 'analysis', label: '变更收集' },
+      { id: 'categorize', type: 'planning', label: '变更分类' },
+      { id: 'write', type: 'creation', label: '变更记录编写' }
+    ]
+  },
+  {
+    id: 'knowledge-ingestion-workflow',
+    name: '知识入库工作流',
+    description: '将外部资料整理入库的完整流程',
+    icon: 'database-import',
+    category: 'creation',
+    applicableDocTypes: ['knowledge_asset'],
+    applicableFormIds: ['knowledge-base', 'creative-workspace'],
+    minComplexity: 'medium',
+    estimatedSteps: 6,
+    tags: ['知识', '入库', '整理'],
+    recommendedFor: ['知识库', 'Wiki', '素材库'],
+    nodes: [
+      { id: 'collect', type: 'research', label: '资料收集' },
+      { id: 'extract', type: 'analysis', label: '信息提取' },
+      { id: 'entity', type: 'analysis', label: '实体关系抽取' },
+      { id: 'evaluate', type: 'review', label: '来源可信度评估' },
+      { id: 'organize', type: 'planning', label: '知识组织' },
+      { id: 'ingest', type: 'output', label: '入库索引' }
+    ]
+  },
+  {
+    id: 'knowledge-entity-relation',
+    name: '实体关系抽取',
+    description: '从文本中自动抽取实体和实体间关系',
+    icon: 'network',
+    category: 'research',
+    applicableDocTypes: ['knowledge_asset', 'research_material'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['实体', '关系', '知识图谱'],
+    recommendedFor: ['知识库', '研究资料'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '文本分析' },
+      { id: 'entities', type: 'analysis', label: '实体识别' },
+      { id: 'relations', type: 'analysis', label: '关系抽取' },
+      { id: 'graph', type: 'output', label: '知识图谱输出' }
+    ]
+  },
+  {
+    id: 'knowledge-source-credibility',
+    name: '来源可信度评估',
+    description: '评估知识来源的可靠性和权威性',
+    icon: 'award',
+    category: 'review',
+    applicableDocTypes: ['knowledge_asset', 'research_material'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['来源', '可信度', '评估'],
+    recommendedFor: ['知识库', '研究资料'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '来源识别' },
+      { id: 'evaluate', type: 'review', label: '可信度评估' },
+      { id: 'rank', type: 'analysis', label: '可信度分级' },
+      { id: 'report', type: 'output', label: '评估报告' }
+    ]
+  },
+  {
+    id: 'knowledge-quality-review',
+    name: '质量审校',
+    description: '对知识库内容进行质量审核和校对',
+    icon: 'check-circle',
+    category: 'review',
+    applicableDocTypes: ['knowledge_asset'],
+    minComplexity: 'simple',
+    estimatedSteps: 4,
+    tags: ['质量', '审校', '知识库'],
+    recommendedFor: ['知识库', 'Wiki'],
+    nodes: [
+      { id: 'accuracy', type: 'review', label: '准确性检查' },
+      { id: 'completeness', type: 'review', label: '完整性检查' },
+      { id: 'structure', type: 'review', label: '结构性检查' },
+      { id: 'report', type: 'output', label: '质量报告' }
+    ]
+  },
+  {
+    id: 'outline-generation',
+    name: '大纲生成',
+    description: '根据主题和目标生成结构化写作大纲',
+    icon: 'list-tree',
+    category: 'planning',
+    applicableDocTypes: ['outline', 'narrative_prose', 'script_dialogue', 'informational_article', 'argumentative_document'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['大纲', '规划', '生成'],
+    recommendedFor: ['各类文档创作'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '主题分析' },
+      { id: 'structure', type: 'planning', label: '结构设计' },
+      { id: 'output', type: 'output', label: '大纲输出' }
+    ]
+  },
+  {
+    id: 'outline-structure-assessment',
+    name: '结构评估',
+    description: '评估大纲结构的合理性和完整性',
+    icon: 'layout-dashboard',
+    category: 'review',
+    applicableDocTypes: ['outline'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['结构', '评估', '大纲'],
+    recommendedFor: ['各类大纲'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '结构分析' },
+      { id: 'evaluate', type: 'review', label: '合理性评估' },
+      { id: 'suggestions', type: 'output', label: '优化建议' }
+    ]
+  },
+  {
+    id: 'outline-pacing-design',
+    name: '节奏设计',
+    description: '为叙事类大纲设计节奏曲线和情绪起伏',
+    icon: 'activity',
+    category: 'planning',
+    applicableDocTypes: ['outline'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['节奏', '设计', '叙事'],
+    recommendedFor: ['小说大纲', '剧本大纲'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '大纲分析' },
+      { id: 'pacing', type: 'planning', label: '节奏规划' },
+      { id: 'emotion', type: 'planning', label: '情绪曲线设计' },
+      { id: 'output', type: 'output', label: '带节奏的大纲' }
+    ]
+  },
+  {
+    id: 'outline-chapter-split',
+    name: '章节拆分',
+    description: '将大纲拆分为适合写作的章节结构',
+    icon: 'scissors',
+    category: 'planning',
+    applicableDocTypes: ['outline', 'narrative_prose'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['章节', '拆分', '规划'],
+    recommendedFor: ['长篇创作', '图书写作'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '内容分析' },
+      { id: 'split', type: 'planning', label: '章节拆分' },
+      { id: 'output', type: 'output', label: '章节结构输出' }
+    ]
+  },
+  {
+    id: 'research-material-organize',
+    name: '资料整理',
+    description: '将零散的研究资料系统化整理',
+    icon: 'folder-tree',
+    category: 'planning',
+    applicableDocTypes: ['research_material'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['资料', '整理', '研究'],
+    recommendedFor: ['学术研究', '项目调研'],
+    nodes: [
+      { id: 'collect', type: 'research', label: '资料收集' },
+      { id: 'categorize', type: 'planning', label: '分类归档' },
+      { id: 'summarize', type: 'analysis', label: '要点摘要' },
+      { id: 'index', type: 'planning', label: '索引建立' },
+      { id: 'output', type: 'output', label: '资料库输出' }
+    ]
+  },
+  {
+    id: 'research-information-extraction',
+    name: '信息提取',
+    description: '从大量资料中提取关键信息和要点',
+    icon: 'scan-search',
+    category: 'research',
+    applicableDocTypes: ['research_material'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['信息提取', '摘要', '研究'],
+    recommendedFor: ['研究资料', '文献综述'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '资料分析' },
+      { id: 'extract', type: 'analysis', label: '关键信息提取' },
+      { id: 'organize', type: 'planning', label: '信息组织' },
+      { id: 'output', type: 'output', label: '提取结果输出' }
+    ]
+  },
+  {
+    id: 'research-source-verification',
+    name: '来源核实',
+    description: '核实研究资料来源的真实性和可靠性',
+    icon: 'source-branch',
+    category: 'review',
+    applicableDocTypes: ['research_material'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['来源', '核实', '研究'],
+    recommendedFor: ['学术研究', '新闻报道'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '来源识别' },
+      { id: 'verify', type: 'research', label: '来源核实' },
+      { id: 'evaluate', type: 'review', label: '可信度评估' },
+      { id: 'report', type: 'output', label: '核实报告' }
+    ]
+  },
+  {
+    id: 'research-review-generation',
+    name: '综述生成',
+    description: '基于研究资料生成综合性综述',
+    icon: 'book-open',
+    category: 'creation',
+    applicableDocTypes: ['research_material', 'argumentative_document'],
+    minComplexity: 'complex',
+    estimatedSteps: 5,
+    tags: ['综述', '研究', '生成'],
+    recommendedFor: ['文献综述', '研究报告'],
+    nodes: [
+      { id: 'collect', type: 'research', label: '文献收集' },
+      { id: 'analyze', type: 'analysis', label: '内容分析' },
+      { id: 'synthesize', type: 'planning', label: '综合归纳' },
+      { id: 'write', type: 'creation', label: '综述撰写' },
+      { id: 'cite', type: 'revision', label: '引用规范' }
+    ]
+  },
+  {
+    id: 'review-workflow',
+    name: '审稿流程',
+    description: '规范化的稿件审阅和反馈流程',
+    icon: 'file-edit',
+    category: 'review',
+    applicableDocTypes: ['review_feedback', 'narrative_prose', 'script_dialogue'],
+    minComplexity: 'medium',
+    estimatedSteps: 5,
+    tags: ['审稿', '反馈', '审阅'],
+    recommendedFor: ['编辑审稿', '同行评议'],
+    nodes: [
+      { id: 'intake', type: 'planning', label: '稿件接收' },
+      { id: 'read', type: 'analysis', label: '通读评估' },
+      { id: 'issues', type: 'review', label: '问题识别' },
+      { id: 'suggestions', type: 'creation', label: '修改建议' },
+      { id: 'report', type: 'output', label: '审稿报告' }
+    ]
+  },
+  {
+    id: 'review-issue-grading',
+    name: '问题分级',
+    description: '对审阅发现的问题按严重程度分级',
+    icon: 'alert-circle',
+    category: 'review',
+    applicableDocTypes: ['review_feedback'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['问题分级', '优先级', '审阅'],
+    recommendedFor: ['各类审阅'],
+    nodes: [
+      { id: 'collect', type: 'analysis', label: '问题收集' },
+      { id: 'grade', type: 'review', label: '严重程度分级' },
+      { id: 'prioritize', type: 'planning', label: '优先级排序' }
+    ]
+  },
+  {
+    id: 'review-suggestion-generation',
+    name: '修改建议生成',
+    description: '针对问题生成具体可操作的修改建议',
+    icon: 'lightbulb',
+    category: 'creation',
+    applicableDocTypes: ['review_feedback'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['建议', '修改', '审阅'],
+    recommendedFor: ['审稿', '编辑'],
+    nodes: [
+      { id: 'analyze', type: 'analysis', label: '问题分析' },
+      { id: 'generate', type: 'creation', label: '建议生成' },
+      { id: 'examples', type: 'creation', label: '示例对照' },
+      { id: 'organize', type: 'planning', label: '建议整理' }
+    ]
+  },
+  {
+    id: 'review-quality-scoring',
+    name: '质量打分',
+    description: '基于多维度对稿件质量进行量化评分',
+    icon: 'star',
+    category: 'review',
+    applicableDocTypes: ['review_feedback'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['质量', '评分', '评估'],
+    recommendedFor: ['稿件评级', '质量评估'],
+    nodes: [
+      { id: 'dimensions', type: 'planning', label: '评分维度设定' },
+      { id: 'evaluate', type: 'review', label: '分项评分' },
+      { id: 'summary', type: 'output', label: '综合评分报告' }
+    ]
+  },
+  {
+    id: 'revision-diff',
+    name: '版本对照',
+    description: '对比两个版本的差异，生成变更清单',
+    icon: 'git-diff',
+    category: 'review',
+    applicableDocTypes: ['revision_artifact', 'narrative_prose', 'technical_document'],
+    minComplexity: 'simple',
+    estimatedSteps: 3,
+    tags: ['版本', '对比', '差异'],
+    recommendedFor: ['修订稿对比', '版本管理'],
+    nodes: [
+      { id: 'load', type: 'analysis', label: '加载版本' },
+      { id: 'diff', type: 'analysis', label: '差异比对' },
+      { id: 'report', type: 'output', label: '变更报告' }
+    ]
+  },
+  {
+    id: 'revision-review',
+    name: '修订审阅',
+    description: '审阅修订内容，确认修改是否到位',
+    icon: 'edit-3',
+    category: 'review',
+    applicableDocTypes: ['revision_artifact'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['修订', '审阅', '确认'],
+    recommendedFor: ['编辑加工', '修订稿审核'],
+    nodes: [
+      { id: 'review-changes', type: 'review', label: '变更审阅' },
+      { id: 'verify', type: 'review', label: '修改验证' },
+      { id: 'new-issues', type: 'review', label: '新问题识别' },
+      { id: 'approve', type: 'output', label: '审核结论' }
+    ]
+  },
+  {
+    id: 'revision-impact-analysis',
+    name: '变更影响分析',
+    description: '分析修改内容对其他部分的连锁影响',
+    icon: 'ripple',
+    category: 'research',
+    applicableDocTypes: ['revision_artifact', 'narrative_prose', 'technical_document'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['影响分析', '变更', '风险'],
+    recommendedFor: ['长篇修订', '技术文档修订'],
+    nodes: [
+      { id: 'identify', type: 'analysis', label: '变更点识别' },
+      { id: 'impact', type: 'analysis', label: '影响范围分析' },
+      { id: 'risk', type: 'review', label: '风险评估' },
+      { id: 'report', type: 'output', label: '影响报告' }
+    ]
+  },
+  {
+    id: 'revision-rollback-plan',
+    name: '回滚预案',
+    description: '为重大修订制定回滚方案和应急计划',
+    icon: 'rotate-ccw',
+    category: 'planning',
+    applicableDocTypes: ['revision_artifact'],
+    minComplexity: 'medium',
+    estimatedSteps: 4,
+    tags: ['回滚', '预案', '风险控制'],
+    recommendedFor: ['重要文档修订', '合规文档修订'],
+    nodes: [
+      { id: 'baseline', type: 'analysis', label: '基线版本确认' },
+      { id: 'triggers', type: 'planning', label: '回滚触发条件' },
+      { id: 'procedure', type: 'planning', label: '回滚流程' },
+      { id: 'output', type: 'output', label: '回滚预案' }
+    ]
+  }
+]
+
+export function getWorkflowTemplatesForDocType(docType: DocumentObjectType): WorkflowTemplate[] {
+  return WORKFLOW_TEMPLATES.filter(template =>
+    template.applicableDocTypes.includes(docType)
+  )
+}
+
+export function getRecommendedWorkflows(docType: DocumentObjectType, formId?: string): WorkflowTemplate[] {
+  const templates = getWorkflowTemplatesForDocType(docType)
+  if (!formId) return templates
+
+  return templates.sort((a, b) => {
+    const aMatch = a.applicableFormIds?.includes(formId) ? 1 : 0
+    const bMatch = b.applicableFormIds?.includes(formId) ? 1 : 0
+    return bMatch - aMatch
+  })
+}
+
+type WorkflowComplexity = 'simple' | 'medium' | 'complex'
+const COMPLEXITY_ORDER: Record<WorkflowComplexity, number> = { simple: 0, medium: 1, complex: 2 }
+
+export function filterWorkflowsByCapability(capabilities: any): WorkflowTemplate[] {
+  if (!capabilities) return WORKFLOW_TEMPLATES
+
+  return WORKFLOW_TEMPLATES.filter(template => {
+    if (capabilities.minComplexity && typeof capabilities.minComplexity === 'string' && capabilities.minComplexity in COMPLEXITY_ORDER) {
+      const templateLevel = COMPLEXITY_ORDER[template.minComplexity]
+      const requiredLevel = COMPLEXITY_ORDER[capabilities.minComplexity as WorkflowComplexity]
+      if (templateLevel > requiredLevel) return false
+    }
+
+    if (capabilities.maxSteps && template.estimatedSteps > capabilities.maxSteps) {
+      return false
+    }
+
+    if (capabilities.categories && capabilities.categories.length > 0) {
+      if (!capabilities.categories.includes(template.category)) return false
+    }
+
+    if (capabilities.tags && capabilities.tags.length > 0) {
+      const hasMatchingTag = template.tags.some(tag =>
+        capabilities.tags.includes(tag)
+      )
+      if (!hasMatchingTag) return false
+    }
+
+    return true
+  })
+}

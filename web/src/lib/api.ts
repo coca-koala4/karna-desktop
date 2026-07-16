@@ -1323,6 +1323,7 @@ export interface SkillHubScan {
 // ── Admin types ───────────────────────────────────────────────────────
 
 export interface McpServer {
+  id?: string;
   name: string;
   transport: "http" | "stdio" | "unknown";
   url: string | null;
@@ -1332,29 +1333,37 @@ export interface McpServer {
   auth: string | null;
   enabled: boolean;
   tools: string[] | null;
+  version?: string;
+  permissions?: string[];
+  dependencies?: string[];
+  healthy?: boolean;
+  deprecated?: boolean;
 }
 
 export interface McpCatalogEntry {
+  id?: string;
   name: string;
   description: string;
   source: string;
   transport: "http" | "stdio";
   auth_type: "api_key" | "oauth" | "none";
   required_env: Array<{ name: string; prompt: string; required: boolean }>;
-  // Transport details — what actually connects (http) or runs (stdio).
   command: string | null;
   args: string[];
   url: string | null;
-  // Git bootstrap (only set for entries that clone + build locally).
   install_url: string | null;
   install_ref: string | null;
   bootstrap: string[];
-  // Default tool pre-selection (null = all tools pre-checked) + guidance text.
   default_enabled: string[] | null;
   post_install: string;
   needs_install: boolean;
   installed: boolean;
   enabled: boolean;
+  version?: string;
+  permissions?: string[];
+  dependencies?: string[];
+  healthy?: boolean;
+  deprecated?: boolean;
 }
 
 export interface McpCatalogDiagnostic {
@@ -1754,6 +1763,23 @@ export interface LogsResponse {
   lines: string[];
 }
 
+export interface ToolCallLog {
+  id: string;
+  tool_name: string;
+  project: string;
+  timestamp: number;
+  success: boolean;
+  duration_ms: number;
+  request: unknown;
+  response: unknown;
+  error?: string;
+}
+
+export interface ToolCallsResponse {
+  calls: ToolCallLog[];
+  projects: string[];
+}
+
 export interface ManagedFileEntry {
   name: string;
   path: string;
@@ -2003,6 +2029,12 @@ export interface SkillInfo {
   description: string;
   category: string;
   enabled: boolean;
+  source?: "builtin" | "local" | "community";
+  permissions?: string[];
+  last_used_at?: number | null;
+  dependencies?: string[];
+  version?: string;
+  installed?: boolean;
 }
 
 export interface SkillContent {

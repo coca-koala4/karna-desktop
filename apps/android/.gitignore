@@ -1,0 +1,39 @@
+# Gradle
+*.iml
+.gradle/
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Local configuration
+local.properties
+
+# Built files
+app/build/
+core-model/build/
+core-protocol/build/
+core-network/build/
+core-crypto/build/
+core-database/build/
+core-design-system/build/
+core-navigation/build/
+core-sync/build/
+core-preview/build/
+*/build/
+
+# IDE files
+/.idea/
+*.iml
+.DS_Store
+
+# Signing/Keystore files
+*.jks
+*.keystore
+keystore.properties
+*.signing
+release/
+
+# Logs and temp
+*.log
+*.tmp

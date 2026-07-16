@@ -2,10 +2,18 @@ import { describe, expect, it } from 'vitest'
 
 import type { HermesConfigRecord } from '@/types/hermes'
 
+import { SECTIONS } from './constants'
 import { defineFieldCopy, fieldCopyForSchemaKey, schemaKeyToFieldCopyKey } from './field-copy'
 import { enumOptionsFor, getNested, providerGroup, setNested, stripToolsetLabel, toolsetDisplayLabel } from './helpers'
 
 describe('settings helpers', () => {
+
+  it('does not expose legacy personality selector in Settings Chat section', () => {
+    const chat = SECTIONS.find(section => section.id === 'chat')
+
+    expect(chat?.keys).not.toContain('display.personality')
+  })
+
   it('lists Hindsight as a built-in desktop memory provider option', () => {
     const options = enumOptionsFor('memory.provider', '', {})
 

@@ -1,0 +1,35 @@
+manifest_version: 2
+name: firecrawl
+description: 基于Firecrawl的智能网页爬取和内容提取MCP工具
+source: https://www.mcp-cn.com/server/68
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - firecrawl-mcp
+auth:
+  type: api_key
+  env:
+  - name: FIRECRAWL_API_KEY
+    prompt: firecrawl API Key
+    required: true
+    secret: true
+post_install: 'firecrawl MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: firecrawl
+version: unresolved
+dependencies:
+  runtime: npm
+  package: firecrawl-mcp
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

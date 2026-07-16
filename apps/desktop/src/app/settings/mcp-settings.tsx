@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { getHermesConfigRecord, type HermesGateway, saveHermesConfig } from '@/hermes'
 import { useI18n } from '@/i18n'
-import { Wrench } from '@/lib/icons'
+import { Globe, Wrench, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { notify, notifyError } from '@/store/notifications'
 import { $activeSessionId } from '@/store/session'
@@ -25,7 +25,12 @@ type McpServers = Record<string, Record<string, unknown>>
 const EMPTY_SERVER = {
   command: '',
   args: [],
-  env: {}
+  env: {},
+  version: 'v1.0.0',
+  healthy: true,
+  deprecated: false,
+  permissions: [],
+  dependencies: []
 }
 
 function getServers(config: HermesConfigRecord | null): McpServers {
@@ -53,6 +58,8 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
   const [body, setBody] = useState('')
   const [saving, setSaving] = useState(false)
   const [reloading, setReloading] = useState(false)
+  const [demoCalloutDismissed, setDemoCalloutDismissed] = useState(false)
+  const isBrowserMode = typeof window !== 'undefined' && !window.karnaDesktop
 
   useEffect(() => {
     let cancelled = false
@@ -187,6 +194,21 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
 
   return (
     <SettingsContent>
+      {isBrowserMode && !demoCalloutDismissed && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <Globe className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
+          <div className="flex-1 text-amber-700 dark:text-amber-200">
+            🌐 浏览器演示模式：当前仅显示 3 个示例连接器。安装桌面版可管理真实 MCP 服务器、配置认证和权限。
+          </div>
+          <button
+            className="flex-shrink-0 rounded-md p-1 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+            onClick={() => setDemoCalloutDismissed(true)}
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="mb-4 flex items-center justify-end gap-4">
         <Button onClick={() => setSelected(null)} size="xs" variant="text">
           {m.newServer}
@@ -205,6 +227,11 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
               {names.map(serverName => {
                 const server = servers[serverName]
                 const active = selected === serverName
+                const version = typeof server.version === 'string' ? server.version : 'v1.0.0'
+                const healthy = server.healthy !== false
+                const deprecated = server.deprecated === true
+                const permissions = Array.isArray(server.permissions) ? server.permissions as string[] : []
+                const dependencies = Array.isArray(server.dependencies) ? server.dependencies as string[] : []
 
                 return (
                   <button
@@ -217,11 +244,46 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
                     onClick={() => setSelected(serverName)}
                     type="button"
                   >
-                    <div className="truncate text-sm font-medium">{serverName}</div>
-                    <div className="mt-1 flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="truncate text-sm font-medium flex-1">{serverName}</div>
+                      <span className="text-[10px] font-mono text-muted-foreground/70">{version}</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
                       <Pill>{transportLabel(server)}</Pill>
                       {server.disabled === true && <Pill>{m.disabled}</Pill>}
+                      <span className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px]',
+                        healthy ? 'text-emerald-600 bg-emerald-500/10' : 'text-red-600 bg-red-500/10'
+                      )}>
+                        <span className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          healthy ? 'bg-emerald-500' : 'bg-red-500'
+                        )} />
+                        {healthy ? '正常' : '异常'}
+                      </span>
+                      {deprecated && (
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] bg-amber-500/10 text-amber-600">
+                          已弃用
+                        </span>
+                      )}
                     </div>
+                    {permissions.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-0.5">
+                        {permissions.slice(0, 3).map(perm => (
+                          <span className="rounded bg-(--ui-bg-quinary) px-1 py-px text-[9px] font-mono text-(--ui-text-tertiary)" key={perm}>
+                            {perm}
+                          </span>
+                        ))}
+                        {permissions.length > 3 && (
+                          <span className="text-[9px] text-(--ui-text-tertiary)">+{permissions.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                    {dependencies.length > 0 && (
+                      <div className="mt-0.5 text-[9px] text-(--ui-text-tertiary)/70 truncate">
+                        依赖: {dependencies.join(', ')}
+                      </div>
+                    )}
                   </button>
                 )
               })}

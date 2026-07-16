@@ -1,0 +1,35 @@
+manifest_version: 2
+name: lark
+description: 飞书/Lark官方OpenAPI MCP工具，支持文档处理、对话管理、日历调度等自动化场景
+source: https://www.mcp-cn.com/server/128
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@larksuiteoapi/lark-mcp'
+auth:
+  type: api_key
+  env:
+  - name: LARK_API_KEY
+    prompt: lark API Key
+    required: true
+    secret: true
+post_install: 'lark MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: lark
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@larksuiteoapi/lark-mcp'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

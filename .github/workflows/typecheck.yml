@@ -49,3 +49,39 @@ jobs:
         with:
           command: npm ci
       - run: npm run --prefix apps/desktop build
+      - name: Install Chromium for route screenshots
+        run: npx playwright install --with-deps chromium
+      - name: Verify route screenshots and responsive layouts
+        run: npm run --prefix apps/desktop test:routes:e2e
+
+  desktop-contracts-and-smoke:
+    name: Desktop contracts and Writer OS smoke
+    runs-on: ubuntu-latest
+    needs: desktop-build
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: ./.github/actions/retry
+        with:
+          command: npm ci
+      - name: Lint desktop source
+        run: npm run --prefix apps/desktop lint -- --max-warnings=0
+      - name: Verify browser-dev contracts
+        run: npm run --prefix apps/desktop test:contracts
+      - name: Verify locale parity and text encoding
+        run: node apps/desktop/scripts/check-i18n.cjs
+      - name: Verify accessibility static gate
+        run: npm run --prefix apps/desktop check:a11y
+      - name: Verify optional MCP governance manifests
+        run: |
+          python -m pip install --disable-pip-version-check pyyaml==6.0.3
+          python scripts/validate_mcp_manifests.py
+      - name: Verify desktop platform helpers
+        run: npm run --prefix apps/desktop test:desktop:platforms
+      - name: Verify Writer OS through Electron IPC
+        run: xvfb-run -a npm run --prefix apps/desktop test:writer-os
+      - name: Verify registered desktop routes
+        run: npm run --prefix apps/desktop test:routes

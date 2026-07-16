@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/commands.json",
+  "title": "Karna Remote Protocol Command Types",
+  "description": "Command envelope and command type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "CommandEnvelope": {
+      "type": "object",
+      "required": ["v", "id", "type", "ts", "deviceId"],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "const": 1,
+          "description": "Command envelope format version"
+        },
+        "id": {
+          "$ref": "common.json#/definitions/RequestId",
+          "description": "Unique request identifier for correlation"
+        },
+        "type": {
+          "type": "string",
+          "description": "Command type name"
+        },
+        "ts": {
+          "$ref": "common.json#/definitions/Timestamp",
+          "description": "Request timestamp from client"
+        },
+        "deviceId": {
+          "$ref": "common.json#/definitions/DeviceId",
+          "description": "Sending device identifier"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId",
+          "description": "Target session ID, if applicable"
+        },
+        "body": {
+          "type": "object",
+          "description": "Command-specific payload"
+        },
+        "sig": {
+          "$ref": "common.json#/definitions/Signature",
+          "description": "ECDSA signature over the command envelope (without the sig field itself)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Top-level envelope for all REST API commands"
+    },
+    "ResponseEnvelope": {
+      "type": "object",
+      "required": ["v", "id", "ts", "status"],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "const": 1
+        },
+        "id": {
+          "$ref": "common.json#/definitions/RequestId",
+          "description": "Correlates to the command ID"
+        },
+        "ts": {
+          "$ref": "common.json#/definitions/Timestamp",
+          "description": "Response timestamp from server"
+        },
+        "status": {
+          "type": "integer",
+          "description": "HTTP-equivalent status code (200, 201, 400, etc.)"
+        },
+        "body": {
+          "type": ["object", "array", "null"],
+          "description": "Response payload"
+        },
+        "error": {
+          "$ref": "common.json#/definitions/Error",
+          "description": "Error details, present only when status >= 400"
+        },
+        "mac": {
+          "$ref": "common.json#/definitions/Mac",
+          "description": "HMAC-SHA256 over response body for integrity verification"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Top-level envelope for all REST API responses"
+    },
+    "SessionCreateCommand": {
+      "type": "object",
+      "required": ["projectId"],
+      "properties": {
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId",
+          "description": "Project to create session in"
+        },
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId",
+          "description": "Optional conversation to attach to"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model identifier override"
+        },
+        "initialPrompt": {
+          "type": ["string", "null"],
+          "description": "Optional initial user message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageSendCommand": {
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Message text content"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "common.json#/definitions/FileId"
+          },
+          "description": "Attached file IDs"
+        },
+        "parentMessageId": {
+          "type": ["string", "null"],
+          "description": "Parent message ID for threaded replies"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractionRespondCommand": {
+      "type": "object",
+      "required": ["interactionId", "approved"],
+      "properties": {
+        "interactionId": {
+          "$ref": "common.json#/definitions/InteractionId"
+        },
+        "approved": {
+          "type": "boolean"
+        },
+        "response": {
+          "type": ["string", "object", "null"],
+          "description": "Optional response data for the interaction"
+        },
+        "rememberChoice": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to remember this choice for similar future requests"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunCancelCommand": {
+      "type": "object",
+      "required": ["runId"],
+      "properties": {
+        "runId": {
+          "$ref": "common.json#/definitions/RunId"
+        },
+        "reason": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "CommandType": {
+      "type": "string",
+      "enum": [
+        "session.create",
+        "session.resume",
+        "session.list",
+        "session.delete",
+        "session.interrupt",
+        "message.send",
+        "interaction.respond",
+        "run.cancel",
+        "file.upload",
+        "file.download",
+        "project.list",
+        "project.get",
+        "conversation.list",
+        "conversation.get",
+        "conversation.messages",
+        "device.list",
+        "device.revoke",
+        "capabilities.get"
+      ],
+      "description": "All valid command type strings"
+    }
+  }
+}

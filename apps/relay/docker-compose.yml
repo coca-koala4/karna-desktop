@@ -1,0 +1,47 @@
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karna-relay
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - KARNA_RELAY_PUBLIC_URL=${KARNA_RELAY_PUBLIC_URL:-ws://localhost:3000}
+      - KARNA_RELAY_REDIS_URL=redis://redis:6379
+      - KARNA_RELAY_TLS_MODE=${KARNA_RELAY_TLS_MODE:-off}
+      - KARNA_RELAY_ENVELOPE_TTL=${KARNA_RELAY_ENVELOPE_TTL:-24}
+      - KARNA_RELAY_RATE_LIMIT=${KARNA_RELAY_RATE_LIMIT:-60:60}
+      - KARNA_RELAY_CORS_ORIGINS=${KARNA_RELAY_CORS_ORIGINS:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - relay-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: karna-relay-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - relay-network
+
+volumes:
+  redis-data:
+
+networks:
+  relay-network:
+    driver: bridge

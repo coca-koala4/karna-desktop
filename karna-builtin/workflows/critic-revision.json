@@ -1,0 +1,42 @@
+{
+  "id": "builtin.critic-revision",
+  "project_id": "global-workflows",
+  "name": "多评审师循环修订",
+  "description": "四并行评审师→汇总→循环修订→人工检验",
+  "mode": "canvas",
+  "builtin": true,
+  "template_version": 1,
+  "nodes": [
+    { "id": "input_1", "type": "input_text", "position": { "x": 100, "y": 400 }, "data": { "label": "输入", "nodeType": "input_text", "isStart": true, "inputText": "" } },
+    { "id": "agent_2", "type": "agent", "position": { "x": 380, "y": 400 }, "data": { "label": "章节撰写师", "nodeType": "agent", "agent_id": "chapter_writer" } },
+    { "id": "agent_3", "type": "agent", "position": { "x": 700, "y": 100 }, "data": { "label": "情节评审师", "nodeType": "agent", "agent_id": "plot_critic" } },
+    { "id": "agent_4", "type": "agent", "position": { "x": 700, "y": 300 }, "data": { "label": "人物评审师", "nodeType": "agent", "agent_id": "character_critic" } },
+    { "id": "agent_5", "type": "agent", "position": { "x": 700, "y": 500 }, "data": { "label": "文风评审师", "nodeType": "agent", "agent_id": "style_critic" } },
+    { "id": "agent_6", "type": "agent", "position": { "x": 700, "y": 700 }, "data": { "label": "设定评审师", "nodeType": "agent", "agent_id": "worldbuilding_critic" } },
+    { "id": "agent_7", "type": "agent", "position": { "x": 1080, "y": 400 }, "data": { "label": "意见汇总师", "nodeType": "agent", "agent_id": "critique_aggregator" } },
+    { "id": "condition_8", "type": "condition", "position": { "x": 1360, "y": 400 }, "data": { "label": "评分判断", "nodeType": "condition", "condition": "overallScore >= 70" } },
+    { "id": "agent_9", "type": "agent", "position": { "x": 1360, "y": 700 }, "data": { "label": "文稿修订师", "nodeType": "agent", "agent_id": "revision_agent", "rounds": 3 } },
+    { "id": "human_confirm_10", "type": "human_confirm", "position": { "x": 1640, "y": 400 }, "data": { "label": "人工检验", "nodeType": "human_confirm", "requiresReview": true } },
+    { "id": "final_output_11", "type": "final_output", "position": { "x": 1920, "y": 400 }, "data": { "label": "最终输出", "nodeType": "final_output" } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "input_1", "target": "agent_2", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e2", "source": "agent_2", "target": "agent_3", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e3", "source": "agent_2", "target": "agent_4", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e4", "source": "agent_2", "target": "agent_5", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e5", "source": "agent_2", "target": "agent_6", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e6", "source": "agent_3", "target": "agent_7", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e7", "source": "agent_4", "target": "agent_7", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e8", "source": "agent_5", "target": "agent_7", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e9", "source": "agent_6", "target": "agent_7", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e10", "source": "agent_7", "target": "condition_8", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e11", "source": "condition_8", "target": "human_confirm_10", "sourceHandle": "true_out", "targetHandle": "in", "label": "达标" },
+    { "id": "e12", "source": "condition_8", "target": "agent_9", "sourceHandle": "false_out", "targetHandle": "in", "label": "未达标" },
+    { "id": "e13", "source": "agent_9", "target": "agent_2", "sourceHandle": "out", "targetHandle": "in", "label": "修订后重写", "type": "loop" },
+    { "id": "e14", "source": "human_confirm_10", "target": "final_output_11", "sourceHandle": "approve_out", "targetHandle": "in", "label": "通过" },
+    { "id": "e15", "source": "human_confirm_10", "target": "agent_9", "sourceHandle": "reject_out", "targetHandle": "in", "label": "驳回" }
+  ],
+  "limits": { "max_agents": 10, "max_parallel": 3, "max_loop": 3 },
+  "runtimeConfig": { "maxConcurrency": 3, "failurePolicy": "stop", "retryCount": 1 },
+  "knowledge_binding": { "enabled": true }
+}

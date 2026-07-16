@@ -1111,6 +1111,95 @@ def _execute_remote(
 # Main entry point
 # ---------------------------------------------------------------------------
 
+def _execute_code_capability(code: str) -> str:
+    """Return the most specific sensitive capability visible in Python code."""
+    normalized = (code or "").lower()
+    disk_markers = (
+        "shutil.disk_usage",
+        "psutil.disk_usage",
+        "os.statvfs",
+        "getdiskfreespace",
+        "get-volume",
+        "get-psdrive",
+        "wmic logicaldisk",
+    )
+    if any(marker in normalized for marker in disk_markers):
+        return "system.disk_usage"
+    if "psutil.process_iter" in normalized or "tasklist" in normalized:
+        return "system.process_list"
+    if "os.environ" in normalized or "os.getenv" in normalized:
+        return "system.environment"
+    return "shell.execute"
+
+
+def _check_capability_scope_for_execute_code(
+    code: str,
+    task_id: Optional[str],
+) -> Optional[str]:
+    """Enforce the active scope immediately before spawning Python.
+
+    This is a defence-in-depth check behind the agent-level permission
+    gateway. It prevents alternate dispatchers, plugins, and future refactors
+    from using ``execute_code`` as a host-access bypass.
+    """
+    try:
+        from tools.approval import get_current_session_key
+        from tools.capability_sandbox import (
+            AuthorizationDecision,
+            authorize_tool_call,
+            get_explicit_scope,
+            log_authorization_decision,
+        )
+
+        candidates = [get_current_session_key(default=""), task_id or ""]
+        session_id = ""
+        scope = None
+        for candidate in candidates:
+            if not candidate:
+                continue
+            scope = get_explicit_scope(candidate)
+            if scope is not None:
+                session_id = candidate
+                break
+
+        # Runtime turns always install an explicit scope in turn_context.py.
+        # A direct library call outside an agent turn has no product permission
+        # mode to enforce and continues through the existing approval guard.
+        if scope is None:
+            return None
+
+        capability = _execute_code_capability(code)
+        result = authorize_tool_call("execute_code", {"code": code}, scope)
+        log_authorization_decision(
+            session_id=session_id,
+            scope=scope,
+            tool_name="execute_code",
+            tool_args={"capability": capability},
+            result=result,
+        )
+        if result.decision != AuthorizationDecision.allow:
+            return json.dumps({
+                "status": "blocked",
+                "error_type": "permission_denied",
+                "capability": capability,
+                "policy_mode": scope.mode.value,
+                "error": result.reason,
+                "tool_calls_made": 0,
+                "duration_seconds": 0,
+            }, ensure_ascii=False)
+        return None
+    except Exception as exc:
+        logger.exception("execute_code capability preflight failed")
+        return json.dumps({
+            "status": "blocked",
+            "error_type": "permission_gateway_failure",
+            "capability": _execute_code_capability(code),
+            "error": "权限网关检查失败，已按安全策略拒绝执行代码。",
+            "details": str(exc),
+            "tool_calls_made": 0,
+            "duration_seconds": 0,
+        }, ensure_ascii=False)
+
 def execute_code(
     code: str,
     task_id: Optional[str] = None,
@@ -1140,6 +1229,10 @@ def execute_code(
 
     if not code or not code.strip():
         return tool_error("No code provided.")
+
+    capability_block = _check_capability_scope_for_execute_code(code, task_id)
+    if capability_block is not None:
+        return capability_block
 
     # Dispatch: remote backends use file-based RPC, local uses UDS
     from tools.terminal_tool import _get_env_config, _docker_has_host_access

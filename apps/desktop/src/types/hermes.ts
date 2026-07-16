@@ -1,3 +1,5 @@
+import type { ConversationScope, PermissionMode } from './karna'
+
 export interface ConfigFieldSchema {
   category?: string
   description?: string
@@ -233,10 +235,15 @@ export type HermesConfigRecord = Record<string, unknown>
 export interface ModelInfoResponse {
   auto_context_length?: number
   capabilities?: Record<string, unknown>
+  compression_starts_at?: number
+  compression_threshold?: number
   config_context_length?: number
+  context_length_source?: 'catalog' | 'fallback' | 'provider_metadata' | 'user_override'
   effective_context_length?: number
   model: string
+  output_reserve_tokens?: number
   provider: string
+  workflow_context_tokens?: number
 }
 
 export interface ModelPricing {
@@ -282,8 +289,17 @@ export interface ModelOptionProvider {
 }
 
 export interface ModelCapabilities {
-  fast: boolean
+  chat: boolean
+  streaming: boolean | 'unknown'
+  toolCalls: boolean | 'unknown'
+  vision: boolean | 'unknown'
+  jsonMode: boolean | 'unknown'
   reasoning: boolean
+  fast: boolean
+  contextLength?: number
+  maxOutputTokens?: number
+  source?: 'catalog' | 'provider' | 'probe' | 'user_override'
+  verifiedAt?: string
 }
 
 export interface ModelOptionsResponse {
@@ -367,6 +383,16 @@ export interface SessionInfo {
   profile?: string
   /** True when {@link profile} is the default profile. */
   is_default_profile?: boolean
+  /** Writer project ID when the session is bound to a Karna Writer project. */
+  project_id?: null | string
+  /** Writer project title for display purposes. */
+  project_title?: null | string
+  /** True when this session is bound to a Karna Writer project. */
+  is_project_session?: boolean
+  conversation_scope?: ConversationScope
+  workspace_id?: string | null
+  writer_project_id?: string | null
+  permission_mode?: PermissionMode
 }
 
 export interface SessionMessage {
@@ -416,6 +442,11 @@ export interface SessionRuntimeInfo {
   usage?: Partial<UsageStats>
   version?: string
   yolo?: boolean
+  conversation_scope?: ConversationScope | 'standalone' | 'project'
+  workspace_id?: string | null
+  writer_project_id?: string | null
+  permission_mode?: PermissionMode
+  project_title?: string | null
 }
 
 export interface UsageStats {
@@ -635,17 +666,73 @@ export interface ProjectsPayload {
 export interface ProfileSoul {
   content: string
   exists: boolean
+  profile?: string
+  path?: string
+  editable?: boolean
+  max_chars?: number
+  core_policy_summary?: string[]
 }
 
 export interface ProfilesResponse {
   profiles: ProfileInfo[]
 }
 
+export type SkillSource = 'builtin' | 'local' | 'community'
+
 export interface SkillInfo {
+  id?: string
   category: string
   description: string
   enabled: boolean
   name: string
+  displayName?: string
+  displayDescription?: string
+  displayCategory?: string
+  isKarnaOfficial?: boolean
+  isHot?: boolean
+  source?: SkillSource
+  permissions?: string[]
+  dependencies?: string[]
+  platforms?: string[]
+  lastUsed?: number | null
+  installed?: boolean
+  available?: boolean
+  missing?: boolean
+  sourceCount?: number
+  conflict?: boolean
+  sources?: SkillSourceInfo[]
+}
+
+export interface SkillSourceInfo {
+  id: string
+  path: string
+  source: SkillSource
+  sourceRoot?: string
+  relativePath?: string
+  selected?: boolean
+  available?: boolean
+}
+
+export interface SkillCatalogDiagnostics {
+  scannedAt: string
+  logicalCount: number
+  sourceCount: number
+  conflictCount: number
+  unavailableCount: number
+  uninstalledCount: number
+  excludedCount: number
+  previousLogicalCount: number
+  countDelta: number
+  driftDetected: boolean
+  roots: Array<{ key: string; path: string; exists: boolean; files: number; readable: boolean }>
+  errors: Array<{ path: string; message: string }>
+  excluded: Array<{ path: string; reason: string }>
+}
+
+export interface SkillCatalogResponse {
+  ok: boolean
+  skills: SkillInfo[]
+  diagnostics: SkillCatalogDiagnostics
 }
 
 export interface ToolsetInfo {
@@ -890,4 +977,15 @@ export interface ModelAssignmentResponse {
    *  their helper tasks aren't following the switch. Only set on scope:'main'. */
   stale_aux?: StaleAuxAssignment[]
   tasks?: string[]
+}
+
+export interface SessionDocumentArtifact {
+  resultId: string
+  originalName: string
+  mediaType: string
+  normalizedPath: string
+  pageCount?: number
+  chunkCount: number
+  warnings: string[]
+  contentHash: string
 }

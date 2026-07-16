@@ -1,0 +1,35 @@
+manifest_version: 2
+name: gitlab
+description: GitLab的MCP服务器，支持GitLab的读取和写入
+source: https://www.mcp-cn.com/server/91
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@zereight/mcp-gitlab'
+auth:
+  type: api_key
+  env:
+  - name: GITLAB_API_KEY
+    prompt: gitlab API Key
+    required: true
+    secret: true
+post_install: 'gitlab MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: gitlab
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@zereight/mcp-gitlab'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { createProfile, updateProfileSoul } from '@/hermes'
+import { createProfile } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { AlertTriangle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -25,9 +24,8 @@ export function isValidProfileName(name: string): boolean {
   return PROFILE_NAME_RE.test(name.trim())
 }
 
-// Self-contained create flow (name + clone toggle + optional SOUL.md). Owns the
-// createProfile/updateProfileSoul calls so every caller just refreshes/selects
-// via onCreated. SOUL left blank keeps the cloned/blank persona untouched.
+// Self-contained create flow (name + clone toggle). Profile-level Soul editing
+// lives in Settings -> Karna Personality; creative reference Souls remain in Soul Workshop.
 export function CreateProfileDialog({
   onClose,
   onCreated,
@@ -43,7 +41,6 @@ export function CreateProfileDialog({
   const p = t.profiles
   const [name, setName] = useState('')
   const [cloneFrom, setCloneFrom] = useState<null | string>('default')
-  const [soul, setSoul] = useState('')
   const [status, setStatus] = useState<'done' | 'idle' | 'saving'>('idle')
   const [error, setError] = useState<null | string>(null)
 
@@ -54,7 +51,6 @@ export function CreateProfileDialog({
 
     setName('')
     setCloneFrom('default')
-    setSoul('')
     setError(null)
     setStatus('idle')
   }, [open])
@@ -77,10 +73,6 @@ export function CreateProfileDialog({
 
     try {
       await createProfile({ name: trimmed, clone_from: cloneFrom })
-
-      if (soul.trim()) {
-        await updateProfileSoul(trimmed, soul)
-      }
 
       await onCreated?.(trimmed)
       setStatus('done')
@@ -138,19 +130,6 @@ export function CreateProfileDialog({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">{p.cloneFromDesc}</p>
-          </div>
-
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium" htmlFor="new-profile-soul">
-              SOUL.md <span className="font-normal text-muted-foreground">- {p.soulOptional}</span>
-            </label>
-            <Textarea
-              className="min-h-28 font-mono text-xs leading-5"
-              id="new-profile-soul"
-              onChange={event => setSoul(event.target.value)}
-              placeholder={p.soulPlaceholder(cloneFrom ? p.soulPlaceholderCloned : p.soulPlaceholderEmpty)}
-              value={soul}
-            />
           </div>
 
           {error && (

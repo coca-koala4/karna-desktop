@@ -1,0 +1,77 @@
+{
+  "feishu": {
+    "file": "feishu.jpg",
+    "source": "https://apps.apple.com/app/id1401729613",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/3f/3c/a7/3f3ca745-2f9c-d56a-3cb9-a6aff1475051/AppIcon-0-0-1x_U007epad-0-0-0-1-0-0-85-220.png/512x512bb.jpg"
+  },
+  "tencent-docs": {
+    "file": "tencent-docs.jpg",
+    "source": "https://apps.apple.com/app/id1370780836",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/1d/c7/96/1dc796d9-66b8-1748-bcde-233331376268/AppIcon-0-0-1x_U007epad-0-11-0-0-sRGB-GLES2_U002c0-85-220.png/512x512bb.jpg"
+  },
+  "wechat-reading": {
+    "file": "wechat-reading.jpg",
+    "source": "https://apps.apple.com/app/id952059546",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f4/82/23/f48223d4-19b3-dd26-6944-e06b69595991/AppIcon-0-1x_U007epad-0-11-0-85-220-0.png/512x512bb.jpg"
+  },
+  "dingtalk": {
+    "file": "dingtalk.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.alibaba.android.rimet",
+    "image": "https://play-lh.googleusercontent.com/YjG5hs0qlTHmued9XI5SV1LCk6cwcEUdTB8onHA1rtr7HGXNSDmyUxkKUjo84HSv8zG0ZyZRcrt6NgqyxddquA"
+  },
+  "wecom": {
+    "file": "wecom.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.tencent.wework",
+    "image": "https://play-lh.googleusercontent.com/5sNDbHha6vnP8VetEvlhVo7quxSL3U-c41DHUdC4z1HUxzxzMI1kCC3JpCiTE4F4zcuPkN9BI5ZTVlNQBsAbVw"
+  },
+  "gmail": {
+    "file": "gmail.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.gm",
+    "image": "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc"
+  },
+  "google-calendar": {
+    "file": "google-calendar.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.calendar",
+    "image": "https://play-lh.googleusercontent.com/vEoqLbT_QkYcEaawWBRc22N6i98OUtOUpM1LmKdVs_xx7lCsUyFfV0ZiqoUXjMijUteiBhhN4K5MpoF96FRNOg"
+  },
+  "baidu-map": {
+    "file": "baidu-map.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.baidu.BaiduMap",
+    "image": "https://play-lh.googleusercontent.com/ltVRNUUvyIAQpTvTGJlqgm7TEcB9xe0YdOcrqxB7IBtLoB4EqCaY8mU199Wg01PcLMTkoypVj8AI-VxNrzGuuQ"
+  },
+  "amap": {
+    "file": "amap.jpg",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.autonavi.minimap",
+    "image": "https://play-lh.googleusercontent.com/qikNJ3JNtoE7VkFmLvyDBYCZ3ATHPSUuKdhpcIfrbL2c7kC7elzdFR8XoXf-tijeedIoA-uK6SqCtENMvUvgxWw"
+  },
+  "zhihu": {
+    "file": "zhihu.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.zhihu.android",
+    "image": "https://play-lh.googleusercontent.com/2t_12vLlJhW_eqCUvzecvpt0XDWb47uvoeUY8HF57pdgiyUxyKti4kt11nxFFJyfNmqLWH0CTTJWcZOU2Imz4w"
+  },
+  "xiaohongshu": {
+    "file": "xiaohongshu.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.xingin.xhs",
+    "image": "https://play-lh.googleusercontent.com/c6Ipks61J7b4qgJMxo965UqsSo0M7ZwTDzQrmLKeBNneCk2gub-RitqSC-fnrmLGXTk3mNEceiBN5N3i26BmYHc"
+  },
+  "wordpress": {
+    "file": "wordpress.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=org.wordpress.android",
+    "image": "https://play-lh.googleusercontent.com/gNi9czjCA3CQFnljioY7UTPdjtzLzsyrOjy8pUJyb1GOLyeld-vQGo0pgz4ym6R4JVo1Tl-FLXIQW6BPK5KJiQ"
+  },
+  "substack": {
+    "file": "substack.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.substack.app",
+    "image": "https://play-lh.googleusercontent.com/UBlh59gph7xdRxHnZ91yDDsLxBuxYS69366uiFGHRBzoZz6subQzVJDcyyHN8BlqKJ49M21NKbmkKkSBb5rcdls"
+  },
+  "chrome": {
+    "file": "chrome.png",
+    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.android.chrome",
+    "image": "https://play-lh.googleusercontent.com/gbkzfC3R1fXcGR4Uag1uRSN_123Tpo_KxhVZFLFCatmthFuO1bzPczUomFtxI42YYEQMJeAaZuIFVrTF58gZYg"
+  },
+  "tencent-map": {
+    "file": "tencent-map.png",
+    "source": "https://sj.qq.com/appdetail/com.tencent.map",
+    "image": "http://cms.myapp.com/yybUserIcon/2021/02/05/1612490631_b3063e3cacc25b17bf983ae5395876ba.png"
+  }
+}

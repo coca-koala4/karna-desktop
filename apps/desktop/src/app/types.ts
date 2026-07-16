@@ -1,6 +1,7 @@
 import type * as React from 'react'
 
 import type { ChatMessage } from '@/lib/chat-messages'
+import type { PermissionMode } from '@/types/karna'
 
 export interface ContextSuggestion {
   text: string
@@ -128,7 +129,9 @@ export type SidebarNavId =
   | 'karna-agents'
   | 'karna-writer'
   | 'karna-soul'
+  | 'karna-flow'
   | 'karna-mcp'
+  | 'karna-plugins'
   | 'messaging'
   | 'new-project'
   | 'new-session'
@@ -169,4 +172,9 @@ export interface ClientSessionState {
    *  focused, and switching sessions doesn't zero a still-running turn's clock.
    *  The global $turnStartedAt mirrors whichever session is currently viewed. */
   turnStartedAt: number | null
+  conversationScope: 'standalone' | 'project'
+  workspaceId: string | null
+  writerProjectId: string | null
+  projectName: string | null
+  permissionMode: PermissionMode
 }

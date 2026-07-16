@@ -60,6 +60,9 @@ export function KeysSettings({ view }: KeysSettingsProps) {
 
   return (
     <SettingsContent>
+      <p className="rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-bg-tertiary) px-3 py-2 text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-muted-foreground">
+        凭据仅保存在本机 Karna 后端配置的 <code>.env</code> 文件中，不会同步到云端；列表默认掩码显示，可按需显示或彻底清除。
+      </p>
       {visible.map(group => (
         <div className="grid gap-2" key={group.category}>
           {group.entries.map(([key, info]: [string, EnvVarInfo]) => {

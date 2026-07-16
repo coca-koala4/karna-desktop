@@ -12,6 +12,7 @@ import { runGatewayRestart } from '@/store/system-actions'
 import type { StatusResponse } from '@/types/hermes'
 
 interface GatewayMenuPanelProps {
+  browserDemo?: boolean
   gatewayState: string
   inferenceStatus: RuntimeReadinessResult | null
   onClose: () => void
@@ -81,6 +82,7 @@ const RUNTIME_BRACKET_RE = /^\[[^\]]+]\s+/
 const trimLogLine = (raw: string) => raw.trim().replace(TIMESTAMP_RE, '').replace(RUNTIME_BRACKET_RE, '')
 
 export function GatewayMenuPanel({
+  browserDemo = false,
   gatewayState,
   inferenceStatus,
   onClose,
@@ -106,15 +108,19 @@ export function GatewayMenuPanel({
 
   const gatewayOpen = gatewayState === 'open'
   const gatewayConnecting = gatewayState === 'connecting'
-  const inferenceReady = gatewayOpen && inferenceStatus?.ready === true
+  const inferenceReady = browserDemo || (gatewayOpen && inferenceStatus?.ready === true)
 
-  const connectionLabel = gatewayOpen
+  const connectionLabel = browserDemo
+    ? copy.browserDemo
+    : gatewayOpen
     ? copy.connected
     : gatewayConnecting
       ? copy.connecting
       : prettyState(gatewayState || copy.offline)
 
-  const inferenceLabel = gatewayOpen
+  const inferenceLabel = browserDemo
+    ? copy.browserDemoReady
+    : gatewayOpen
     ? inferenceStatus?.ready
       ? copy.inferenceReady
       : inferenceStatus
@@ -141,7 +147,7 @@ export function GatewayMenuPanel({
       <div className="flex items-center justify-between gap-3 px-3 py-2">
         <div className="flex min-w-0 flex-col gap-1 text-[0.7rem] leading-none">
           <span className="flex items-center gap-1.5 font-medium">
-            <StatusDot tone={gatewayOpen ? 'good' : gatewayConnecting ? 'warn' : 'bad'} />
+            <StatusDot tone={browserDemo || gatewayOpen ? 'good' : gatewayConnecting ? 'warn' : 'bad'} />
             {connectionLabel}
           </span>
           <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -175,9 +181,15 @@ export function GatewayMenuPanel({
         </div>
       </div>
 
-      {inferenceStatus?.reason && (
+      {!browserDemo && inferenceStatus?.reason && (
         <div className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">
           <div className="line-clamp-3">{inferenceStatus.reason}</div>
+        </div>
+      )}
+
+      {browserDemo && (
+        <div className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">
+          {copy.browserDemoHint}
         </div>
       )}
 

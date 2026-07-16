@@ -7,8 +7,22 @@ import type {
 
 export {}
 
+type OfficeAppChoice =
+  | { mode: 'system' }
+  | { mode: 'detected'; appId: string }
+  | { mode: 'custom'; executablePath: string }
+
+type OfficeExternalAppPreferences = {
+  word: OfficeAppChoice
+  spreadsheet: OfficeAppChoice
+  presentation: OfficeAppChoice
+}
+
 declare global {
   interface Window {
+    __karnaSelectedWorkflowId?: string
+    __karnaLastRunId?: string
+    __karnaRefreshCanvas?: () => void
     hermesDesktop: {
       // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that
@@ -82,12 +96,30 @@ declare global {
       setPreviewShortcutActive?: (active: boolean) => void
       openExternal: (url: string) => Promise<void>
       openPreviewInBrowser?: (url: string) => Promise<void>
+      officeApps?: {
+        list: (kind: 'word' | 'spreadsheet' | 'presentation') => Promise<Array<{ id: string; name: string; executablePath: string }>>
+        getPreferences: () => Promise<OfficeExternalAppPreferences>
+        setPreference: (kind: 'word' | 'spreadsheet' | 'presentation', choice: OfficeAppChoice) => Promise<OfficeExternalAppPreferences>
+        pickCustom: (kind: 'word' | 'spreadsheet' | 'presentation') => Promise<{ mode: 'custom'; executablePath: string } | null>
+        open: (params: { kind: 'word' | 'spreadsheet' | 'presentation'; filePath: string; appId?: string }) => Promise<{ ok: boolean; app: string }>
+      }
+      writerPreview?: {
+        create: (params: { filePath: string; kind?: string; options?: Record<string, unknown> }) => Promise<{ ok: boolean; previewId?: string; error?: string; message?: string }>
+        get: (previewId: string) => Promise<{ ok: boolean; format?: 'binary' | 'text'; size?: number; content?: string; totalChunks?: number; chunkSize?: number; metadata?: Record<string, unknown>; error?: string }>
+        chunk: (previewId: string, chunkIndex: number) => Promise<{ ok: boolean; data?: string; error?: string }>
+        release: (previewId: string) => Promise<boolean>
+      }
       fetchLinkTitle: (url: string) => Promise<string>
       sanitizeWorkspaceCwd: (cwd?: null | string) => Promise<{ cwd: string; sanitized: boolean }>
       settings: {
         getDefaultProjectDir: () => Promise<{ defaultLabel: string; dir: null | string; resolvedCwd: string }>
         pickDefaultProjectDir: () => Promise<{ canceled: boolean; dir: null | string }>
         setDefaultProjectDir: (dir: null | string) => Promise<{ dir: null | string }>
+        getAutostart: () => Promise<{ enabled: boolean; supported: boolean }>
+        setAutostart: (enabled: boolean) => Promise<{ enabled: boolean; supported: boolean }>
+        getDesktopShortcut: () => Promise<{ enabled: boolean; supported: boolean }>
+        setDesktopShortcut: (enabled: boolean) => Promise<{ enabled: boolean; supported: boolean }>
+        getInstallation: () => Promise<{ directory: string; executable: string; packaged: boolean }>
       }
       revealLogs: () => Promise<{ ok: boolean; path: string; error?: string }>
       getRecentLogs: () => Promise<{ path: string; lines: string[] }>
@@ -99,6 +131,8 @@ declare global {
       renamePath?: (path: string, newName: string) => Promise<{ path: string }>
       // Write a small UTF-8 text file (hardened path, parent must exist).
       writeTextFile?: (path: string, content: string) => Promise<{ path: string }>
+      // Create a directory (recursive). Hardened path check.
+      createDirectory?: (path: string) => Promise<{ path: string }>
       // Move a file/folder to the OS trash (recoverable).
       trashPath?: (path: string) => Promise<boolean>
       // Git-driven worktree management for the "Start work" flow.
@@ -179,6 +213,8 @@ declare global {
       updates: {
         check: () => Promise<DesktopUpdateStatus>
         apply: (opts?: DesktopUpdateApplyOptions) => Promise<DesktopUpdateApplyResult>
+        download: () => Promise<{ ok: boolean; downloaded?: boolean; version?: string; error?: string }>
+        install: () => Promise<DesktopUpdateApplyResult>
         getBranch: () => Promise<{ branch: string }>
         setBranch: (name: string) => Promise<{ branch: string }>
         onProgress: (callback: (payload: DesktopUpdateProgress) => void) => () => void
@@ -195,9 +231,79 @@ declare global {
         // returns the most-installed themes.
         searchMarketplace: (query: string) => Promise<DesktopMarketplaceSearchItem[]>
       }
+      remote?: {
+        getStatus: () => Promise<{ ok: boolean; status?: RemoteGatewayStatus; error?: string }>
+        start: (options?: { bindAddress?: string }) => Promise<{ ok: boolean; error?: string }>
+        stop: () => Promise<{ ok: boolean; error?: string }>
+        createPairing: (deviceInfo?: { name?: string }) => Promise<{ ok: boolean; offer?: PairingOfferV1; error?: string }>
+        confirmPairing: (token: string, sasCode: string, deviceInfo?: { name?: string; publicKey?: string; fingerprint?: string }) => Promise<{ ok: boolean; success?: boolean; reason?: string; device?: PairedDeviceInfo; error?: string }>
+        cancelPairing: (token: string) => Promise<{ ok: boolean; error?: string }>
+        listDevices: () => Promise<{ ok: boolean; devices?: PairedDeviceInfo[]; error?: string }>
+        updateDevice: (deviceId: string, updates: { paused?: boolean; permissions?: string; name?: string }) => Promise<{ ok: boolean; device?: PairedDeviceInfo; error?: string }>
+        revokeDevice: (deviceId: string) => Promise<{ ok: boolean; error?: string }>
+        disconnectAll: () => Promise<{ ok: boolean; error?: string }>
+        getAuditLogs: (options?: { limit?: number }) => Promise<{ ok: boolean; logs?: AuditLogEntry[]; error?: string }>
+        getPairingState: (token: string) => Promise<{ ok: boolean; pairing?: PairingState | null; error?: string }>
+      }
     }
     karnaDesktop: Window['hermesDesktop']
   }
+}
+
+export interface RemoteGatewayStatus {
+  running: boolean
+  port?: number
+  bindAddress?: string
+  privateInterfaces?: Array<{ name: string; address: string }>
+  tlsEnabled: boolean
+  safeStorageAvailable: boolean
+  connectedDevices?: number
+}
+
+export interface PairingOfferV1 {
+  version: 1
+  token: string
+  sasCode: string
+  serverPublicKey: string | null
+  serverFingerprint: string | null
+  expiresAt: number
+  tlsCertFingerprint: string | null
+  qrPayload: string
+}
+
+export interface PairingState {
+  token: string
+  sasCode: string
+  deviceName: string
+  devicePublicKey: string | null
+  deviceFingerprint: string | null
+  expiresAt: number
+  confirmed: boolean
+  createdAt: number
+  deviceConnected?: boolean
+  deviceInfo?: { name?: string }
+}
+
+export interface PairedDeviceInfo {
+  id: string
+  name: string
+  fingerprint: string
+  createdAt: number
+  lastSeenAt?: number
+  lastIp?: string
+  paused?: boolean
+  permissions?: string
+  publicKey?: string
+}
+
+export interface AuditLogEntry {
+  id: string
+  timestamp: number
+  type: string
+  deviceId?: string
+  deviceName?: string
+  action?: string
+  details?: Record<string, unknown>
 }
 
 export interface DesktopMarketplaceSearchItem {

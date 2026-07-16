@@ -1,0 +1,30 @@
+manifest_version: 2
+name: wikipedia
+description: Wikipedia MCP服务器，提供与维基百科API的交互能力，包括文章搜索、内容获取、历史事件查询、图片检索等功能
+source: https://www.mcp-cn.com/server/131
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@shelm/wikipedia-mcp-server'
+auth:
+  type: none
+post_install: 'wikipedia MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: wikipedia
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@shelm/wikipedia-mcp-server'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

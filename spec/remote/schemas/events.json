@@ -1,0 +1,354 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/events.json",
+  "title": "Karna Remote Protocol Event Types",
+  "description": "WebSocket event type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "EventEnvelope": {
+      "type": "object",
+      "required": ["v", "id", "type", "ts"],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "const": 1,
+          "description": "Event envelope format version"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^evt_[a-zA-Z0-9]{16}$",
+          "description": "Unique event identifier"
+        },
+        "type": {
+          "type": "string",
+          "description": "Event type name"
+        },
+        "ts": {
+          "$ref": "common.json#/definitions/Timestamp",
+          "description": "Event timestamp from server"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId",
+          "description": "Session this event belongs to, if applicable"
+        },
+        "body": {
+          "type": "object",
+          "description": "Event-specific payload"
+        },
+        "mac": {
+          "$ref": "common.json#/definitions/Mac",
+          "description": "HMAC-SHA256 over event body for integrity verification"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Top-level envelope for all WebSocket events"
+    },
+    "ConnectionReadyEvent": {
+      "type": "object",
+      "required": ["serverInfo", "sessionId"],
+      "properties": {
+        "serverInfo": {
+          "$ref": "pairing.json#/definitions/ServerInfo"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId",
+          "description": "WebSocket session identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionStartedEvent": {
+      "type": "object",
+      "required": ["session"],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/SessionInfo"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionInfo": {
+      "type": "object",
+      "required": ["sessionId", "projectId", "status", "startedAt"],
+      "properties": {
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId"
+        },
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId"
+        },
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "starting", "thinking", "waiting_approval", "working", "error", "completed"]
+        },
+        "model": {
+          "type": "string"
+        },
+        "startedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "messageCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageDeltaEvent": {
+      "type": "object",
+      "required": ["messageId", "delta"],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^msg_[a-zA-Z0-9]{16}$"
+        },
+        "delta": {
+          "type": "string",
+          "description": "Incremental text content"
+        },
+        "isReasoning": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if this delta is thinking/reasoning content"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageCompleteEvent": {
+      "type": "object",
+      "required": ["messageId", "content"],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^msg_[a-zA-Z0-9]{16}$"
+        },
+        "content": {
+          "type": "string"
+        },
+        "reasoning": {
+          "type": ["string", "null"]
+        },
+        "usage": {
+          "$ref": "#/definitions/TokenUsage"
+        },
+        "finishReason": {
+          "type": "string",
+          "enum": ["stop", "length", "tool_calls", "error", "interrupted"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "TokenUsage": {
+      "type": "object",
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoningTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cacheReadTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cacheWriteTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "costUsd": {
+          "type": ["number", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolStartEvent": {
+      "type": "object",
+      "required": ["toolCallId", "toolName"],
+      "properties": {
+        "toolCallId": {
+          "type": "string",
+          "pattern": "^tool_[a-zA-Z0-9]{16}$"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "argsPreview": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolCompleteEvent": {
+      "type": "object",
+      "required": ["toolCallId", "toolName", "ok"],
+      "properties": {
+        "toolCallId": {
+          "type": "string",
+          "pattern": "^tool_[a-zA-Z0-9]{16}$"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resultPreview": {
+          "type": ["string", "null"]
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractionRequestEvent": {
+      "type": "object",
+      "required": ["interaction", "type"],
+      "properties": {
+        "interaction": {
+          "$ref": "interactions.json#/definitions/Interaction"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["approval", "clarification", "secret", "sudo"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractionResolvedEvent": {
+      "type": "object",
+      "required": ["interactionId", "resolved"],
+      "properties": {
+        "interactionId": {
+          "$ref": "common.json#/definitions/InteractionId"
+        },
+        "resolved": {
+          "type": "boolean"
+        },
+        "approved": {
+          "type": ["boolean", "null"]
+        },
+        "response": {
+          "type": ["string", "object", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunUpdateEvent": {
+      "type": "object",
+      "required": ["runId", "status"],
+      "properties": {
+        "runId": {
+          "$ref": "common.json#/definitions/RunId"
+        },
+        "status": {
+          "$ref": "runs.json#/definitions/RunStatus"
+        },
+        "currentNodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeUpdateEvent": {
+      "type": "object",
+      "required": ["nodeId", "nodeType", "status"],
+      "properties": {
+        "nodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "nodeType": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "skipped"]
+        },
+        "label": {
+          "type": "string"
+        },
+        "outputPreview": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "FileUploadProgressEvent": {
+      "type": "object",
+      "required": ["fileId", "bytesUploaded", "totalBytes"],
+      "properties": {
+        "fileId": {
+          "$ref": "common.json#/definitions/FileId"
+        },
+        "bytesUploaded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionErrorEvent": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "recoverable": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventType": {
+      "type": "string",
+      "enum": [
+        "connection.ready",
+        "session.started",
+        "session.status",
+        "message.delta",
+        "message.complete",
+        "tool.start",
+        "tool.complete",
+        "interaction.request",
+        "interaction.resolved",
+        "run.update",
+        "node.update",
+        "file.upload_progress",
+        "file.download_ready",
+        "session.error",
+        "ping",
+        "pong"
+      ]
+    }
+  }
+}

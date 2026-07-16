@@ -122,7 +122,7 @@ T = TypeVar("T")
 
 DEFAULT_DB_PATH = get_hermes_home() / "state.db"
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 # Cap on user-controlled FTS5 query input before regex/sanitizer processing.
 # Search queries do not need to be arbitrarily large, and bounding them keeps
@@ -782,6 +782,95 @@ CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_compression_locks_expires ON compression_locks(expires_at);
+
+CREATE TABLE IF NOT EXISTS mode_sessions (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT,
+    workspace_id TEXT NOT NULL,
+    project_id TEXT,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    state_ref TEXT NOT NULL,
+    active_flow_id TEXT,
+    active_run_id TEXT,
+    parent_session_id TEXT,
+    forked_from_checkpoint_id TEXT,
+    current_phase TEXT DEFAULT '',
+    state_version INTEGER NOT NULL DEFAULT 1,
+    expected_version INTEGER NOT NULL DEFAULT 1,
+    token_usage INTEGER NOT NULL DEFAULT 0,
+    cost_estimate REAL NOT NULL DEFAULT 0.0,
+    turn_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT,
+    failed_at TEXT,
+    cancelled_at TEXT,
+    error_message TEXT,
+    error_code TEXT,
+    metadata TEXT DEFAULT '{}',
+    FOREIGN KEY (conversation_id) REFERENCES sessions(id) ON DELETE SET NULL,
+    FOREIGN KEY (parent_session_id) REFERENCES mode_sessions(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS mode_events (
+    id TEXT PRIMARY KEY,
+    mode_session_id TEXT NOT NULL REFERENCES mode_sessions(id) ON DELETE CASCADE,
+    mode TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    state_version INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    payload TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mode_transitions (
+    id TEXT PRIMARY KEY,
+    from_mode_session_id TEXT NOT NULL REFERENCES mode_sessions(id) ON DELETE CASCADE,
+    to_mode_session_id TEXT NOT NULL REFERENCES mode_sessions(id) ON DELETE CASCADE,
+    from_mode TEXT NOT NULL,
+    to_mode TEXT NOT NULL,
+    objectives TEXT NOT NULL DEFAULT '[]',
+    constraints TEXT NOT NULL DEFAULT '[]',
+    artifact_refs TEXT NOT NULL DEFAULT '[]',
+    evidence_refs TEXT NOT NULL DEFAULT '[]',
+    decisions TEXT NOT NULL DEFAULT '[]',
+    unresolved_items TEXT NOT NULL DEFAULT '[]',
+    excluded_context TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    confirmed_by_user INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS mode_checkpoints (
+    id TEXT PRIMARY KEY,
+    mode_session_id TEXT NOT NULL REFERENCES mode_sessions(id) ON DELETE CASCADE,
+    state_ref TEXT NOT NULL,
+    state_version INTEGER NOT NULL,
+    label TEXT,
+    created_at TEXT NOT NULL,
+    metadata TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS mode_approvals (
+    id TEXT PRIMARY KEY,
+    mode_session_id TEXT NOT NULL REFERENCES mode_sessions(id) ON DELETE CASCADE,
+    proposal_id TEXT NOT NULL,
+    approval_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    requested_at TEXT NOT NULL,
+    resolved_at TEXT,
+    resolved_by TEXT,
+    payload TEXT NOT NULL DEFAULT '{}',
+    resolution TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_mode_sessions_conversation ON mode_sessions(conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mode_sessions_workspace ON mode_sessions(workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mode_sessions_project ON mode_sessions(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mode_sessions_status ON mode_sessions(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mode_events_sequence ON mode_events(mode_session_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_mode_checkpoints_session ON mode_checkpoints(mode_session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mode_approvals_session ON mode_approvals(mode_session_id, status);
 """
 
 # Indexes that reference columns added in later schema versions must be

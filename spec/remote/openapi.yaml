@@ -1,0 +1,1147 @@
+openapi: 3.1.0
+info:
+  title: Karna Remote API
+  description: |
+    Karna Remote Protocol v1 REST API.
+    
+    All requests and responses are wrapped in command/response envelopes with
+    ECDSA P-256 signatures (ES256) for authentication and integrity, and
+    AES-256-GCM encryption for sensitive payloads. HMAC-SHA256 (HS256) is used
+    for response integrity verification.
+    
+    Protocol version: 1.x
+  version: 1.0.0
+  contact:
+    name: Karna Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: /remote/v1
+    description: Karna Remote API v1 endpoint
+
+tags:
+  - name: Pairing
+    description: Device pairing and authentication
+  - name: Capabilities
+    description: Server capability discovery
+  - name: Sessions
+    description: Conversation session management
+  - name: Projects
+    description: Project management
+  - name: Conversations
+    description: Conversation and message history
+  - name: Runs
+    description: Workflow run management
+  - name: Interactions
+    description: Approval and clarification interactions
+  - name: Files
+    description: File upload and download
+  - name: Devices
+    description: Paired device management
+
+paths:
+  /pairing/offer:
+    get:
+      tags:
+        - Pairing
+      summary: Get a new pairing offer for QR code display
+      description: Generates a new pairing offer containing the server's public key and connection details. This data is encoded in the QR code scanned by the client device.
+      operationId: getPairingOffer
+      parameters:
+        - name: X-Pairing-Offer-Id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Optional existing offer ID to refresh
+      responses:
+        '200':
+          description: Pairing offer ready for QR encoding
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/pairing.json#/definitions/PairingOffer'
+        '429':
+          description: Too many pairing offers requested
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /pairing/initiate:
+    post:
+      tags:
+        - Pairing
+      summary: Initiate pairing with client credentials
+      description: Client initiates pairing after scanning the QR code, providing its public key and device information.
+      operationId: initiatePairing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/pairing.json#/definitions/PairingInitiateRequest'
+      responses:
+        '200':
+          description: Pairing challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/pairing.json#/definitions/PairingChallenge'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Offer not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /pairing/challenge:
+    post:
+      tags:
+        - Pairing
+      summary: Respond to pairing challenge
+      description: Client signs the challenge nonce with its private key to prove possession.
+      operationId: respondToChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/pairing.json#/definitions/PairingChallengeResponse'
+      responses:
+        '200':
+          description: Pairing confirmed, session token issued
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/pairing.json#/definitions/PairingConfirmResponse'
+        '401':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Challenge not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /capabilities:
+    get:
+      tags:
+        - Capabilities
+      summary: Get server capabilities
+      description: Returns server information and supported capabilities.
+      operationId: getCapabilities
+      security:
+        - DeviceAuth: []
+      responses:
+        '200':
+          description: Server capabilities
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/pairing.json#/definitions/ServerInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Create a new session
+      description: Creates a new agent session within a project.
+      operationId: createSession
+      security:
+        - DeviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/commands.json#/definitions/SessionCreateCommand'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/events.json#/definitions/SessionInfo'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+    get:
+      tags:
+        - Sessions
+      summary: List active sessions
+      description: Lists currently active sessions for this device.
+      operationId: listSessions
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            $ref: 'schemas/common.json#/definitions/ProjectId'
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of active sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - sessions
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: 'schemas/events.json#/definitions/SessionInfo'
+                  pagination:
+                    $ref: 'schemas/common.json#/definitions/Pagination'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /sessions/{sessionId}:
+    get:
+      tags:
+        - Sessions
+      summary: Get session details
+      description: Retrieves details for a specific session.
+      operationId: getSession
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/events.json#/definitions/SessionInfo'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+    delete:
+      tags:
+        - Sessions
+      summary: Delete/close a session
+      description: Terminates and deletes a session.
+      operationId: deleteSession
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+      responses:
+        '204':
+          description: Session deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /sessions/{sessionId}/messages:
+    post:
+      tags:
+        - Sessions
+      summary: Send a message to the session
+      description: Sends a user message to the agent session. Responses are streamed via WebSocket events.
+      operationId: sendMessage
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/commands.json#/definitions/MessageSendCommand'
+      responses:
+        '202':
+          description: Message accepted for processing
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /sessions/{sessionId}/interrupt:
+    post:
+      tags:
+        - Sessions
+      summary: Interrupt a running session
+      description: Requests cancellation of the currently running operation.
+      operationId: interruptSession
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+      responses:
+        '202':
+          description: Interrupt requested
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: List projects
+      description: Lists all accessible projects.
+      operationId: listProjects
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Project list
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/projects.json#/definitions/ProjectListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project details
+      description: Retrieves details for a specific project.
+      operationId: getProject
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/ProjectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/projects.json#/definitions/Project'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /projects/{projectId}/conversations:
+    get:
+      tags:
+        - Conversations
+      summary: List conversations in a project
+      description: Lists conversations within a project.
+      operationId: listConversations
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/ProjectId'
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Conversation list
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/conversations.json#/definitions/ConversationListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /conversations/{conversationId}:
+    get:
+      tags:
+        - Conversations
+      summary: Get conversation details
+      description: Retrieves conversation metadata.
+      operationId: getConversation
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/ConversationId'
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/conversations.json#/definitions/Conversation'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /conversations/{conversationId}/messages:
+    get:
+      tags:
+        - Conversations
+      summary: Get messages in a conversation
+      description: Retrieves message history for a conversation.
+      operationId: getMessages
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/ConversationId'
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Message list
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/conversations.json#/definitions/MessageListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /projects/{projectId}/runs:
+    get:
+      tags:
+        - Runs
+      summary: List workflow runs
+      description: Lists workflow runs in a project.
+      operationId: listRuns
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/ProjectId'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: 'schemas/runs.json#/definitions/RunStatus'
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Run list
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/runs.json#/definitions/RunListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /runs/{runId}:
+    get:
+      tags:
+        - Runs
+      summary: Get run details
+      description: Retrieves detailed information about a workflow run including node statuses.
+      operationId: getRun
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/RunId'
+      responses:
+        '200':
+          description: Run details
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/runs.json#/definitions/RunDetailResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+    post:
+      tags:
+        - Runs
+      summary: Cancel a run
+      description: Requests cancellation of a running workflow.
+      operationId: cancelRun
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/RunId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/commands.json#/definitions/RunCancelCommand'
+      responses:
+        '202':
+          description: Cancellation requested
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /interactions:
+    get:
+      tags:
+        - Interactions
+      summary: List pending interactions
+      description: Lists pending approval/clarification requests.
+      operationId: listInteractions
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            $ref: 'schemas/common.json#/definitions/SessionId'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: 'schemas/interactions.json#/definitions/InteractionStatus'
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Interaction list
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/interactions.json#/definitions/InteractionListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /interactions/{interactionId}/respond:
+    post:
+      tags:
+        - Interactions
+      summary: Respond to an interaction
+      description: Submits a response to an approval or clarification request.
+      operationId: respondToInteraction
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: interactionId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/InteractionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas/commands.json#/definitions/InteractionRespondCommand'
+      responses:
+        '200':
+          description: Response accepted
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Interaction not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /files/upload-session:
+    post:
+      tags:
+        - Files
+      summary: Initiate a resumable upload session
+      description: Creates an upload session for chunked file transfer.
+      operationId: createUploadSession
+      security:
+        - DeviceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - size
+                - mimeType
+              properties:
+                name:
+                  type: string
+                size:
+                  type: integer
+                  minimum: 1
+                mimeType:
+                  type: string
+                projectId:
+                  $ref: 'schemas/common.json#/definitions/ProjectId'
+                conversationId:
+                  $ref: 'schemas/common.json#/definitions/ConversationId'
+      responses:
+        '201':
+          description: Upload session created
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/files.json#/definitions/UploadSession'
+        '400':
+          description: Invalid request or file too large
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /files/upload-session/{uploadId}/chunk:
+    put:
+      tags:
+        - Files
+      summary: Upload a file chunk
+      description: Uploads a single chunk of a resumable file upload.
+      operationId: uploadChunk
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^upload_[a-zA-Z0-9]{16}$
+        - name: Content-Range
+          in: header
+          required: true
+          schema:
+            type: string
+            description: Byte range (e.g., bytes 0-1048575/5242880)
+        - name: X-Chunk-SHA256
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Chunk uploaded, resume info
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/files.json#/definitions/UploadSession'
+        '308':
+          description: Resume incomplete, next offset provided
+          headers:
+            Range:
+              schema:
+                type: string
+              description: Next byte offset
+        '400':
+          description: Invalid chunk
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '409':
+          description: Chunk out of order, check current offset
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/files.json#/definitions/UploadSession'
+
+  /files/upload-session/{uploadId}/complete:
+    post:
+      tags:
+        - Files
+      summary: Complete an upload session
+      description: Finalizes the upload after all chunks are received.
+      operationId: completeUpload
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^upload_[a-zA-Z0-9]{16}$
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sha256:
+                  type: string
+                  pattern: ^[a-fA-F0-9]{64}$
+      responses:
+        '200':
+          description: Upload complete, file metadata
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/files.json#/definitions/File'
+        '400':
+          description: Incomplete upload or hash mismatch
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /files/{fileId}:
+    get:
+      tags:
+        - Files
+      summary: Get file metadata
+      description: Retrieves file metadata without the content.
+      operationId: getFile
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/FileId'
+      responses:
+        '200':
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/files.json#/definitions/File'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /files/{fileId}/download:
+    get:
+      tags:
+        - Files
+      summary: Download file content
+      description: Downloads file content. Supports Range headers for resumable downloads.
+      operationId: downloadFile
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/FileId'
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Full file content
+          headers:
+            Content-Type:
+              schema:
+                type: string
+            Content-Length:
+              schema:
+                type: integer
+            X-File-SHA256:
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: Partial content
+          headers:
+            Content-Range:
+              schema:
+                type: string
+            Content-Length:
+              schema:
+                type: integer
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /devices:
+    get:
+      tags:
+        - Devices
+      summary: List paired devices
+      description: Lists all paired devices (admin only or self).
+      operationId: listDevices
+      security:
+        - DeviceAuth: []
+      responses:
+        '200':
+          description: Device list
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - devices
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: 'schemas/pairing.json#/definitions/Device'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+  /devices/{deviceId}/revoke:
+    post:
+      tags:
+        - Devices
+      summary: Revoke a paired device
+      description: Revokes access for a paired device.
+      operationId: revokeDevice
+      security:
+        - DeviceAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            $ref: 'schemas/common.json#/definitions/DeviceId'
+      responses:
+        '204':
+          description: Device revoked
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas/common.json#/definitions/Error'
+
+components:
+  securitySchemes:
+    DeviceAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Device authentication using the session token obtained during pairing.
+        All requests must also include:
+        - X-Device-Id header with the device ID
+        - X-Signature header with ES256 signature of request body
+        - X-Timestamp header with request timestamp (ms)
+        - X-Nonce header with unique request nonce
+  parameters:
+    DeviceIdHeader:
+      name: X-Device-Id
+      in: header
+      required: true
+      schema:
+        $ref: 'schemas/common.json#/definitions/DeviceId'
+    SignatureHeader:
+      name: X-Signature
+      in: header
+      required: true
+      schema:
+        type: string
+      description: ES256 signature (base64url encoded)
+    TimestampHeader:
+      name: X-Timestamp
+      in: header
+      required: true
+      schema:
+        type: integer
+        format: int64
+    NonceHeader:
+      name: X-Nonce
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 64

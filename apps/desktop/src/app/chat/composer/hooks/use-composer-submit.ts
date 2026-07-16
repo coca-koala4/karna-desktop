@@ -1,15 +1,25 @@
 import { type RefObject, useEffect, useRef } from 'react'
 
+import { isAttachmentParsing } from '@/lib/ingest-api'
 import { SLASH_COMMAND_RE } from '@/lib/chat-runtime'
 import { triggerHaptic } from '@/lib/haptics'
 import { clearComposerAttachments, clearSessionDraft, type ComposerAttachment } from '@/store/composer'
 import { resetBrowseState } from '@/store/composer-input-history'
 import { enqueueQueuedPrompt, type QueuedPromptEntry } from '@/store/composer-queue'
+import { notify } from '@/store/notifications'
 
 import { cloneAttachments, type QueueEditState } from '../composer-utils'
 import { onComposerSubmitRequest } from '../focus'
 import { composerPlainText } from '../rich-editor'
 import type { ChatBarProps } from '../types'
+
+function hasParsingAttachments(attachments: ComposerAttachment[]): boolean {
+  return attachments.some(att => isAttachmentParsing(att.parseState))
+}
+
+function hasFailedParseAttachments(attachments: ComposerAttachment[]): boolean {
+  return attachments.some(att => att.parseState === 'failed')
+}
 
 interface UseComposerSubmitArgs {
   activeQueueSessionKey: string | null
@@ -129,6 +139,16 @@ export function useComposerSubmit({
 
     const text = draftRef.current
     const payloadPresent = text.trim().length > 0 || attachments.length > 0
+
+    if (payloadPresent && hasParsingAttachments(attachments)) {
+      notify({
+        kind: 'warning',
+        title: 'Documents still parsing',
+        message: 'Please wait for document parsing to complete before sending.'
+      })
+      focusInput()
+      return
+    }
 
     if (queueEdit) {
       exitQueuedEdit('save')

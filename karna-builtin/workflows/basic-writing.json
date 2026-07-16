@@ -1,0 +1,25 @@
+{
+  "id": "builtin.basic-writing",
+  "project_id": "global-workflows",
+  "name": "基础写作流程",
+  "description": "输入→大纲规划→写作→润色→输出的线性流程",
+  "mode": "canvas",
+  "builtin": true,
+  "template_version": 1,
+  "nodes": [
+    { "id": "input_1", "type": "input_text", "position": { "x": 100, "y": 300 }, "data": { "label": "输入", "nodeType": "input_text", "isStart": true, "inputText": "" } },
+    { "id": "agent_2", "type": "agent", "position": { "x": 380, "y": 300 }, "data": { "label": "大纲规划师", "nodeType": "agent", "agent_id": "outline_planner" } },
+    { "id": "agent_3", "type": "agent", "position": { "x": 700, "y": 300 }, "data": { "label": "章节撰写师", "nodeType": "agent", "agent_id": "chapter_writer" } },
+    { "id": "agent_4", "type": "agent", "position": { "x": 1020, "y": 300 }, "data": { "label": "文词润色师", "nodeType": "agent", "agent_id": "style_polisher" } },
+    { "id": "final_output_5", "type": "final_output", "position": { "x": 1340, "y": 300 }, "data": { "label": "输出", "nodeType": "final_output" } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "input_1", "target": "agent_2", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e2", "source": "agent_2", "target": "agent_3", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e3", "source": "agent_3", "target": "agent_4", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e4", "source": "agent_4", "target": "final_output_5", "sourceHandle": "out", "targetHandle": "in" }
+  ],
+  "limits": { "max_agents": 10, "max_parallel": 3, "max_loop": 3 },
+  "runtimeConfig": { "maxConcurrency": 3, "failurePolicy": "stop", "retryCount": 1 },
+  "knowledge_binding": { "enabled": true }
+}

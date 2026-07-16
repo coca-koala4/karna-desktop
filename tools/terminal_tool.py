@@ -46,6 +46,8 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 from utils import env_var_enabled
+from tools.capability_sandbox.scope_store import get_scope
+from tools.capability_sandbox.models import WorkspaceMode
 
 logger = logging.getLogger(__name__)
 
@@ -1237,6 +1239,41 @@ def _is_unusable_container_cwd(cwd: str) -> bool:
     return False
 
 
+_SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
+    "git status", "git diff", "git log", "git add", "git commit", "git pull", "git push",
+    "git ",
+    "npm test", "npm build", "npm lint", "npm install", "npm run test", "npm run build", "npm run lint",
+    "pnpm test", "pnpm build", "pnpm lint", "pnpm install", "pnpm run test", "pnpm run build", "pnpm run lint",
+    "yarn test", "yarn build", "yarn lint", "yarn install", "yarn run test", "yarn run build", "yarn run lint",
+    "npm ", "pnpm ", "yarn ",
+    "pytest", "python -m pytest", "python3 -m pytest",
+    "ls", "dir",
+    "cat ", "type ",
+)
+
+_BLOCKLIST_PATTERNS: tuple[str, ...] = (
+    "powershell",
+    "cmd",
+    "python -c", "python3 -c",
+    "node -e",
+    "rm -rf /", "rm -rf /*",
+    "format C:", "format c:",
+    "reg ", "regedit",
+    "net user", "net localgroup",
+)
+
+
+def _is_command_allowed(command: str) -> tuple[bool, str | None]:
+    cmd_lower = command.strip().lower()
+    for pattern in _BLOCKLIST_PATTERNS:
+        if pattern in cmd_lower:
+            return False, f"命令被安全策略阻止: 检测到高危命令模式 '{pattern}'"
+    for prefix in _SAFE_COMMAND_PREFIXES:
+        if cmd_lower.startswith(prefix.lower()):
+            return True, None
+    return False, "命令不在允许列表中。project_only模式下仅允许执行git、npm/pnpm/yarn（test/build/lint/install）、pytest、ls/dir、cat/type等安全命令。"
+
+
 def _get_env_config() -> Dict[str, Any]:
     """Get terminal environment configuration from environment variables."""
     # Default image with Python and Node.js for maximum compatibility
@@ -1374,7 +1411,8 @@ def _create_environment(env_type: str, image: str, cwd: str, timeout: int,
                         ssh_config: dict = None, container_config: dict = None,
                         local_config: dict = None,
                         task_id: str = "default",
-                        host_cwd: str = None):
+                        host_cwd: str = None,
+                        network: bool = True):
     """
     Create an execution environment for sandboxed command execution.
     
@@ -1388,6 +1426,7 @@ def _create_environment(env_type: str, image: str, cwd: str, timeout: int,
         container_config: Resource config for container backends (cpu, memory, disk, persistent)
         task_id: Task identifier for environment reuse and snapshot keying
         host_cwd: Optional host working directory to bind into Docker when explicitly enabled
+        network: Whether to enable network access (for Docker environments)
         
     Returns:
         Environment instance with execute() method
@@ -1425,6 +1464,7 @@ def _create_environment(env_type: str, image: str, cwd: str, timeout: int,
             run_as_host_user=cc.get("docker_run_as_host_user", False),
             extra_args=docker_extra_args,
             persist_across_processes=cc.get("docker_persist_across_processes", True),
+            network=network,
         )
     
     elif env_type == "singularity":
@@ -2048,11 +2088,39 @@ def terminal_tool(
         config = _get_env_config()
         env_type = config["env_type"]
 
+        scope = get_scope(session_id or task_id or "")
+        sandbox_hardened = False
+        if scope.mode == WorkspaceMode.project_only:
+            if not scope.allow_shell:
+                return json.dumps({
+                    "output": "",
+                    "exit_code": -1,
+                    "error": "当前处于'仅当前项目'模式，禁止执行终端命令。如需执行命令，请切换到'电脑授权模式'或'高危操作模式'。",
+                    "status": "blocked"
+                }, ensure_ascii=False)
+
+            allowed, reason = _is_command_allowed(command)
+            if not allowed:
+                return json.dumps({
+                    "output": "",
+                    "exit_code": -1,
+                    "error": reason,
+                    "status": "blocked"
+                }, ensure_ascii=False)
+
+            env_type = "docker"
+            sandbox_hardened = True
+            workspace_root = scope.workspace_root or os.getcwd()
+            cwd = "/workspace"
+            host_cwd = workspace_root
+
         # Use task_id for environment isolation. By default all subagent
         # task_ids collapse back to "default" so the top-level agent and
         # every delegate_task child share one container; only task_ids with
         # a registered env override (RL benchmarks) get isolated sandboxes.
         effective_task_id = _resolve_container_task_id(task_id)
+        if sandbox_hardened:
+            effective_task_id = f"{effective_task_id}_hardened"
 
         # Check per-task overrides (set by environments like TerminalBench2Env)
         # before falling back to global env var config. ``resolve_task_overrides``
@@ -2060,7 +2128,7 @@ def terminal_tool(
         # CWD-only override (which collapses ``effective_task_id`` to
         # ``"default"``) is still found under its originating session id while
         # isolation-keyed RL/benchmark overrides keep resolving as before.
-        overrides = resolve_task_overrides(task_id)
+        overrides = {} if sandbox_hardened else resolve_task_overrides(task_id)
         
         # Select image based on env type, with per-task override support
         if env_type == "docker":
@@ -2074,7 +2142,8 @@ def terminal_tool(
         else:
             image = ""
 
-        cwd = overrides.get("cwd") or config["cwd"]
+        if not sandbox_hardened:
+            cwd = overrides.get("cwd") or config["cwd"]
         # A per-task cwd override (registered by the gateway/TUI for workspace
         # tracking, or by RL/benchmark envs) wins over config["cwd"] — but
         # config["cwd"] was already sanitized for container backends in
@@ -2086,7 +2155,7 @@ def terminal_tool(
         # Valid in-container override paths (RL/benchmark sandboxes that set
         # cwd to /workspace, /root, etc.) are absolute non-host paths and pass
         # through untouched.
-        if env_type in _CONTAINER_BACKENDS and _is_unusable_container_cwd(cwd):
+        if env_type in _CONTAINER_BACKENDS and _is_unusable_container_cwd(cwd) and not sandbox_hardened:
             if cwd != config["cwd"]:
                 logger.info(
                     "Ignoring host/relative cwd override %r for %s backend "
@@ -2151,6 +2220,7 @@ def terminal_tool(
                     _creation_locks[effective_task_id] = threading.Lock()
                 task_lock = _creation_locks[effective_task_id]
 
+            docker_network = True
             with task_lock:
                 # Double-check after acquiring the per-task lock
                 with _env_lock:
@@ -2180,21 +2250,46 @@ def terminal_tool(
 
                         container_config = None
                         if env_type in {"docker", "singularity", "modal", "daytona"}:
-                            container_config = {
-                                "container_cpu": config.get("container_cpu", 1),
-                                "container_memory": config.get("container_memory", 5120),
-                                "container_disk": config.get("container_disk", 51200),
-                                "container_persistent": config.get("container_persistent", True),
-                                "modal_mode": config.get("modal_mode", "auto"),
-                                "docker_volumes": config.get("docker_volumes", []),
-                                "docker_mount_cwd_to_workspace": config.get("docker_mount_cwd_to_workspace", False),
-                                "docker_forward_env": config.get("docker_forward_env", []),
-                                "docker_env": config.get("docker_env", {}),
-                                "docker_run_as_host_user": config.get("docker_run_as_host_user", False),
-                                "docker_extra_args": config.get("docker_extra_args", []),
-                                "docker_persist_across_processes": config.get("docker_persist_across_processes", True),
-                                "docker_orphan_reaper": config.get("docker_orphan_reaper", True),
-                            }
+                            if sandbox_hardened:
+                                hardened_extra_args = [
+                                    "--read-only",
+                                    "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+                                    "--cap-drop=ALL",
+                                    "--security-opt=no-new-privileges",
+                                    "--pids-limit=256",
+                                ]
+                                container_config = {
+                                    "container_cpu": 1,
+                                    "container_memory": 2048,
+                                    "container_disk": 10240,
+                                    "container_persistent": False,
+                                    "modal_mode": config.get("modal_mode", "auto"),
+                                    "docker_volumes": [],
+                                    "docker_mount_cwd_to_workspace": True,
+                                    "docker_forward_env": [],
+                                    "docker_env": {},
+                                    "docker_run_as_host_user": False,
+                                    "docker_extra_args": hardened_extra_args,
+                                    "docker_persist_across_processes": False,
+                                    "docker_orphan_reaper": config.get("docker_orphan_reaper", True),
+                                }
+                                docker_network = scope.allow_network
+                            else:
+                                container_config = {
+                                    "container_cpu": config.get("container_cpu", 1),
+                                    "container_memory": config.get("container_memory", 5120),
+                                    "container_disk": config.get("container_disk", 51200),
+                                    "container_persistent": config.get("container_persistent", True),
+                                    "modal_mode": config.get("modal_mode", "auto"),
+                                    "docker_volumes": config.get("docker_volumes", []),
+                                    "docker_mount_cwd_to_workspace": config.get("docker_mount_cwd_to_workspace", False),
+                                    "docker_forward_env": config.get("docker_forward_env", []),
+                                    "docker_env": config.get("docker_env", {}),
+                                    "docker_run_as_host_user": config.get("docker_run_as_host_user", False),
+                                    "docker_extra_args": config.get("docker_extra_args", []),
+                                    "docker_persist_across_processes": config.get("docker_persist_across_processes", True),
+                                    "docker_orphan_reaper": config.get("docker_orphan_reaper", True),
+                                }
 
                         local_config = None
                         if env_type == "local":
@@ -2202,6 +2297,7 @@ def terminal_tool(
                                 "persistent": config.get("local_persistent", False),
                             }
 
+                        effective_host_cwd = host_cwd if sandbox_hardened else config.get("host_cwd")
                         new_env = _create_environment(
                             env_type=env_type,
                             image=image,
@@ -2211,7 +2307,8 @@ def terminal_tool(
                             container_config=container_config,
                             local_config=local_config,
                             task_id=effective_task_id,
-                            host_cwd=config.get("host_cwd"),
+                            host_cwd=effective_host_cwd,
+                            network=docker_network,
                         )
                     except ImportError as e:
                         return json.dumps({

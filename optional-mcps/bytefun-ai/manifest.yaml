@@ -1,0 +1,35 @@
+manifest_version: 2
+name: bytefun-ai
+description: ByteFun AI MCP服务 - 打通产品设计、UI设计、代码开发的服务平台
+source: https://www.mcp-cn.com/server/135
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - bytefun-ai-mcp
+auth:
+  type: api_key
+  env:
+  - name: BYTEFUN_AI_API_KEY
+    prompt: bytefun-ai API Key
+    required: true
+    secret: true
+post_install: 'bytefun-ai MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: bytefun-ai
+version: unresolved
+dependencies:
+  runtime: npm
+  package: bytefun-ai-mcp
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

@@ -1,0 +1,1797 @@
+[
+  {
+    "id": "feishu_docs",
+    "name": "feishu.docs",
+    "displayName": "飞书文档",
+    "description": "接入飞书云文档，支持文档搜索、内容读取和草稿写回。",
+    "category": "docs_storage",
+    "provider": "飞书",
+    "type": "oauth",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.2",
+    "phaseTitle": "增强版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "oauth",
+      "fields": [
+        {
+          "key": "appId",
+          "label": "App ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "appSecret",
+          "label": "App Secret",
+          "type": "password",
+          "required": false
+        },
+        {
+          "key": "tenantKey",
+          "label": "Tenant Key",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "feishu_docs.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "feishu_docs.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_docs",
+        "description": "搜索文档",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "read_doc",
+        "description": "读取文档内容",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "create_doc_draft",
+        "description": "创建文档草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "tencent_docs",
+    "name": "tencent.docs",
+    "displayName": "腾讯文档",
+    "description": "接入腾讯文档，支持在线文档检索、读取和草稿同步。",
+    "category": "docs_storage",
+    "provider": "腾讯文档",
+    "type": "oauth",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.2",
+    "phaseTitle": "增强版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "oauth",
+      "fields": [
+        {
+          "key": "clientId",
+          "label": "Client ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "clientSecret",
+          "label": "Client Secret",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "tencent_docs.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "tencent_docs.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_docs",
+        "description": "搜索文档",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "read_doc",
+        "description": "读取文档内容",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "sync_doc_draft",
+        "description": "同步文档草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "wechat_reading",
+    "name": "wechat.reading",
+    "displayName": "微信读书",
+    "description": "接入微信读书书架、划线和笔记，把阅读资料转成创作素材。",
+    "category": "research",
+    "provider": "微信读书",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.2",
+    "phaseTitle": "增强版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "cookie",
+          "label": "Cookie",
+          "type": "password",
+          "required": false
+        },
+        {
+          "key": "openId",
+          "label": "Open ID",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wechat_reading.read",
+        "label": "读取书架、划线与笔记",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "wechat_reading.write",
+        "label": "导出或同步读书笔记",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_books",
+        "description": "列出书架",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "search_highlights",
+        "description": "搜索划线",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "export_notes",
+        "description": "导出读书笔记",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "zotero_library",
+    "name": "zotero.library",
+    "displayName": "Zotero",
+    "description": "接入 Zotero 文献库、标签、笔记和引用元数据，用于研究资料管理。",
+    "category": "research",
+    "provider": "Zotero",
+    "type": "api_key",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.2",
+    "phaseTitle": "增强版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "apiKey",
+          "label": "API Key",
+          "type": "password",
+          "required": false
+        },
+        {
+          "key": "libraryId",
+          "label": "Library ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "libraryType",
+          "label": "Library Type",
+          "type": "text",
+          "required": false,
+          "placeholder": "user/group"
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "zotero.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "zotero.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_items",
+        "description": "搜索文献条目",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "read_item",
+        "description": "读取条目元数据",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "create_note",
+        "description": "创建资料笔记",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "arxiv_search",
+    "name": "arxiv.search",
+    "displayName": "arXiv",
+    "description": "检索 arXiv 论文、摘要和引用信息，用于资料考据与设定研究。",
+    "category": "research",
+    "provider": "arXiv",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.2",
+    "phaseTitle": "增强版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "none",
+      "fields": []
+    },
+    "permissions": [
+      {
+        "id": "arxiv.read",
+        "label": "检索公开论文资料",
+        "riskLevel": "low"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_papers",
+        "description": "搜索论文",
+        "riskLevel": "low",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "read_abstract",
+        "description": "读取论文摘要",
+        "riskLevel": "low",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "collect_paper",
+        "description": "收藏到研究资料",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": false,
+      "storesCredential": false,
+      "riskLevel": "low"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "feishu",
+    "name": "feishu.workspace",
+    "displayName": "飞书",
+    "description": "接入飞书消息、群组和协作工作流，支持检索与通知。",
+    "category": "collaboration",
+    "provider": "飞书",
+    "type": "oauth",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.3",
+    "phaseTitle": "协作版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "oauth",
+      "fields": [
+        {
+          "key": "appId",
+          "label": "App ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "appSecret",
+          "label": "App Secret",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "feishu.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "feishu.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_messages",
+        "description": "搜索消息",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "list_chats",
+        "description": "列出会话",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "send_message",
+        "description": "发送消息",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "dingtalk",
+    "name": "dingtalk.workspace",
+    "displayName": "钉钉",
+    "description": "接入钉钉群聊、待办和协作流程，支持消息检索与任务创建。",
+    "category": "collaboration",
+    "provider": "钉钉",
+    "type": "oauth",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.3",
+    "phaseTitle": "协作版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "oauth",
+      "fields": [
+        {
+          "key": "appKey",
+          "label": "App Key",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "appSecret",
+          "label": "App Secret",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "dingtalk.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "dingtalk.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_messages",
+        "description": "搜索消息",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "create_todo",
+        "description": "创建待办",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "send_message",
+        "description": "发送消息",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "wechat_work_bot",
+    "name": "wechat_work.bot",
+    "displayName": "企业微信机器人",
+    "description": "接入企业微信机器人通知和协作回调，用于团队消息触达。",
+    "category": "collaboration",
+    "provider": "企业微信",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.3",
+    "phaseTitle": "协作版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "webhook",
+      "fields": [
+        {
+          "key": "webhookUrl",
+          "label": "Webhook URL",
+          "type": "url",
+          "required": false
+        },
+        {
+          "key": "secret",
+          "label": "Signing Secret",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wechat_work.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "wechat_work.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "send_text",
+        "description": "发送文本通知",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "send_markdown",
+        "description": "发送 Markdown 通知",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "test_webhook",
+        "description": "测试机器人配置",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "mail",
+    "name": "mail.account",
+    "displayName": "邮箱",
+    "description": "接入邮箱搜索、阅读、草稿和发送流程，统一管理邮件协作。",
+    "category": "collaboration",
+    "provider": "邮箱",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.3",
+    "phaseTitle": "协作版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "password",
+      "fields": [
+        {
+          "key": "serverUrl",
+          "label": "IMAP/SMTP Server",
+          "type": "url",
+          "required": false
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "password",
+          "label": "Password",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "mail.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "mail.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_mail",
+        "description": "搜索邮件",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "read_mail",
+        "description": "读取邮件",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      {
+        "name": "draft_mail",
+        "description": "创建邮件草稿",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "send_mail",
+        "description": "发送邮件",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "calendar",
+    "name": "calendar.account",
+    "displayName": "日历",
+    "description": "接入日历查询、排期和提醒流程，用于创作日程与协作安排。",
+    "category": "collaboration",
+    "provider": "日历",
+    "type": "oauth",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.3",
+    "phaseTitle": "协作版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "oauth",
+      "fields": [
+        {
+          "key": "provider",
+          "label": "Provider",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "accessToken",
+          "label": "Access Token",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "calendar.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "calendar.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_events",
+        "description": "列出日程",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "find_free_time",
+        "description": "查找空闲时间",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "create_event",
+        "description": "创建日程",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "baidu_map",
+    "name": "baidu.map",
+    "displayName": "百度地图",
+    "description": "接入百度地图地点、路线和周边环境资料，用于场景真实性补充。",
+    "category": "scene_reality",
+    "provider": "百度地图",
+    "type": "api_key",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.4",
+    "phaseTitle": "场景资料版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "ak",
+          "label": "AK",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "baidu_map.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_place",
+        "description": "搜索地点",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "get_route",
+        "description": "查询路线",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "nearby_context",
+        "description": "生成周边环境资料",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "amap",
+    "name": "amap.map",
+    "displayName": "高德地图",
+    "description": "接入高德地图地点、路线、POI 和城市资料，用于场景考据。",
+    "category": "scene_reality",
+    "provider": "高德地图",
+    "type": "api_key",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V0.4",
+    "phaseTitle": "场景资料版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "key",
+          "label": "Key",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "amap.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_poi",
+        "description": "搜索 POI",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "route_plan",
+        "description": "路线规划",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "city_context",
+        "description": "获取城市资料",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "tencent_location",
+    "name": "tencent.location",
+    "displayName": "腾讯位置服务",
+    "description": "接入腾讯位置服务地点、路线和地理资料，用于现实场景素材。",
+    "category": "scene_reality",
+    "provider": "腾讯位置服务",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V0.4",
+    "phaseTitle": "场景资料版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "key",
+          "label": "Key",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "tencent_location.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_place",
+        "description": "搜索地点",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "route_plan",
+        "description": "路线规划",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "reverse_geocode",
+        "description": "逆地理编码",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "wechat_official",
+    "name": "wechat.official",
+    "displayName": "微信公众号",
+    "description": "接入微信公众号草稿、素材和发布流程，支持内容发布前准备。",
+    "category": "publishing",
+    "provider": "微信公众号",
+    "type": "api_key",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V1.0",
+    "phaseTitle": "发布生态版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "appId",
+          "label": "App ID",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "appSecret",
+          "label": "App Secret",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wechat_official.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "wechat_official.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_materials",
+        "description": "列出素材",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "create_draft",
+        "description": "创建草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "publish_article",
+        "description": "发布文章",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "zhihu",
+    "name": "zhihu.publisher",
+    "displayName": "知乎",
+    "description": "接入知乎话题、草稿、回答和文章发布流程。",
+    "category": "publishing",
+    "provider": "知乎",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V1.0",
+    "phaseTitle": "发布生态版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "cookie",
+      "fields": [
+        {
+          "key": "cookie",
+          "label": "Cookie",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "zhihu.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "zhihu.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "search_topics",
+        "description": "搜索话题",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "create_draft",
+        "description": "创建草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "publish_post",
+        "description": "发布内容",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "xiaohongshu",
+    "name": "xiaohongshu.publisher",
+    "displayName": "小红书",
+    "description": "接入小红书笔记草稿、素材检查和发布准备流程。",
+    "category": "publishing",
+    "provider": "小红书",
+    "type": "api_key",
+    "priority": "B",
+    "status": "experimental",
+    "phase": "V1.0",
+    "phaseTitle": "发布生态版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "cookie",
+      "fields": [
+        {
+          "key": "cookie",
+          "label": "Cookie",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "xiaohongshu.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "xiaohongshu.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "check_assets",
+        "description": "检查素材",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "create_note_draft",
+        "description": "创建笔记草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "schedule_note",
+        "description": "排期笔记",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "wordpress",
+    "name": "wordpress.publisher",
+    "displayName": "WordPress",
+    "description": "接入 WordPress 站点文章、分类、草稿和发布流程。",
+    "category": "publishing",
+    "provider": "WordPress",
+    "type": "api_key",
+    "priority": "A",
+    "status": "experimental",
+    "phase": "V1.0",
+    "phaseTitle": "发布生态版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "siteUrl",
+          "label": "Site URL",
+          "type": "url",
+          "required": false
+        },
+        {
+          "key": "username",
+          "label": "Username",
+          "type": "text",
+          "required": false
+        },
+        {
+          "key": "appPassword",
+          "label": "Application Password",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "wordpress.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "wordpress.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_posts",
+        "description": "列出文章",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "create_post",
+        "description": "创建文章",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "publish_post",
+        "description": "发布内容",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  },
+  {
+    "id": "substack",
+    "name": "substack.publisher",
+    "displayName": "Substack",
+    "description": "接入 Substack newsletter 草稿、订阅分组和发布流程。",
+    "category": "publishing",
+    "provider": "Substack",
+    "type": "api_key",
+    "priority": "C",
+    "status": "experimental",
+    "phase": "V1.0",
+    "phaseTitle": "发布生态版",
+    "interfaceStatus": "stubbed",
+    "auth": {
+      "mode": "api_key",
+      "fields": [
+        {
+          "key": "publicationUrl",
+          "label": "Publication URL",
+          "type": "url",
+          "required": false
+        },
+        {
+          "key": "apiKey",
+          "label": "API Key",
+          "type": "password",
+          "required": false
+        }
+      ]
+    },
+    "permissions": [
+      {
+        "id": "substack.read",
+        "label": "读取与检索资料",
+        "riskLevel": "medium"
+      },
+      {
+        "id": "substack.write",
+        "label": "写入、发送或发布内容",
+        "riskLevel": "high"
+      }
+    ],
+    "toolsPreview": [
+      {
+        "name": "list_drafts",
+        "description": "列出草稿",
+        "riskLevel": "medium",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "create_newsletter_draft",
+        "description": "创建 newsletter 草稿",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "publish_newsletter",
+        "description": "发布 newsletter",
+        "riskLevel": "high",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "content"
+          ]
+        }
+      }
+    ],
+    "dataPolicy": {
+      "localOnly": false,
+      "uploadsUserData": true,
+      "storesCredential": true,
+      "riskLevel": "medium"
+    },
+    "docsUrl": ""
+  }
+]

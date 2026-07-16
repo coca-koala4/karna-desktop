@@ -79,6 +79,12 @@ function SidebarSectionHeader({
   )
 }
 
+interface ProjectCategoryInfo {
+  categoryLabel?: string
+  categorySubLabel?: string
+  isLegacy?: boolean
+}
+
 interface SidebarSessionsSectionProps {
   label: string
   open: boolean
@@ -91,7 +97,7 @@ interface SidebarSessionsSectionProps {
   onArchiveSession: (sessionId: string) => void
   onBranchSession?: (sessionId: string, profile?: string) => void
   onTogglePin: (sessionId: string) => void
-  onNewSessionInWorkspace?: (path: null | string) => void
+  onNewSessionInWorkspace?: (path: null | string, opts?: { follow?: boolean }) => void
   pinned: boolean
   rootClassName?: string
   contentClassName?: string
@@ -135,6 +141,8 @@ interface SidebarSessionsSectionProps {
   // Rendered atop the entered-project body (a "back to overview" row).
   projectBackRow?: React.ReactNode
   dndSensors?: ReturnType<typeof useSensors>
+  // Project category info map for displaying labels on project rows
+  projectCategoryMap?: Map<string, ProjectCategoryInfo>
 }
 
 export function SidebarSessionsSection({
@@ -174,7 +182,8 @@ export function SidebarSessionsSection({
   onReorderSessions,
   onReorderProjects,
   projectBackRow,
-  dndSensors
+  dndSensors,
+  projectCategoryMap
 }: SidebarSessionsSectionProps) {
   const sectionOpen = collapsible ? open : true
   const hasGroupedSessions = Boolean(groups?.some(group => group.sessions.length > 0))
@@ -265,17 +274,23 @@ export function SidebarSessionsSection({
     const projectsDraggable = projectOverview.length > 1 && !!onReorderProjects
     const Row = projectsDraggable ? SortableProjectOverviewRow : ProjectOverviewRow
 
-    const rows = projectOverview.map(project => (
-      <Row
-        activeProjectId={activeProjectId}
-        key={project.id}
-        onEnter={onEnterProject}
-        onNewSession={onNewSessionInWorkspace}
-        previewSessions={project.path ? projectOverviewPreviews?.[project.path] : undefined}
-        project={project}
-        renderRows={renderRows}
-      />
-    ))
+    const rows = projectOverview.map(project => {
+      const categoryInfo = projectCategoryMap?.get(project.id)
+      return (
+        <Row
+          activeProjectId={activeProjectId}
+          key={project.id}
+          onEnter={onEnterProject}
+          onNewSession={onNewSessionInWorkspace}
+          previewSessions={project.path ? projectOverviewPreviews?.[project.path] : undefined}
+          project={project}
+          renderRows={renderRows}
+          categoryLabel={categoryInfo?.categoryLabel}
+          categorySubLabel={categoryInfo?.categorySubLabel}
+          isLegacy={categoryInfo?.isLegacy}
+        />
+      )
+    })
 
     inner =
       projectsDraggable && onReorderProjects ? (

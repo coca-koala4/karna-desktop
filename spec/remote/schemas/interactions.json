@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/interactions.json",
+  "title": "Karna Remote Protocol Interaction Types",
+  "description": "Interaction and approval type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "InteractionType": {
+      "type": "string",
+      "enum": ["approval", "clarification", "secret", "sudo", "permission"],
+      "description": "Type of interaction request"
+    },
+    "InteractionStatus": {
+      "type": "string",
+      "enum": ["pending", "approved", "denied", "expired", "cancelled", "responded"],
+      "description": "Current status of an interaction request"
+    },
+    "Interaction": {
+      "type": "object",
+      "required": ["interactionId", "type", "status", "title", "createdAt", "expiresAt"],
+      "properties": {
+        "interactionId": {
+          "$ref": "common.json#/definitions/InteractionId"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId"
+        },
+        "runId": {
+          "$ref": "common.json#/definitions/RunId"
+        },
+        "nodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "toolCallId": {
+          "type": ["string", "null"],
+          "pattern": "^tool_[a-zA-Z0-9]{16}$"
+        },
+        "type": {
+          "$ref": "#/definitions/InteractionType"
+        },
+        "status": {
+          "$ref": "#/definitions/InteractionStatus"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": ["string", "null"],
+          "maxLength": 5000
+        },
+        "prompt": {
+          "type": ["string", "null"],
+          "description": "Clarification question text, for clarification type"
+        },
+        "command": {
+          "type": ["string", "null"],
+          "description": "The command/tool being executed, for approval/sudo type"
+        },
+        "args": {
+          "type": ["object", "null"],
+          "description": "Tool arguments for approval requests"
+        },
+        "envVar": {
+          "type": ["string", "null"],
+          "description": "Environment variable name for secret requests"
+        },
+        "secretPrompt": {
+          "type": ["string", "null"],
+          "description": "Prompt text for secret input"
+        },
+        "choices": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Multiple choice options for clarification"
+        },
+        "allowRemember": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the user can choose to remember this decision"
+        },
+        "allowPermanent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to allow permanent approval for this tool"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 300000,
+          "description": "Timeout in milliseconds before auto-expiry"
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "expiresAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "respondedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "response": {
+          "type": ["string", "object", "null"],
+          "description": "User's response data"
+        },
+        "approved": {
+          "type": ["boolean", "null"]
+        },
+        "rememberChoice": {
+          "type": ["boolean", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractionListResponse": {
+      "type": "object",
+      "required": ["interactions"],
+      "properties": {
+        "interactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Interaction"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

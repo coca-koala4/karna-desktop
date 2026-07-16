@@ -4,7 +4,7 @@ import { KbdCombo } from '@/components/ui/kbd'
 import { Tip } from '@/components/ui/tooltip'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
-import { AudioLines, iconSize, Layers3, Loader2, Square, SteeringWheel, Volume2, VolumeX } from '@/lib/icons'
+import { AudioLines, Brain, iconSize, Layers3, Loader2, RefreshCw, Square, SteeringWheel } from '@/lib/icons'
 import { formatCombo } from '@/lib/keybinds/combo'
 import { cn } from '@/lib/utils'
 
@@ -17,10 +17,6 @@ export const GHOST_ICON_BTN = cn(
   ICON_BTN,
   'text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground'
 )
-// Send/voice-conversation primary: solid foreground-on-background circle
-// (reads as black-on-white in light mode, white-on-black in dark mode) to
-// match the reference composer's high-contrast CTA. Keeps the pill itself
-// neutral and lets the action visually dominate the row.
 export const PRIMARY_ICON_BTN = cn(
   'size-(--composer-control-primary-size,var(--composer-control-size)) shrink-0 rounded-full p-0',
   'bg-foreground text-background hover:bg-foreground/90',
@@ -39,7 +35,6 @@ interface ConversationProps {
 }
 
 export function ComposerControls({
-  autoSpeak,
   busy,
   busyAction,
   canSteer,
@@ -47,14 +42,15 @@ export function ComposerControls({
   compactModelPill = false,
   conversation,
   disabled,
+  enhanced = false,
+  enhancing = false,
   hasComposerPayload,
   state,
   voiceStatus,
   onDictate,
-  onSteer,
-  onToggleAutoSpeak
+  onEnhance,
+  onSteer
 }: {
-  autoSpeak: boolean
   busy: boolean
   busyAction: 'queue' | 'stop'
   canSteer: boolean
@@ -62,12 +58,14 @@ export function ComposerControls({
   compactModelPill?: boolean
   conversation: ConversationProps
   disabled: boolean
+  enhanced?: boolean
+  enhancing?: boolean
   hasComposerPayload: boolean
   state: ChatBarState
   voiceStatus: VoiceStatus
   onDictate: () => void
+  onEnhance: () => void
   onSteer: () => void
-  onToggleAutoSpeak: () => void
 }) {
   const { t } = useI18n()
   const c = t.composer
@@ -90,8 +88,29 @@ export function ComposerControls({
   return (
     <div className="ml-auto flex shrink-0 items-center gap-(--composer-control-gap)">
       <ModelPill compact={compactModelPill} disabled={disabled} model={state.model} />
-      {/* While the agent runs and the user is typing, steer takes over the mic's
-          slot rather than crowding the row with an extra button. */}
+      <Tip label={enhanced ? '恢复原文' : enhancing ? '增强中…' : '提示词增强'}>
+        <Button
+          aria-label={enhanced ? '恢复原文' : '提示词增强'}
+          className={cn(
+            GHOST_ICON_BTN,
+            'p-0 transition-all',
+            (enhanced || enhancing) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
+          )}
+          disabled={disabled || enhancing}
+          onClick={onEnhance}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          {enhancing ? (
+            <Loader2 className={cn('animate-spin', iconSize.sm)} />
+          ) : enhanced ? (
+            <RefreshCw className={iconSize.sm} />
+          ) : (
+            <Brain className={iconSize.sm} />
+          )}
+        </Button>
+      </Tip>
       {canSteer ? (
         <Tip label={steerTip}>
           <Button
@@ -109,7 +128,6 @@ export function ComposerControls({
       ) : (
         <DictationButton disabled={disabled} onToggle={onDictate} state={state.voice} status={voiceStatus} />
       )}
-      <AutoSpeakButton active={autoSpeak} disabled={disabled} onToggle={onToggleAutoSpeak} />
       {showVoicePrimary ? (
         <Tip label={c.startVoice}>
           <Button
@@ -256,39 +274,6 @@ function ConversationIndicator({
         return <span className="w-0.5 rounded-full bg-current" key={index} style={{ height: `${height * 100}%` }} />
       })}
     </span>
-  )
-}
-
-// Pure-TTS toggle: type normally, but have every assistant reply read aloud —
-// no dictation, no full conversation loop. Filled/accent when on, mirroring the
-// muted-mic pressed state above. Driven by (and persisted to) `voice.auto_tts`.
-function AutoSpeakButton({ active, disabled, onToggle }: { active: boolean; disabled: boolean; onToggle: () => void }) {
-  const { t } = useI18n()
-  const c = t.composer
-  const label = active ? c.stopSpeakingReplies : c.speakReplies
-
-  return (
-    <Tip label={label}>
-      <Button
-        aria-label={label}
-        aria-pressed={active}
-        className={cn(
-          GHOST_ICON_BTN,
-          'p-0',
-          active && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
-        )}
-        disabled={disabled}
-        onClick={() => {
-          triggerHaptic(active ? 'close' : 'open')
-          onToggle()
-        }}
-        size="icon"
-        type="button"
-        variant="ghost"
-      >
-        {active ? <Volume2 className={iconSize.sm} /> : <VolumeX className={iconSize.sm} />}
-      </Button>
-    </Tip>
   )
 }
 

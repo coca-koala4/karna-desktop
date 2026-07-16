@@ -36,6 +36,15 @@ const SECTIONS = ['sessions', 'system', 'usage'] as const satisfies readonly Com
 
 const USAGE_PERIODS = [7, 30, 90] as const
 type UsagePeriod = (typeof USAGE_PERIODS)[number]
+type StructuredLog = {
+  durationMs?: number
+  level?: string
+  message?: string
+  module?: string
+  requestId?: string
+  timestamp?: string
+}
+type LogLine = string | StructuredLog
 
 interface CommandCenterViewProps {
   initialSection?: CommandCenterSection
@@ -58,6 +67,20 @@ function formatTimestamp(value?: number | null): string {
   }
 
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+}
+
+function formatLogLine(line: LogLine): string {
+  if (typeof line === 'string') {
+    return line
+  }
+
+  const prefix = [line.timestamp, line.requestId && `[${line.requestId}]`, line.module && `[${line.module}]`, line.level && `[${line.level}]`]
+    .filter(Boolean)
+    .join(' ')
+
+  const timing = line.durationMs == null ? '' : ` (${line.durationMs}ms)`
+
+  return `${prefix}${prefix && line.message ? ' ' : ''}${line.message || ''}${timing}`
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -124,7 +147,9 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
 
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusResponse | null>(null)
-  const [logs, setLogs] = useState<string[]>([])
+  const [logs, setLogs] = useState<LogLine[]>([])
+  const [logLevel, setLogLevel] = useState('all')
+  const [logModule, setLogModule] = useState('all')
   const [systemLoading, setSystemLoading] = useState(false)
   const [systemError, setSystemError] = useState('')
   const [systemAction, setSystemAction] = useState<ActionStatusResponse | null>(null)
@@ -171,13 +196,23 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
       ])
 
       setStatus(nextStatus)
-      setLogs(nextLogs.lines)
+      setLogs(nextLogs.lines as LogLine[])
     } catch (error) {
       setSystemError(error instanceof Error ? error.message : String(error))
     } finally {
       setSystemLoading(false)
     }
   }, [])
+
+  const visibleLogs = useMemo(() => logs.filter(line => {
+    if (typeof line === 'string') {
+      return logLevel === 'all' && logModule === 'all'
+    }
+
+    return (logLevel === 'all' || line.level === logLevel) && (logModule === 'all' || line.module === logModule)
+  }), [logLevel, logModule, logs])
+
+  const logModules = useMemo(() => Array.from(new Set(logs.flatMap(line => typeof line === 'string' || !line.module ? [] : [line.module]))).sort(), [logs])
 
   const refreshUsage = useCallback(async (days: UsagePeriod) => {
     const requestId = usageRequestRef.current + 1
@@ -427,11 +462,23 @@ export function CommandCenterView({ initialSection, onClose, onDeleteSession, on
                     </span>
                   )}
                 </div>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <select aria-label="日志级别" className="rounded border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) px-2 py-1 text-xs" onChange={event => setLogLevel(event.target.value)} value={logLevel}>
+                    <option value="all">全部级别</option>
+                    <option value="error">错误</option>
+                    <option value="warn">警告</option>
+                    <option value="info">信息</option>
+                  </select>
+                  <select aria-label="日志模块" className="rounded border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) px-2 py-1 text-xs" onChange={event => setLogModule(event.target.value)} value={logModule}>
+                    <option value="all">全部模块</option>
+                    {logModules.map(module => <option key={module} value={module}>{module}</option>)}
+                  </select>
+                </div>
                 <pre
                   className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3 font-mono text-[0.65rem] leading-relaxed text-(--ui-text-tertiary)"
                   data-selectable-text="true"
                 >
-                  {logs.length ? logs.join('\n') : cc.noLogs}
+                  {visibleLogs.length ? visibleLogs.map(formatLogLine).join('\n') : cc.noLogs}
                 </pre>
               </div>
             </div>

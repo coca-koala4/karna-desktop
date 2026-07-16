@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "karna.local-files",
+  "name": "Local Files",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Read, write, search, preview, and manage files in project directories",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "productivity",
+    "icon": "assets/icon.png",
+    "capabilities": ["read", "write", "interactive"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "filesystem:project",
+    "filesystem:read",
+    "filesystem:write"
+  ],
+  "dependencies": {}
+}

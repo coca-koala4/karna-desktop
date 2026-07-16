@@ -30,8 +30,11 @@ import { notifyError } from '@/store/notifications'
 import { startManualLocalEndpoint, startManualProviderOAuth } from '@/store/onboarding'
 import type { HermesConfigRecord } from '@/types/hermes'
 
+import { PROVIDER_PRESETS } from '@/lib/provider-presets'
+
 import { CONTROL_TEXT } from './constants'
 import { getNested, setNested } from './helpers'
+import { ModelCapabilityBadges } from './model-capability-badges'
 import { ListRow, LoadingState, Pill, SectionHeading } from './primitives'
 
 // Hermes' reasoning levels (VALID_REASONING_EFFORTS); `none` = thinking off.
@@ -213,10 +216,26 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     setApiKeyDraft('')
   }, [selectedProvider])
 
-  const auxDraftProviderModels = useMemo(
-    () => providers.find(provider => provider.slug === auxDraft.provider)?.models ?? [],
+  const auxDraftProviderRow = useMemo(
+    () => providers.find(provider => provider.slug === auxDraft.provider),
     [auxDraft.provider, providers]
   )
+
+  const auxDraftProviderModels = useMemo(
+    () => auxDraftProviderRow?.models ?? [],
+    [auxDraftProviderRow]
+  )
+
+  const filteredAuxDraftModels = useMemo(() => {
+    if (editingAuxTask !== 'vision') {
+      return auxDraftProviderModels
+    }
+
+    return auxDraftProviderModels.filter(model => {
+      const caps = auxDraftProviderRow?.capabilities?.[model]
+      return caps?.vision === true
+    })
+  }, [auxDraftProviderModels, auxDraftProviderRow, editingAuxTask])
 
   const modelsForProvider = useCallback(
     (provider: string) => providers.find(row => row.slug === provider)?.models ?? [],
@@ -304,8 +323,14 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     return mainModel ? row?.capabilities?.[mainModel.model] : undefined
   }, [providers, mainModel])
 
+  const visionSupported = mainCaps?.vision === true
   const reasoningSupported = mainCaps?.reasoning ?? true
   const fastSupported = mainCaps?.fast ?? false
+
+  const hasVisionAuxModel = useMemo(() => {
+    const visionTask = auxiliary?.tasks.find(t => t.task === 'vision')
+    return !!(visionTask && visionTask.provider && visionTask.provider !== 'auto' && visionTask.model)
+  }, [auxiliary])
 
   const effortValue =
     String(getNested(config ?? {}, 'agent.reasoning_effort') ?? '')
@@ -479,6 +504,16 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     [auxiliary, mainModel]
   )
 
+  const scrollToVisionAux = useCallback(() => {
+    beginAuxiliaryEdit('vision')
+    setTimeout(() => {
+      const element = document.querySelector('[data-aux-task="vision"]')
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 50)
+  }, [beginAuxiliaryEdit])
+
   const resetAuxiliaryModels = useCallback(async () => {
     if (!mainModel) {
       return
@@ -507,10 +542,48 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     return <LoadingState label={m.loading} />
   }
 
+  const hasAnyConfiguredKey = providers.some(p => p.authenticated !== false)
+  const isBrowserMode = typeof window !== 'undefined' && !(window as { karnaDesktop?: unknown }).karnaDesktop
+
   return (
     <div className="grid gap-6">
+      {!hasAnyConfiguredKey && (
+        isBrowserMode ? (
+          <div className="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">
+            <span>🌐</span>
+            <span>浏览器演示模式：API密钥需在桌面版中配置，当前使用演示连接。</span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            <span>⚠️</span>
+            <span>尚未配置API密钥，请先配置模型提供商密钥后使用AI功能。</span>
+          </div>
+        )
+      )}
       <section>
         <p className="mb-3 text-xs text-muted-foreground">{m.appliesDesc}</p>
+
+        <details className="mb-3 rounded-md border border-(--ui-stroke-secondary) bg-(--ui-bg-secondary)/50 px-3 py-2 text-xs">
+          <summary className="cursor-pointer font-medium text-foreground">
+            国内平台快速预设
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {PROVIDER_PRESETS.map(preset => (
+              <Button
+                key={preset.id}
+                onClick={() => {
+                  const baseUrl = preset.baseUrlOptions[0]?.baseUrl ?? ''
+                  startManualLocalEndpoint(baseUrl)
+                }}
+                size="sm"
+                variant="outline"
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        </details>
+
         <div className="flex flex-wrap items-center gap-2">
           <Select onValueChange={setSelectedProvider} value={selectedProvider}>
             <SelectTrigger className={cn('min-w-40', CONTROL_TEXT)}>
@@ -579,6 +652,12 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
             </>
           )}
         </div>
+        {setupIsApiKey && (
+          <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1">
+            <span>🔒</span>
+            <span>密钥加密存储在本地配置目录（karna-data/），仅用于API请求，不会上传到第三方服务器。</span>
+          </p>
+        )}
         {needsSetup && !setupIsApiKey && (
           <p className="mt-2 text-xs text-muted-foreground">
             {selectedProviderRow?.auth_type === 'api_key'
@@ -621,6 +700,28 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
             )}
           </div>
         )}
+
+        {mainModel && !visionSupported && !hasVisionAuxModel && (
+          <div className="mt-3 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs">
+            <div className="font-medium text-blue-200">当前主模型不支持图片识别</div>
+            <div className="mt-1 text-blue-200/80">可以配置一个视觉辅助模型来处理图片</div>
+            <Button
+              className="mt-2"
+              onClick={() => void scrollToVisionAux()}
+              size="sm"
+              variant="textStrong"
+            >
+              立即配置视觉模型
+            </Button>
+          </div>
+        )}
+
+        {mainCaps && (
+          <div className="mt-3">
+            <ModelCapabilityBadges capabilities={mainCaps} compact />
+          </div>
+        )}
+
         {error && <div className="mt-2 text-xs text-destructive">{error}</div>}
         {switchStaleAux.length > 0 && (
           <div className="mt-2">
@@ -665,88 +766,97 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
             const isEditing = editingAuxTask === meta.key
 
             return (
-              <ListRow
-                action={
-                  !isEditing && (
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <Button
-                        disabled={!mainModel || applying}
-                        onClick={() => void setAuxiliaryToMain(meta.key)}
-                        size="sm"
-                        variant="text"
-                      >
-                        {m.setToMain}
-                      </Button>
-                      <Button
-                        disabled={!providers.length || applying}
-                        onClick={() => beginAuxiliaryEdit(meta.key)}
-                        size="sm"
-                        variant="textStrong"
-                      >
-                        {m.change}
-                      </Button>
-                    </div>
-                  )
-                }
-                below={
-                  isEditing && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 pt-1">
-                      <Select
-                        onValueChange={value => setAuxDraft(prev => ({ ...prev, provider: value, model: '' }))}
-                        value={auxDraft.provider}
-                      >
-                        <SelectTrigger className={cn('min-w-32', CONTROL_TEXT)}>
-                          <SelectValue placeholder={m.provider} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {providerOptions.map(provider => (
-                            <SelectItem key={provider.slug || 'none'} value={provider.slug || 'none'}>
-                              {provider.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        onValueChange={value => setAuxDraft(prev => ({ ...prev, model: value }))}
-                        value={auxDraft.model}
-                      >
-                        <SelectTrigger className={cn('min-w-48', CONTROL_TEXT)}>
-                          <SelectValue placeholder={m.model} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withActive(auxDraftProviderModels, auxDraft.model).map(model => (
-                            <SelectItem key={model} value={model}>
-                              {model}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        disabled={!auxDraft.provider || !auxDraft.model || applying}
-                        onClick={() => void applyAuxiliaryDraft(meta.key)}
-                        size="sm"
-                      >
-                        {applying ? m.applying : t.common.apply}
-                      </Button>
-                      <Button onClick={() => setEditingAuxTask(null)} size="sm" variant="ghost">
-                        {t.common.cancel}
-                      </Button>
-                    </div>
-                  )
-                }
-                description={
-                  <span className="font-mono text-[0.68rem]">
-                    {isAuto ? m.autoUseMain : `${current.provider} · ${current.model || m.providerDefault}`}
-                  </span>
-                }
-                key={meta.key}
-                title={
-                  <span className="flex items-baseline gap-2">
-                    {copy.label}
-                    <Pill>{copy.hint}</Pill>
-                  </span>
-                }
-              />
+              <div data-aux-task={meta.key}>
+                <ListRow
+                  action={
+                    !isEditing && (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Button
+                          disabled={!mainModel || applying}
+                          onClick={() => void setAuxiliaryToMain(meta.key)}
+                          size="sm"
+                          variant="text"
+                        >
+                          {m.setToMain}
+                        </Button>
+                        <Button
+                          disabled={!providers.length || applying}
+                          onClick={() => beginAuxiliaryEdit(meta.key)}
+                          size="sm"
+                          variant="textStrong"
+                        >
+                          {m.change}
+                        </Button>
+                      </div>
+                    )
+                  }
+                  below={
+                    isEditing && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 pt-1">
+                        <Select
+                          onValueChange={value => setAuxDraft(prev => ({ ...prev, provider: value, model: '' }))}
+                          value={auxDraft.provider}
+                        >
+                          <SelectTrigger className={cn('min-w-32', CONTROL_TEXT)}>
+                            <SelectValue placeholder={m.provider} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {providerOptions.map(provider => (
+                              <SelectItem key={provider.slug || 'none'} value={provider.slug || 'none'}>
+                                {provider.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex flex-col gap-1">
+                          {meta.key === 'vision' && (
+                            <span className="text-[0.65rem] text-muted-foreground">
+                              Vision models only
+                            </span>
+                          )}
+                          <Select
+                            onValueChange={value => setAuxDraft(prev => ({ ...prev, model: value }))}
+                            value={auxDraft.model}
+                          >
+                            <SelectTrigger className={cn('min-w-48', CONTROL_TEXT)}>
+                              <SelectValue placeholder={m.model} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {withActive(filteredAuxDraftModels, auxDraft.model).map(model => (
+                                <SelectItem key={model} value={model}>
+                                  {model}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          disabled={!auxDraft.provider || !auxDraft.model || applying}
+                          onClick={() => void applyAuxiliaryDraft(meta.key)}
+                          size="sm"
+                        >
+                          {applying ? m.applying : t.common.apply}
+                        </Button>
+                        <Button onClick={() => setEditingAuxTask(null)} size="sm" variant="ghost">
+                          {t.common.cancel}
+                        </Button>
+                      </div>
+                    )
+                  }
+                  description={
+                    <span className="font-mono text-[0.68rem]">
+                      {isAuto ? m.autoUseMain : `${current.provider} · ${current.model || m.providerDefault}`}
+                    </span>
+                  }
+                  key={meta.key}
+                  title={
+                    <span className="flex items-baseline gap-2">
+                      {copy.label}
+                      <Pill>{copy.hint}</Pill>
+                    </span>
+                  }
+                />
+              </div>
             )
           })}
         </div>
@@ -783,6 +893,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                   ...moa,
                   default_preset: selectedMoaPreset || moa.default_preset
                 }
+
                 void saveMoa(next)
               }}
               size="sm"
@@ -800,12 +911,14 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                 const presets = { ...moa.presets }
                 delete presets[selectedMoaPreset]
                 const fallback = Object.keys(presets)[0]
+
                 const next: MoaConfigResponse = {
                   ...moa,
                   presets,
                   default_preset: moa.default_preset === selectedMoaPreset ? fallback : moa.default_preset,
                   active_preset: moa.active_preset === selectedMoaPreset ? '' : moa.active_preset
                 }
+
                 setSelectedMoaPreset(Object.keys(moa.presets).find(name => name !== selectedMoaPreset) || '')
                 void saveMoa(next)
               }}
@@ -824,6 +937,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
               disabled={!newMoaPresetName.trim() || !!moa.presets[newMoaPresetName.trim()] || applying}
               onClick={() => {
                 const name = newMoaPresetName.trim()
+
                 const next: MoaConfigResponse = {
                   ...moa,
                   presets: {
@@ -831,6 +945,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                     [name]: { ...currentMoaPreset, reference_models: [...currentMoaPreset.reference_models] }
                   }
                 }
+
                 setSelectedMoaPreset(name)
                 setNewMoaPresetName('')
                 void saveMoa(next)

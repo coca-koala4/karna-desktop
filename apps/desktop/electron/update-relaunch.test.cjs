@@ -36,7 +36,9 @@ const {
   shellQuote
 } = require('./update-relaunch.cjs')
 
-const ROOT = '/home/u/.hermes/hermes-agent'
+// Resolve through the host path implementation so this Linux-behaviour unit
+// test remains valid when the suite itself runs on Windows CI.
+const ROOT = path.resolve('/home/u/.hermes/hermes-agent')
 const UNPACKED = path.join(ROOT, 'apps', 'desktop', 'release', 'linux-unpacked')
 
 // ---------------------------------------------------------------------------

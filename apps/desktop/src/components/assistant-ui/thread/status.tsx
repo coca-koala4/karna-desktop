@@ -5,7 +5,7 @@ import { type FC, type ReactNode, useEffect, useState } from 'react'
 import { useElapsedSeconds } from '@/components/chat/activity-timer'
 import { ActivityTimerText } from '@/components/chat/activity-timer-text'
 import { Codicon } from '@/components/ui/codicon'
-import { Loader } from '@/components/ui/loader'
+import { KarnaThinkingMark } from '@/components/ui/karna-animations'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { $backgroundResume } from '@/store/background-delegation'
@@ -45,14 +45,7 @@ export const CenteredThreadSpinner: FC = () => {
       className="pointer-events-none absolute inset-0 z-1 grid place-items-center"
       role="status"
     >
-      <Loader
-        aria-hidden="true"
-        className="size-12 text-midground/70"
-        pathSteps={220}
-        role="presentation"
-        strokeScale={0.72}
-        type="rose-curve"
-      />
+      <KarnaThinkingMark className="text-[var(--theme-primary)] !text-3xl" />
     </div>
   )
 }
@@ -67,7 +60,7 @@ export const ResponseLoadingIndicator: FC = () => {
       data-slot="aui_response-loading"
       label={compacting ? COMPACTION_LABEL : t.assistant.thread.loadingResponse}
     >
-      <span aria-hidden="true" className="dither inline-block size-3 rounded-[2px] text-midground/80 animate-pulse" />
+      <KarnaThinkingMark className="text-[var(--theme-primary)]" />
       {compacting && <CompactionHint />}
       <ActivityTimerText seconds={elapsed} />
     </StatusRow>
@@ -118,6 +111,7 @@ const STREAM_STALL_S = 2
 // so that per-token updates re-render only this leaf, not the whole
 // AssistantMessage subtree.
 export const StreamStallIndicator: FC = () => {
+  const { t } = useI18n()
   const activity = useAuiState(s => {
     let textLength = 0
 
@@ -157,9 +151,9 @@ export const StreamStallIndicator: FC = () => {
     <StatusRow
       className="mt-1.5"
       data-slot="aui_stream-stall"
-      label={compacting ? COMPACTION_LABEL : 'Hermes is thinking'}
+      label={compacting ? COMPACTION_LABEL : t.assistant.thread.thinking}
     >
-      <span aria-hidden="true" className="dither inline-block size-3 rounded-[2px] text-midground/80 animate-pulse" />
+      <KarnaThinkingMark className="text-[var(--theme-primary)]" />
       {compacting && <CompactionHint />}
       <ActivityTimerText seconds={elapsed} />
     </StatusRow>

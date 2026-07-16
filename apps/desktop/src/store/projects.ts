@@ -2,16 +2,16 @@ import { atom } from 'nanostores'
 
 import { liveSessionProjectId, type SidebarProjectTree } from '@/app/chat/sidebar/projects/workspace-groups'
 import type { HermesGitBranch } from '@/global'
+import { translateNow } from '@/i18n'
 import { desktopDefaultCwd, selectDesktopPaths, writeDesktopFileText } from '@/lib/desktop-fs'
 import { desktopGit } from '@/lib/desktop-git'
 import { isMissingRpcMethod } from '@/lib/gateway-rpc'
 import { persistentAtom } from '@/lib/persisted'
-import { translateNow } from '@/i18n'
 import { activeGateway, ensureActiveGatewayOpen } from '@/store/gateway'
-import { notify } from '@/store/notifications'
 import { setSidebarAgentsGrouped } from '@/store/layout'
+import { notify } from '@/store/notifications'
 import { requestFreshSession } from '@/store/profile'
-import { $selectedStoredSessionId, $sessions, workspaceCwdForNewSession } from '@/store/session'
+import { $selectedStoredSessionId, $sessions, setSessions, setSessionsTotal, workspaceCwdForNewSession } from '@/store/session'
 import type { ProjectInfo, ProjectsPayload } from '@/types/hermes'
 
 // First-class, per-profile Projects (named, multi-folder workspaces). State is
@@ -21,6 +21,14 @@ import type { ProjectInfo, ProjectsPayload } from '@/types/hermes'
 
 export const $projects = atom<ProjectInfo[]>([])
 export const $activeProjectId = atom<null | string>(null)
+
+export const PROJECT_CHANGED_EVENT = 'karna:projects-changed'
+
+function notifyProjectsChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(PROJECT_CHANGED_EVENT))
+  }
+}
 
 // The authoritative project -> repo -> lane tree (overview), served by
 // `projects.tree`. Lanes carry counts + structure; per-project session rows are
@@ -492,6 +500,7 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectI
   }
 
   reconcileProjects()
+  notifyProjectsChanged()
 
   return created
 }
@@ -590,14 +599,61 @@ function openSessionBelongsToProject(projectId: string, projects: ProjectInfo[])
   return Boolean(open && liveSessionProjectId(open, projects) === projectId)
 }
 
+async function deleteProjectSessions(projectPath: string): Promise<void> {
+  const normalizedPath = projectPath.replace(/\\/g, '/').toLowerCase()
+  const allSessions = $sessions.get()
+
+  const sessionsToDelete = allSessions.filter(s => {
+    if (!s.cwd) {return false}
+    const sessionCwd = s.cwd.replace(/\\/g, '/').toLowerCase()
+
+    return sessionCwd === normalizedPath || sessionCwd.startsWith(normalizedPath + '/')
+  })
+
+  const deletedIds = new Set<string>()
+
+  for (const session of sessionsToDelete) {
+    try {
+      await gatewayRequest('session.delete', { session_id: session.id })
+      deletedIds.add(session.id)
+    } catch (e) {
+      console.debug(`Failed to delete session ${session.id}:`, e)
+    }
+  }
+
+  if (deletedIds.size > 0) {
+    const tombstoneIds: string[] = []
+
+    for (const session of sessionsToDelete) {
+      if (deletedIds.has(session.id)) {
+        tombstoneIds.push(session.id)
+
+        if (session._lineage_root_id) {
+          tombstoneIds.push(session._lineage_root_id)
+        }
+      }
+    }
+
+    tombstoneSessions(tombstoneIds)
+    setSessions(prev => prev.filter(s => !deletedIds.has(s.id)))
+    setSessionsTotal(prev => Math.max(0, prev - deletedIds.size))
+  }
+}
+
 // Optimistic: drop the project from the cached tree + list the instant it's
 // clicked (the entered-scope effect exits if you deleted the project you were
 // inside), reconciling from the server payload. A failed delete restores both.
-export async function deleteProject(id: string): Promise<void> {
+export async function deleteProject(
+  id: string,
+  opts?: { deleteSessions?: boolean; deleteFolder?: boolean }
+): Promise<void> {
+  const deleteSessions = opts?.deleteSessions ?? false
+  const deleteFolder = opts?.deleteFolder ?? false
   const snap = snapshotProjects()
   // Capture membership BEFORE removal — the project's folders (which determine
   // ownership) are gone once it's dropped from the cache.
   const kickToIntro = openSessionBelongsToProject(id, snap.projects)
+  const projectToDelete = snap.projects.find(p => p.id === id)
 
   $projects.set(snap.projects.filter(project => project.id !== id))
   $projectTree.set(snap.tree.filter(node => node.id !== id))
@@ -612,10 +668,49 @@ export async function deleteProject(id: string): Promise<void> {
     requestFreshSession()
   }
 
-  await persistOrRollback(snap, async () => {
-    applyPayload(await gatewayRequest<ProjectsPayload>('projects.delete', { id }))
-  })
+  try {
+    await persistOrRollback(snap, async () => {
+      // Cascade-delete sessions first (if requested) — must happen before the
+      // project row is gone so we can still resolve folder membership.
+      if (deleteSessions && projectToDelete?.primary_path) {
+        await deleteProjectSessions(projectToDelete.primary_path)
+      }
+
+      applyPayload(await gatewayRequest<ProjectsPayload>('projects.delete', { id }))
+
+      // Delete the folder from disk (if requested). Done after the DB delete
+      // so a failed folder delete doesn't leave the project row dangling.
+      if (deleteFolder && projectToDelete?.primary_path && window.hermesDesktop?.trashPath) {
+        try {
+          await window.hermesDesktop.trashPath(projectToDelete.primary_path)
+        } catch (e) {
+          console.warn('Failed to delete project folder:', e)
+        }
+      }
+    })
+  } catch (err) {
+    notify({ kind: 'error', message: err instanceof Error ? err.message : String(err), title: '删除项目失败' })
+    throw err
+  }
+
+  // Also try to delete from Karna Writer backend if available
+  if (projectToDelete && window.karnaDesktop?.api) {
+    try {
+      // Use stable workspace ID to find and delete writer project,
+      // never use project name which can be duplicated or changed
+      const workspaceId = encodeURIComponent(projectToDelete.id)
+      await window.karnaDesktop.api({
+        path: `/api/writer/projects/${workspaceId}`,
+        method: 'DELETE'
+      })
+    } catch (e) {
+      // Best effort — if the project doesn't exist in Karna, that's fine
+      console.debug('Project not found in Karna writer, skipping deletion sync:', e)
+    }
+  }
+
   void refreshProjectTree()
+  notifyProjectsChanged()
 }
 
 export async function setActiveProject(id: null | string): Promise<void> {

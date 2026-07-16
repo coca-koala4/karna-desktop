@@ -1,0 +1,31 @@
+manifest_version: 2
+name: browser-tools
+description: 提供浏览器自动化操作的MCP工具集
+source: https://www.mcp-cn.com/server/69
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@agentdeskai/browser-tools-mcp'
+auth:
+  type: none
+post_install: 'browser-tools MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: browser-tools
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@agentdeskai/browser-tools-mcp'
+permissions:
+- network:outbound
+- browser:control
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

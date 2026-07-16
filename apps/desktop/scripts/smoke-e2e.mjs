@@ -470,6 +470,7 @@ async function step8CreateWorkflow() {
   const wfFile = path.join(wfDir, 'workflows.json')
   let store = { version: 1, workflows: [] }
   if (fs.existsSync(wfFile)) { try { store = JSON.parse(fs.readFileSync(wfFile, 'utf8')) } catch {} }
+  if (!Array.isArray(store.workflows)) store.workflows = []
   store.workflows.unshift(workflow)
   fs.writeFileSync(wfFile, JSON.stringify(store, null, 2), 'utf8')
   ok(`workflow created: id=${wfId} (2 agent + 1 human_review nodes)`)

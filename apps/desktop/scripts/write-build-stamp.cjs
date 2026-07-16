@@ -13,7 +13,8 @@
  *     "branch":        "<branch name>",
  *     "builtAt":       "<ISO 8601 UTC timestamp>",
  *     "dirty":         true|false,
- *     "source":        "ci" | "local"
+ *     "source":        "ci" | "local",
+ *     "buildConfig":   { "allowDirtyBuilds": true|false }
  *   }
  *
  * Source preference order:
@@ -24,6 +25,9 @@
  * Dev / out-of-repo builds without git produce an explicit error rather than
  * silently writing an unstamped manifest -- the packaged app refuses to
  * bootstrap without a stamp.
+ *
+ * CI/production builds: dirty working tree causes process.exit(1) to block
+ * the build. Local dev builds only warn.
  */
 
 const fs = require("fs")
@@ -36,6 +40,14 @@ const DESKTOP_ROOT = path.resolve(__dirname, "..")
 const REPO_ROOT = path.resolve(DESKTOP_ROOT, "..", "..")
 const OUT_DIR = path.join(DESKTOP_ROOT, "build")
 const OUT_FILE = path.join(OUT_DIR, "install-stamp.json")
+
+function isCIEnvironment() {
+  return (
+    process.env.CI === "true" ||
+    process.env.GITHUB_ACTIONS === "true" ||
+    process.env.NODE_ENV === "production"
+  )
+}
 
 function tryExec(cmd, opts) {
   try {
@@ -78,6 +90,9 @@ function fromLocalGit() {
 }
 
 function main() {
+  const isCI = isCIEnvironment()
+  const allowDirtyBuilds = !isCI
+
   const stamp = fromCI() || fromLocalGit()
   if (!stamp || !stamp.commit) {
     console.error(
@@ -93,13 +108,24 @@ function main() {
   }
 
   if (stamp.dirty) {
-    console.warn(
-      "[write-build-stamp] WARNING: working tree is dirty.\n" +
-        "  Pinning to " +
-        stamp.commit.slice(0, 12) +
-        " but the packaged code may differ from that commit.\n" +
-        "  Commit your changes before publishing this build."
-    )
+    if (isCI) {
+      console.error(
+        "[write-build-stamp] ERROR: dirty working tree in CI/production build.\n" +
+          "  CI builds require a clean working tree. Pinning to " +
+          stamp.commit.slice(0, 12) +
+          " but the packaged code may differ from that commit.\n" +
+          "  This is blocked to prevent inconsistent builds."
+      )
+      process.exit(1)
+    } else {
+      console.warn(
+        "[write-build-stamp] WARNING: working tree is dirty.\n" +
+          "  Pinning to " +
+          stamp.commit.slice(0, 12) +
+          " but the packaged code may differ from that commit.\n" +
+          "  Commit your changes before publishing this build."
+      )
+    }
   }
 
   const payload = {
@@ -108,7 +134,10 @@ function main() {
     branch: stamp.branch,
     builtAt: new Date().toISOString(),
     dirty: stamp.dirty,
-    source: stamp.source
+    source: stamp.source,
+    buildConfig: {
+      allowDirtyBuilds: allowDirtyBuilds
+    }
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true })
@@ -119,7 +148,8 @@ function main() {
       " -> " +
       stamp.commit.slice(0, 12) +
       (stamp.branch ? " (" + stamp.branch + ")" : "") +
-      (stamp.dirty ? " [DIRTY]" : "")
+      (stamp.dirty ? " [DIRTY]" : "") +
+      (isCI ? " [CI]" : " [LOCAL]")
   )
 }
 

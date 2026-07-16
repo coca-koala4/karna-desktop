@@ -21,6 +21,7 @@ export function ContextUsagePanel({ currentUsage, requestGateway, sessionId }: C
     if (!sessionId) {
       setBreakdown(null)
       setLoading(false)
+
       return
     }
 
@@ -51,6 +52,7 @@ export function ContextUsagePanel({ currentUsage, requestGateway, sessionId }: C
 
   const contextMax = breakdown?.context_max ?? currentUsage.context_max ?? 0
   const contextUsed = breakdown?.context_used ?? currentUsage.context_used ?? 0
+
   const contextPercent = Math.max(
     0,
     Math.min(100, Math.round(breakdown?.context_percent ?? currentUsage.context_percent ?? 0))
@@ -73,29 +75,31 @@ export function ContextUsagePanel({ currentUsage, requestGateway, sessionId }: C
         <p className="font-medium text-foreground">{copy.title}</p>
 
         <span className="text-[0.6875rem] text-muted-foreground">
-          {copy.tokenSummary(`~${formatK(contextUsed)}`, formatK(contextMax))}
+          {copy.percentFull(contextPercent)}
         </span>
       </div>
-
-      <p className="text-[0.6875rem] text-foreground">{copy.percentFull(contextPercent)}</p>
 
       <ContextUsageBar categories={categories} segmentTotal={segmentTotal} />
 
       <ul className="flex flex-col gap-1.5">
-        {categories.map(category => (
-          <li className="flex items-center justify-between gap-2" key={category.id}>
-            <span className="flex min-w-0 items-center gap-2">
-              <span
-                className="size-2 shrink-0 rounded-[2px]"
-                style={{ background: category.color }}
-              />
+        {categories.map(category => {
+          const pct = segmentTotal > 0 ? Math.round((category.tokens / segmentTotal) * 100) : 0
 
-              <span className="truncate text-muted-foreground">{category.label}</span>
-            </span>
+          return (
+            <li className="flex items-center justify-between gap-2" key={category.id}>
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2 shrink-0 rounded-[2px]"
+                  style={{ background: category.color }}
+                />
 
-            <span className="shrink-0 tabular-nums text-foreground">{formatCategoryTokens(category.tokens)}</span>
-          </li>
-        ))}
+                <span className="truncate text-muted-foreground">{category.label}</span>
+              </span>
+
+              <span className="shrink-0 tabular-nums text-foreground">{pct}%</span>
+            </li>
+          )
+        })}
       </ul>
 
       {loading && <p className="text-[0.6875rem] text-muted-foreground">{copy.loading}</p>}

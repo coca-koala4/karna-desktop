@@ -40,6 +40,7 @@ import type {
   SessionInfo,
   SessionMessagesResponse,
   SessionSearchResponse,
+  SkillCatalogResponse,
   SkillInfo,
   StarmapGraph,
   StatusResponse,
@@ -132,10 +133,10 @@ export type {
 export class HermesGateway extends JsonRpcGatewayClient {
   constructor() {
     super({
-      closedErrorMessage: 'Hermes gateway connection closed',
-      connectErrorMessage: 'Could not connect to Hermes gateway',
+      closedErrorMessage: 'Karna runtime connection closed',
+      connectErrorMessage: 'Could not connect to the Karna runtime',
       createRequestId: nextId => nextId,
-      notConnectedErrorMessage: 'Hermes gateway is not connected',
+      notConnectedErrorMessage: 'Karna runtime is not connected',
       requestTimeoutMs: DEFAULT_GATEWAY_REQUEST_TIMEOUT_MS
     })
   }
@@ -320,6 +321,9 @@ export function getLogs(params: {
 
   if (params.component && params.component !== 'all') {
     query.set('component', params.component)
+    // Karna adapter names this dimension "module"; retain component for
+    // upstream compatibility while enabling structured desktop-log filtering.
+    query.set('module', params.component)
   }
 
   const suffix = query.toString()
@@ -500,6 +504,19 @@ export function getSkills(): Promise<SkillInfo[]> {
   })
 }
 
+export function createSkill(input: {
+  name: string
+  description?: string
+  instructions?: string
+}): Promise<{ ok: boolean; skill?: SkillInfo; error?: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; skill?: SkillInfo; error?: string }>({
+    ...profileScoped(),
+    path: '/api/skills/create',
+    method: 'POST',
+    body: input
+  })
+}
+
 export function getStarmapGraph(): Promise<StarmapGraph> {
   return window.hermesDesktop.api<StarmapGraph>({
     ...profileScoped(),
@@ -547,6 +564,113 @@ export function toggleSkill(name: string, enabled: boolean): Promise<{ ok: boole
     path: '/api/skills/toggle',
     method: 'PUT',
     body: { name, enabled }
+  })
+}
+
+export function getSkillsCatalog(): Promise<SkillCatalogResponse> {
+  return window.hermesDesktop.api<SkillCatalogResponse>({
+    ...profileScoped(),
+    path: '/api/skills/catalog'
+  })
+}
+
+export function installSkill(name: string): Promise<{ ok: boolean; name: string; installed: boolean }> {
+  return window.hermesDesktop.api<{ ok: boolean; name: string; installed: boolean }>({
+    ...profileScoped(),
+    path: '/api/skills/install',
+    method: 'POST',
+    body: { name }
+  })
+}
+
+export function uninstallSkill(name: string): Promise<{ ok: boolean; name: string; installed: boolean }> {
+  return window.hermesDesktop.api<{ ok: boolean; name: string; installed: boolean }>({
+    ...profileScoped(),
+    path: '/api/skills/uninstall',
+    method: 'POST',
+    body: { name }
+  })
+}
+
+export interface SkillImportDetectedSkill {
+  name: string
+  description: string
+  sourceType: 'scratch' | 'markdown' | 'archive' | 'github'
+  suggestedName: string
+}
+
+export interface SkillImportPreflightResult {
+  jobId?: string
+  detectedSkills: SkillImportDetectedSkill[]
+  warnings: string[]
+  conflicts: Array<{ name: string; reason: string; existingPath?: string }>
+  blockedReasons: string[]
+  canImport: boolean
+  githubInfo?: {
+    owner: string
+    repo: string
+    ref: string
+    path: string
+  }
+}
+
+export interface SkillImportReceipt {
+  jobId: string
+  importedSkills: Array<{ name: string; path: string }>
+  warnings: string[]
+  errors: Array<{ skill: string; error: string }>
+}
+
+export function preflightSkillImport(input: {
+  type: 'scratch' | 'markdown' | 'archive' | 'github'
+  filePath?: string
+  url?: string
+  content?: {
+    name: string
+    description?: string
+    instructions?: string
+    whenToUse?: string
+    category?: string
+    tools?: string[]
+  }
+}): Promise<SkillImportPreflightResult> {
+  return window.hermesDesktop.api<SkillImportPreflightResult>({
+    ...profileScoped(),
+    path: '/api/skills/import/preflight',
+    method: 'POST',
+    body: input
+  })
+}
+
+export function commitSkillImport(jobId: string, selectedSkills?: string[]): Promise<{ ok: boolean; receipt?: SkillImportReceipt; error?: string; errors?: Array<{ skill: string; error: string }> }> {
+  return window.hermesDesktop.api<{ ok: boolean; receipt?: SkillImportReceipt; error?: string; errors?: Array<{ skill: string; error: string }> }>({
+    ...profileScoped(),
+    path: '/api/skills/import/commit',
+    method: 'POST',
+    body: { jobId, selectedSkills }
+  })
+}
+
+export function getSkillImportJob(jobId: string): Promise<{ ok: boolean; job?: any; error?: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; job?: any; error?: string }>({
+    ...profileScoped(),
+    path: `/api/skills/import/${encodeURIComponent(jobId)}`
+  })
+}
+
+export function createSkillDirect(input: {
+  name: string
+  description?: string
+  instructions?: string
+  whenToUse?: string
+  category?: string
+  tools?: string[]
+}): Promise<{ ok: boolean; name?: string; path?: string; error?: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; name?: string; path?: string; error?: string }>({
+    ...profileScoped(),
+    path: '/api/skills/create-direct',
+    method: 'POST',
+    body: input
   })
 }
 
@@ -743,6 +867,13 @@ export function updateProfileSoul(name: string, content: string): Promise<{ ok: 
   })
 }
 
+export function resetProfileSoul(name: string): Promise<{ ok: boolean; content?: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; content?: string }>({
+    path: `/api/profiles/${encodeURIComponent(name)}/soul`,
+    method: 'DELETE'
+  })
+}
+
 export function getProfileSetupCommand(name: string): Promise<ProfileSetupCommand> {
   return window.hermesDesktop.api<ProfileSetupCommand>({
     path: `/api/profiles/${encodeURIComponent(name)}/setup-command`
@@ -883,5 +1014,544 @@ export function speakText(text: string): Promise<AudioSpeakResponse> {
 export function getElevenLabsVoices(): Promise<ElevenLabsVoicesResponse> {
   return window.hermesDesktop.api<ElevenLabsVoicesResponse>({
     path: '/api/audio/elevenlabs/voices'
+  })
+}
+
+export interface ContextMemoryItem {
+  id: string
+  workspace_id: string | null
+  module: string | null
+  task_id: string | null
+  type: string
+  scope: string
+  priority: string
+  content: string
+  status: string
+  confidence: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PinnedContextItem {
+  id: string
+  workspace_id: string | null
+  module: string | null
+  task_id: string | null
+  content: string
+  scope: string
+  priority: string
+  is_active: number
+  created_at: string
+}
+
+export interface DecisionLogItem {
+  id: string
+  workspace_id: string | null
+  module: string | null
+  task_id: string | null
+  decision: string
+  reason: string | null
+  alternatives_rejected: string | null
+  created_at: string
+}
+
+export interface NodeSummaryItem {
+  id: string
+  flow_run_id: string
+  node_id: string
+  agent_id: string | null
+  task: string
+  input_summary: string
+  output_summary: string
+  key_findings: string[]
+  decisions: string[]
+  file_refs: string[]
+  errors: string[]
+  token_usage: number
+  created_at: string
+}
+
+export interface ContextStats {
+  context_memory: number
+  pinned_context: number
+  decision_log: number
+  tool_output_records: number
+  agent_node_run_summaries: number
+  by_type: Record<string, number>
+}
+
+export interface ContextEnvelope {
+  version?: number
+  enabled?: boolean
+  workspace_id?: string
+  project_id?: string
+  module?: string
+  task_id?: string
+  session_id?: string
+  writing_domain?: string
+  runtime_profile?: string
+  active_artifact_path?: string
+  active_artifact_kind?: string
+  active_artifact_revision?: string
+  selection_text?: string
+  selection_start?: number
+  selection_end?: number
+  selection_hash?: string
+  source_kind?: string
+}
+
+export interface CompressionEvent {
+  id: string
+  session_id?: string
+  profile_name?: string
+  before_tokens: number
+  after_tokens: number
+  quality_score?: number
+  aborted?: boolean
+  created_at: string
+}
+
+export interface ToolOutputItem {
+  id: string
+  tool_name: string
+  char_count: number
+  created_at: string
+}
+
+export interface PromptPreviewResult {
+  context_text: string
+  estimated_tokens: number
+  memory_count: number
+  pin_count: number
+  decision_count: number
+  mode?: string
+  writing_domain?: string
+}
+
+export function getContextMemories(workspaceId?: string, module?: string, type?: string, limit = 50, status?: string | null): Promise<{ memories: ContextMemoryItem[]; count: number }> {
+  const params = new URLSearchParams()
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (module) params.set('module', module)
+  if (type) params.set('type', type)
+  if (status !== undefined) params.set('status', status || '')
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ memories: ContextMemoryItem[]; count: number }>({
+    path: `/api/context/memories?${params.toString()}`
+  })
+}
+
+export function deleteContextMemory(id: string): Promise<{ ok: boolean; id: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string }>({
+    path: `/api/context/memories/${id}`,
+    method: 'DELETE'
+  })
+}
+
+export function resolveContextMemory(id: string): Promise<{ ok: boolean; id: string; status: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string; status: string }>({
+    path: `/api/context/memories/${id}/resolve`,
+    method: 'POST'
+  })
+}
+
+export function confirmContextMemory(id: string): Promise<{ ok: boolean; id: string; status: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string; status: string }>({
+    path: `/api/context/memories/${id}/confirm`,
+    method: 'POST',
+    body: { confirmed_by: 'user' }
+  })
+}
+
+export function getContextPins(workspaceId?: string, module?: string, limit = 50): Promise<{ pins: PinnedContextItem[]; count: number }> {
+  const params = new URLSearchParams()
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (module) params.set('module', module)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ pins: PinnedContextItem[]; count: number }>({
+    path: `/api/context/pins?${params.toString()}`
+  })
+}
+
+export function createContextPin(content: string, priority = 'high', scope = 'task', workspaceId?: string): Promise<{ ok: boolean; id: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string }>({
+    path: '/api/context/pins',
+    method: 'POST',
+    body: { content, priority, scope, workspace_id: workspaceId }
+  })
+}
+
+export function deleteContextPin(id: string): Promise<{ ok: boolean; id: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string }>({
+    path: `/api/context/pins/${id}`,
+    method: 'DELETE'
+  })
+}
+
+export function toggleContextPin(id: string, active: boolean): Promise<{ ok: boolean; id: string; is_active: boolean }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string; is_active: boolean }>({
+    path: `/api/context/pins/${id}/${active ? 'repin' : 'unpin'}`,
+    method: 'POST'
+  })
+}
+
+export function getContextDecisions(workspaceId?: string, module?: string, limit = 50): Promise<{ decisions: DecisionLogItem[]; count: number }> {
+  const params = new URLSearchParams()
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (module) params.set('module', module)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ decisions: DecisionLogItem[]; count: number }>({
+    path: `/api/context/decisions?${params.toString()}`
+  })
+}
+
+export function getContextNodeSummaries(flowRunId?: string, limit = 30, workspaceId?: string, sessionId?: string): Promise<{ summaries: NodeSummaryItem[]; count: number }> {
+  const params = new URLSearchParams()
+  if (flowRunId) params.set('flow_run_id', flowRunId)
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (sessionId) params.set('session_id', sessionId)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ summaries: NodeSummaryItem[]; count: number }>({
+    path: `/api/context/node-summaries?${params.toString()}`
+  })
+}
+
+export function getContextStats(): Promise<ContextStats> {
+  return window.hermesDesktop.api<ContextStats>({
+    path: '/api/context/stats'
+  })
+}
+
+export function getContextSnapshot(workspaceId?: string, sessionId?: string): Promise<{
+  envelope: ContextEnvelope | null
+  summary: any
+  counts: { memories: number; pins: number; decisions: number }
+  recent_memories: ContextMemoryItem[]
+  recent_pins: PinnedContextItem[]
+  recent_decisions: DecisionLogItem[]
+  recent_compressions: CompressionEvent[]
+  recent_nodes: NodeSummaryItem[]
+}> {
+  const params = new URLSearchParams()
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (sessionId) params.set('session_id', sessionId)
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+  return window.hermesDesktop.api({
+    path: `/api/context/snapshot${suffix}`
+  })
+}
+
+export function getContextEnvelope(): Promise<ContextEnvelope> {
+  return window.hermesDesktop.api<ContextEnvelope>({
+    path: '/api/context/envelope'
+  })
+}
+
+export function setContextEnvelope(env: Partial<ContextEnvelope>): Promise<{ ok: boolean; envelope?: ContextEnvelope }> {
+  return window.hermesDesktop.api<{ ok: boolean; envelope?: ContextEnvelope }>({
+    path: '/api/context/envelope',
+    method: 'POST',
+    body: env
+  })
+}
+
+export function getContextPromptPreview(
+  query: string,
+  opts?: { mode?: string; writing_domain?: string }
+): Promise<PromptPreviewResult> {
+  const params = new URLSearchParams()
+  params.set('query', query)
+  if (opts?.mode) params.set('mode', opts.mode)
+  if (opts?.writing_domain) params.set('writing_domain', opts.writing_domain)
+  return window.hermesDesktop.api<PromptPreviewResult>({
+    path: `/api/context/prompt-preview?${params.toString()}`
+  })
+}
+
+export function compactContext(
+  messages: any[],
+  opts?: { profile_name?: string }
+): Promise<{
+  ok: boolean
+  compressed_messages?: any[]
+  before_tokens?: number
+  after_tokens?: number
+  quality_score?: number
+}> {
+  return window.hermesDesktop.api({
+    path: '/api/context/compact',
+    method: 'POST',
+    body: { messages, ...opts }
+  })
+}
+
+export function createContextMemory(req: {
+  content: string
+  type?: string
+  priority?: string
+  scope?: string
+  workspace_id?: string
+  module?: string
+  task_id?: string
+}): Promise<{ ok: boolean; id: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string }>({
+    path: '/api/context/memories',
+    method: 'POST',
+    body: {
+      type: 'fact',
+      priority: 'normal',
+      scope: 'task',
+      ...req
+    }
+  })
+}
+
+export function deleteContextDecision(id: string): Promise<{ ok: boolean; id: string }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string }>({
+    path: `/api/context/decisions/${id}`,
+    method: 'DELETE'
+  })
+}
+
+export function getContextToolOutputs(limit = 50, workspaceId?: string, sessionId?: string): Promise<{ outputs: ToolOutputItem[]; count: number }> {
+  const params = new URLSearchParams()
+  params.set('limit', String(limit))
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  if (sessionId) params.set('session_id', sessionId)
+  return window.hermesDesktop.api<{ outputs: ToolOutputItem[]; count: number }>({
+    path: `/api/context/tool-outputs?${params.toString()}`
+  })
+}
+
+export function getContextToolOutputContent(id: string): Promise<{ id: string; content: string; tool_name: string }> {
+  return window.hermesDesktop.api<{ id: string; content: string; tool_name: string }>({
+    path: `/api/context/tool-outputs/${id}`
+  })
+}
+
+export interface TokenPolicy {
+  version?: number
+  mode?: 'balanced' | 'saving' | 'quality'
+  scope?: 'global' | 'workspace' | 'project' | 'workflow' | 'session'
+  scope_id?: string
+  budget_mode?: 'advisory' | 'hard'
+  input_budget?: number
+  output_budget?: number
+  total_token_budget?: number
+  currency_budget?: number
+  input_price_per_million?: number
+  cached_input_price_per_million?: number
+  output_price_per_million?: number
+  reasoning_price_per_million?: number
+  price_source?: string
+  price_version?: string
+  model_routing_policy?: string
+  model_slots?: Record<string, string>
+  provider_slots?: Record<string, string>
+  compression_profile?: string
+  cache_policy?: 'auto' | 'off'
+  max_critic_rounds?: number
+  max_parallel_nodes?: number
+}
+
+export interface TokenUsageSummary {
+  calls: number
+  input_tokens: number
+  cached_input_tokens: number
+  output_tokens: number
+  reasoning_tokens: number
+  total_prompt_tokens: number
+  total_tokens: number
+  breakdown: {
+    tool_schema: number
+    system_prompt: number
+    memory: number
+    rag: number
+    upstream: number
+    artifact: number
+  }
+  estimated_cost_usd: number
+  actual_cost_usd: number
+  by_source_kind: Record<string, { calls: number; input_tokens: number; output_tokens: number }>
+  by_model: Record<string, { input: number; output: number; calls: number }>
+  savings: {
+    cache_hit_tokens: number
+    reuse_tokens: number
+    externalized_tokens_estimate: number
+  }
+}
+
+export interface TokenUsageEvent {
+  id: string
+  provider: string
+  model: string
+  source_kind: string
+  input_tokens: number
+  cached_input_tokens: number
+  output_tokens: number
+  reasoning_tokens: number
+  estimated_cost?: number
+  usage_source: string
+  cache_hit: boolean
+  created_at: string
+}
+
+export interface CacheStats {
+  total_calls: number
+  cache_hits: number
+  hit_rate: number
+  cached_tokens_read: number
+  cached_tokens_written: number
+  total_prompt_tokens: number
+  cache_savings_pct: number
+}
+
+export interface ReuseRecord {
+  id: string
+  reuse_type: string
+  tokens_before: number
+  tokens_after: number
+  tokens_saved: number
+  reused: boolean
+  invalidation_reason?: string
+  created_at: string
+}
+
+export interface TokenEvent {
+  id: string
+  event_type: 'token.plan' | 'token.usage' | 'token.warning' | 'token.budget.blocked' | 'token.cache' | 'token.reuse' | string
+  session_id?: string
+  project_id?: string
+  workflow_id?: string
+  node_id?: string
+  plan_id?: string
+  payload: Record<string, unknown>
+  created_at: string
+}
+
+export interface TokenPlanResult {
+  context_window: number
+  reserved_output_tokens: number
+  safety_margin_tokens: number
+  max_input_tokens: number
+  budgets: Record<string, number>
+  estimated: {
+    input_tokens: number
+    output_tokens: number
+    total_tokens: number
+    cost_usd?: number
+  }
+  provider: string
+  model: string
+  profile: string
+  actions: Array<{ action: string; reason: string; token_savings_estimate: number }>
+  warnings: string[]
+  blocked: boolean
+  block_reason?: string
+}
+
+export interface WorkflowTokenPlanResult {
+  workflow_id: string
+  estimated_calls: number
+  estimated_input_tokens: number
+  estimated_output_tokens: number
+  estimated_cost_usd?: number
+  node_plans: Array<{
+    node_id: string
+    node_name: string
+    model: string
+    max_output_tokens: number
+    toolset: string[]
+    skills: string[]
+    estimated_input_tokens: number
+    estimated_output_tokens: number
+    estimated_cost?: number
+    reusable: boolean
+  }>
+  reusable_nodes: string[]
+  skipped_nodes: string[]
+  warnings: string[]
+  blocked: boolean
+  block_reason?: string
+}
+
+export function getTokenPolicy(sessionId?: string, projectId?: string, workspaceId?: string): Promise<{ policy: TokenPolicy }> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  if (projectId) params.set('project_id', projectId)
+  if (workspaceId) params.set('workspace_id', workspaceId)
+  return window.hermesDesktop.api<{ policy: TokenPolicy }>({
+    path: `/api/context/token-policy?${params.toString()}`
+  })
+}
+
+export function setTokenPolicy(policy: TokenPolicy & { scope?: string; scope_id?: string }): Promise<{ ok: boolean; id: string; policy: TokenPolicy }> {
+  return window.hermesDesktop.api<{ ok: boolean; id: string; policy: TokenPolicy }>({
+    path: '/api/context/token-policy',
+    method: 'PUT',
+    body: policy
+  })
+}
+
+export function getTokenUsage(sessionId?: string, projectId?: string, sinceMinutes?: number): Promise<TokenUsageSummary> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  if (projectId) params.set('project_id', projectId)
+  if (sinceMinutes) params.set('since_minutes', String(sinceMinutes))
+  return window.hermesDesktop.api<TokenUsageSummary>({
+    path: `/api/context/token-usage?${params.toString()}`
+  })
+}
+
+export function getTokenUsageBreakdown(sessionId?: string, limit = 50): Promise<{ events: TokenUsageEvent[] }> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ events: TokenUsageEvent[] }>({
+    path: `/api/context/token-usage/breakdown?${params.toString()}`
+  })
+}
+
+export function getCacheStats(sessionId?: string): Promise<CacheStats> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  return window.hermesDesktop.api<CacheStats>({
+    path: `/api/context/cache-stats?${params.toString()}`
+  })
+}
+
+export function getReuseRecords(sessionId?: string, limit = 50): Promise<{ records: ReuseRecord[] }> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ records: ReuseRecord[] }>({
+    path: `/api/context/reuse-records?${params.toString()}`
+  })
+}
+
+export function getTokenEvents(sessionId?: string, workflowId?: string, limit = 100): Promise<{ events: TokenEvent[] }> {
+  const params = new URLSearchParams()
+  if (sessionId) params.set('session_id', sessionId)
+  if (workflowId) params.set('workflow_id', workflowId)
+  params.set('limit', String(limit))
+  return window.hermesDesktop.api<{ events: TokenEvent[] }>({
+    path: `/api/context/token-events?${params.toString()}`
+  })
+}
+
+export function createWorkflowTokenPlan(workflowId: string, req: {
+  nodes: Array<{ id: string; name?: string; type?: string; tools?: string[]; skills?: string[]; model?: string }>
+  model?: string
+  provider?: string
+}): Promise<WorkflowTokenPlanResult> {
+  return window.hermesDesktop.api<WorkflowTokenPlanResult>({
+    path: `/api/context/workflows/${workflowId}/token-plan`,
+    method: 'POST',
+    body: req
+  })
+}
+
+export function getModelContextWindow(model: string): Promise<{ model: string; context_window: number }> {
+  return window.hermesDesktop.api<{ model: string; context_window: number }>({
+    path: `/api/context/context-window?model=${encodeURIComponent(model)}`
   })
 }

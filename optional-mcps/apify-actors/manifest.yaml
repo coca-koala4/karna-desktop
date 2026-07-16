@@ -1,0 +1,35 @@
+manifest_version: 2
+name: apify-actors
+description: Apify Actors MCP服务器，提供与各种Apify Actor的交互能力
+source: https://www.mcp-cn.com/server/130
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@apify/actors-mcp-server'
+auth:
+  type: api_key
+  env:
+  - name: APIFY_ACTORS_API_KEY
+    prompt: apify-actors API Key
+    required: true
+    secret: true
+post_install: 'apify-actors MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: apify-actors
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@apify/actors-mcp-server'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

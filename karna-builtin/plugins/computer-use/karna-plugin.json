@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "karna.computer-use",
+  "name": "Computer Use",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Control desktop with mouse clicks, keyboard input, screenshots, and drag operations",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "system",
+    "icon": "assets/icon.png",
+    "capabilities": ["interactive", "write"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "desktop:control",
+    "screen:capture",
+    "process:bundled-runtime"
+  ],
+  "dependencies": {},
+  "health_check": {
+    "type": "driver",
+    "command": "cua-doctor"
+  }
+}

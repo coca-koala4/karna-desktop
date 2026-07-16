@@ -2994,10 +2994,11 @@ def _get_usage(agent) -> dict:
         if last_prompt < 0:
             last_prompt = 0
         ctx_max = getattr(comp, "context_length", 0) or 0
-        if ctx_max and last_prompt:
-            usage["context_used"] = last_prompt
+        if ctx_max:
             usage["context_max"] = ctx_max
-            usage["context_percent"] = max(0, min(100, round(last_prompt / ctx_max * 100)))
+            if last_prompt:
+                usage["context_used"] = last_prompt
+                usage["context_percent"] = max(0, min(100, round(last_prompt / ctx_max * 100)))
         usage["compressions"] = getattr(comp, "compression_count", 0) or 0
     # Live count of background/async subagents still running (delegate_task
     # batches + background single delegations). Mirrors the classic CLI status
@@ -4782,7 +4783,7 @@ def _clear_inflight_turn(session: dict) -> None:
     session["inflight_turn"] = None
 
 
-def _enqueue_prompt(session: dict, text: Any, transport: Any) -> None:
+def _enqueue_prompt(session: dict, text: Any, transport: Any, context_envelope: Any = None) -> None:
     """Stash a message to run as the very next turn once the live one ends.
 
     Used when a prompt arrives mid-turn (see ``_handle_busy_submit``). A single
@@ -4799,10 +4800,14 @@ def _enqueue_prompt(session: dict, text: Any, transport: Any) -> None:
     ):
         prev = existing["text"]
         text = f"{prev}\n\n{text}" if prev and text else (prev or text)
-    session["queued_prompt"] = {"text": text, "transport": transport}
+    session["queued_prompt"] = {
+        "text": text,
+        "transport": transport,
+        "context_envelope": context_envelope,
+    }
 
 
-def _handle_busy_submit(rid, sid: str, session: dict, text: Any, transport: Any) -> dict:
+def _handle_busy_submit(rid, sid: str, session: dict, text: Any, transport: Any, context_envelope: Any = None) -> dict:
     """Apply the ``display.busy_input_mode`` policy to a prompt that lands while
     a turn is in flight, instead of rejecting it with ``session busy``.
 
@@ -4831,7 +4836,7 @@ def _handle_busy_submit(rid, sid: str, session: dict, text: Any, transport: Any)
             agent.interrupt()
         except Exception:
             pass
-    _enqueue_prompt(session, text, transport)
+    _enqueue_prompt(session, text, transport, context_envelope)
     session["last_active"] = time.time()
     return _ok(rid, {"status": "queued"})
 
@@ -4852,7 +4857,10 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
         if queued.get("transport") is not None:
             session["transport"] = queued["transport"]
     try:
-        _run_prompt_submit(rid, sid, session, queued["text"])
+        _run_prompt_submit(
+            rid, sid, session, queued["text"],
+            context_envelope=queued.get("context_envelope"),
+        )
     except Exception as exc:
         print(
             f"[tui_gateway] queued prompt dispatch failed: "
@@ -8116,25 +8124,65 @@ def _(rid, params: dict) -> dict:
 # ── Methods: prompt ──────────────────────────────────────────────────
 
 
+def _normalize_prompt_context_envelope(params: dict, sid: str, session: dict):
+    """Validate the versioned envelope carried by prompt.submit.
+
+    Loose legacy metadata is intentionally not accepted: accepting half an
+    envelope made project scope silently disappear.  Session identity is
+    server-owned and cannot be spoofed by the renderer.
+    """
+    raw = params.get("context_envelope")
+    if raw is None:
+        return session.get("context_envelope")
+    if not isinstance(raw, dict):
+        raise ValueError("context_envelope must be an object")
+    from agent.context.context_envelope import ContextEnvelope
+
+    env = ContextEnvelope.from_dict(raw)
+    env.version = 1
+    env.session_id = str(session.get("session_key") or sid)
+    if not env.workspace_id:
+        env.workspace_id = str(_session_cwd(session) or "") or None
+    allowed_sources = {
+        "user_instruction", "system_inference", "artifact_selection",
+        "project_document", "imported_source", "tool_output",
+        "subagent_output", "node_summary", "retrieved_memory",
+    }
+    if env.source_kind not in allowed_sources:
+        raise ValueError(f"unsupported context_envelope.source_kind: {env.source_kind}")
+    return env
+
+
 @method("prompt.submit")
 def _(rid, params: dict) -> dict:
     sid, text = params.get("session_id", ""), params.get("text", "")
+    permission_mode = str(params.get("permission_mode") or "project").lower()
+    if permission_mode not in {"project", "computer", "free"}:
+        permission_mode = "project"
     truncate_user_ordinal = params.get("truncate_before_user_ordinal")
     session, err = _sess_nowait(params, rid)
     if err:
         return err
+    try:
+        context_envelope = _normalize_prompt_context_envelope(params, sid, session)
+    except ValueError as exc:
+        return _err(rid, 4004, str(exc))
     # Re-bind to the current client transport for this request. This keeps
     # streaming events on the active websocket even if an earlier disconnect
     # or fallback moved the session transport to stdio.
     if (t := current_transport()) is not None:
         session["transport"] = t
     with session["history_lock"]:
+        session["permission_mode"] = permission_mode
         if session.get("running"):
             # Don't reject a mid-turn prompt — queue it (and, by default,
             # interrupt the live turn) so it runs as the next turn. See
             # _handle_busy_submit for why the old "session busy" rejection
             # dropped messages when teardown outlived the client's retry window.
-            return _handle_busy_submit(rid, sid, session, text, t or session.get("transport"))
+            return _handle_busy_submit(
+                rid, sid, session, text, t or session.get("transport"),
+                context_envelope,
+            )
         # A watch session's run lives in the PARENT turn, so its own running
         # flag is False — without this, typing mid-run builds a second agent
         # racing the in-flight child on the same stored session (interleaved
@@ -8167,6 +8215,7 @@ def _(rid, params: dict) -> dict:
         session["running"] = True
         session["_turn_cancel_requested"] = False
         session["last_active"] = time.time()
+        session["context_envelope"] = context_envelope
         _start_inflight_turn(session, text)
 
     # Persist the DB row lazily, now that the user has actually sent a message.
@@ -8197,7 +8246,7 @@ def _(rid, params: dict) -> dict:
                 session["running"] = False
                 _clear_inflight_turn(session)
                 return
-        _run_prompt_submit(rid, sid, session, text)
+        _run_prompt_submit(rid, sid, session, text, context_envelope=context_envelope)
 
     run_thread = threading.Thread(target=run_after_agent_ready, daemon=True)
     # Keep a handle so session.interrupt can tell a live turn from a stuck
@@ -8449,7 +8498,10 @@ def _start_notification_poller(sid: str, session: dict) -> threading.Event:
     return stop
 
 
-def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
+def _run_prompt_submit(
+    rid, sid: str, session: dict, text: Any,
+    context_envelope: Any = None,
+) -> None:
     with session["history_lock"]:
         history = list(session["history"])
         history_version = int(session.get("history_version", 0))
@@ -8458,6 +8510,7 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
         if not isinstance(session.get("inflight_turn"), dict):
             _start_inflight_turn(session, text)
     agent = session["agent"]
+    agent._permission_mode = str(session.get("permission_mode") or "project")
     if hasattr(agent, "clear_interrupt"):
         try:
             agent.clear_interrupt()
@@ -8468,6 +8521,7 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
     def run():
         approval_token = None
         session_tokens = []
+        envelope_token = None
         home_token = None  # per-turn HERMES_HOME override for a resumed remote profile
         goal_followup = None  # set by the post-turn goal hook below
         try:
@@ -8478,6 +8532,22 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
 
             approval_token = set_current_session_key(session["session_key"])
             session_tokens = _set_session_context(session["session_key"])
+            effective_envelope = context_envelope or session.get("context_envelope")
+            if effective_envelope is not None:
+                from gateway.session_context import (
+                    get_session_envelope,
+                    set_session_envelope,
+                )
+                envelope_token = set_session_envelope(effective_envelope)
+                # Synchronize the agent.context ContextVar in this exact worker
+                # thread before compression/injection reads it.
+                effective_envelope = get_session_envelope()
+                compressor = getattr(agent, "context_compressor", None)
+                apply_profile = getattr(compressor, "apply_compression_profile", None)
+                if callable(apply_profile):
+                    apply_profile(effective_envelope.get_effective_profile())
+                    compressor._context_os_workspace_id = effective_envelope.get_scope_id()
+                    compressor._context_os_module = effective_envelope.module
             _profile_home_str = session.get("profile_home")
             if _profile_home_str:
                 home_token = set_hermes_home_override(_profile_home_str)
@@ -8863,6 +8933,12 @@ def _run_prompt_submit(rid, sid: str, session: dict, text: Any) -> None:
                 pass
             if home_token is not None:
                 reset_hermes_home_override(home_token)
+            if envelope_token is not None:
+                try:
+                    from gateway.session_context import reset_session_envelope
+                    reset_session_envelope(envelope_token)
+                except Exception:
+                    pass
             _clear_session_context(session_tokens)
             with session["history_lock"]:
                 session["running"] = False

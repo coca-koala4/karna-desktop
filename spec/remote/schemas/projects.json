@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/projects.json",
+  "title": "Karna Remote Protocol Project Types",
+  "description": "Project-related type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "Project": {
+      "type": "object",
+      "required": ["projectId", "name", "createdAt", "updatedAt"],
+      "properties": {
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "rootPath": {
+          "type": ["string", "null"],
+          "description": "Local filesystem root path, if applicable"
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "lastOpenedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Arbitrary project metadata"
+        },
+        "stats": {
+          "$ref": "#/definitions/ProjectStats"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProjectStats": {
+      "type": "object",
+      "properties": {
+        "conversationCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProjectListResponse": {
+      "type": "object",
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Project"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/files.json",
+  "title": "Karna Remote Protocol File Types",
+  "description": "File and preview type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "FileStatus": {
+      "type": "string",
+      "enum": ["pending", "uploading", "ready", "processing", "error", "deleted"],
+      "description": "File processing status"
+    },
+    "FileType": {
+      "type": "string",
+      "enum": ["image", "document", "code", "archive", "audio", "video", "text", "binary", "other"],
+      "description": "Broad file category"
+    },
+    "File": {
+      "type": "object",
+      "required": ["fileId", "name", "size", "mimeType", "fileType", "createdAt"],
+      "properties": {
+        "fileId": {
+          "$ref": "common.json#/definitions/FileId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Original filename"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File size in bytes"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "MIME type"
+        },
+        "fileType": {
+          "$ref": "#/definitions/FileType"
+        },
+        "status": {
+          "$ref": "#/definitions/FileStatus"
+        },
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId"
+        },
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId"
+        },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "SHA-256 hash of file contents"
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "uploadedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "thumbnail": {
+          "$ref": "#/definitions/FilePreview"
+        },
+        "preview": {
+          "$ref": "#/definitions/FilePreview"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilePreview": {
+      "type": "object",
+      "required": ["available", "previewType"],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "previewType": {
+          "type": "string",
+          "enum": ["image", "text", "pdf", "code", "none"],
+          "description": "Type of preview available"
+        },
+        "url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Preview URL (time-limited, signed)"
+        },
+        "expiresAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "width": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "height": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "content": {
+          "type": ["string", "null"],
+          "description": "Inline preview content (e.g., text excerpt)"
+        },
+        "contentType": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UploadSession": {
+      "type": "object",
+      "required": ["uploadId", "fileId", "chunkSize", "expiresAt"],
+      "properties": {
+        "uploadId": {
+          "type": "string",
+          "pattern": "^upload_[a-zA-Z0-9]{16}$"
+        },
+        "fileId": {
+          "$ref": "common.json#/definitions/FileId"
+        },
+        "chunkSize": {
+          "type": "integer",
+          "minimum": 1024,
+          "description": "Chunk size in bytes for resumable uploads"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Current byte offset (resume point)"
+        },
+        "expiresAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FileListResponse": {
+      "type": "object",
+      "required": ["files"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/File"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

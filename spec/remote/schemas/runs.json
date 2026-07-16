@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/runs.json",
+  "title": "Karna Remote Protocol Run Types",
+  "description": "Run and workflow node type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "RunStatus": {
+      "type": "string",
+      "enum": ["pending", "queued", "running", "waiting_approval", "completed", "failed", "cancelled", "timeout"],
+      "description": "Execution status of a run"
+    },
+    "Run": {
+      "type": "object",
+      "required": ["runId", "projectId", "workflowName", "status", "createdAt"],
+      "properties": {
+        "runId": {
+          "$ref": "common.json#/definitions/RunId"
+        },
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId"
+        },
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId"
+        },
+        "workflowName": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": ["string", "null"]
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "$ref": "#/definitions/RunStatus"
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "startedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "completedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "currentNodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "trigger": {
+          "type": "string",
+          "enum": ["manual", "cron", "webhook", "api", "agent"]
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": ["string", "null"]
+        },
+        "durationMs": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "usage": {
+          "$ref": "events.json#/definitions/TokenUsage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeType": {
+      "type": "string",
+      "enum": ["prompt", "tool", "branch", "loop", "parallel", "human", "subflow", "condition", "transform"],
+      "description": "Workflow node type"
+    },
+    "NodeStatus": {
+      "type": "string",
+      "enum": ["pending", "ready", "running", "waiting", "completed", "failed", "skipped", "cancelled"]
+    },
+    "Node": {
+      "type": "object",
+      "required": ["nodeId", "runId", "nodeType", "status"],
+      "properties": {
+        "nodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "runId": {
+          "$ref": "common.json#/definitions/RunId"
+        },
+        "nodeType": {
+          "$ref": "#/definitions/NodeType"
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "parentNodeId": {
+          "$ref": "common.json#/definitions/NodeId"
+        },
+        "startedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "completedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "durationMs": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": ["string", "null"]
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NodeLogEntry"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeLogEntry": {
+      "type": "object",
+      "required": ["ts", "level", "message"],
+      "properties": {
+        "ts": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"]
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunListResponse": {
+      "type": "object",
+      "required": ["runs"],
+      "properties": {
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Run"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunDetailResponse": {
+      "type": "object",
+      "required": ["run", "nodes"],
+      "properties": {
+        "run": {
+          "$ref": "#/definitions/Run"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Node"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

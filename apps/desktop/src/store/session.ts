@@ -287,6 +287,15 @@ export const $contextSuggestions = atom<ContextSuggestion[]>([])
 export const $modelPickerOpen = atom(false)
 export const $sessionPickerOpen = atom(false)
 
+// Current active Writer OS project — shared between chat, IDE, and workshop.
+// When a new chat session is created while this is set, the session is bound
+// to the project so the AI has full access to story bible, wiki, graph, etc.
+export const $activeWriterProject = atom<{ id: string; title: string; folder?: string } | null>(null)
+
+export const setActiveWriterProject = (next: { id: string; title: string; folder?: string } | null) => {
+  updateAtom($activeWriterProject, next)
+}
+
 export const setConnection = (next: Updater<HermesConnection | null>) => updateAtom($connection, next)
 export const setGatewayState = (next: Updater<string>) => updateAtom($gatewayState, next)
 export const setSessions = (next: Updater<SessionInfo[]>) => updateAtom($sessions, next)
@@ -338,18 +347,20 @@ export const setCurrentCwd = (next: Updater<string>) => {
   persistString(workspaceCwdKey(), $currentCwd.get().trim() || null)
 }
 
-export const workspaceCwdForNewSession = (): string => {
+function getStandaloneDefaultCwd(): string {
   if ($connection.get()?.mode === 'remote') {
     return getRememberedWorkspaceCwd()
   }
 
-  // A bare new chat starts DETACHED — no inherited cwd, so the composer's coding
-  // rail (which keys off $currentCwd) shows no branch and the first message runs
-  // in the gateway's default rather than silently in the last repo you touched.
-  // Only an explicit default-project-dir setting pre-attaches. Entering a
-  // project/worktree attaches its cwd directly (startSessionInWorkspace), so the
-  // "remember where I was when I'm in a project" case is unaffected.
   return getConfiguredDefaultProjectDir()
+}
+
+export const workspaceCwdForNewSession = (): string => {
+  return getStandaloneDefaultCwd()
+}
+
+export const workspaceCwdForProjectSession = (projectCwd: string): string => {
+  return projectCwd
 }
 
 export const setCurrentBranch = (next: Updater<string>) => updateAtom($currentBranch, next)
@@ -522,4 +533,72 @@ export function setSessionWorking(sessionId: string | null | undefined, working:
       markSessionSettled(sessionId)
     }
   }
+}
+
+export interface SessionLifecycleEvent {
+  mutation_id: string
+  action: 'deleted' | 'archived' | 'unarchived'
+  lineage_root_id: string
+  affected_session_ids: string[]
+  affected_project_ids: string[]
+}
+
+export const $sessionMutations = atom<Map<string, SessionLifecycleEvent>>(new Map())
+export const $locallyRemovedSessionIds = atom<Set<string>>(new Set())
+
+export function applySessionLifecycleEvent(event: SessionLifecycleEvent) {
+  const affectedIds = new Set(event.affected_session_ids || [])
+  if (affectedIds.size === 0) return
+
+  const mutations = new Map($sessionMutations.get())
+  mutations.set(event.mutation_id, event)
+  $sessionMutations.set(mutations)
+
+  if (event.action === 'deleted') {
+    const removed = new Set($locallyRemovedSessionIds.get())
+    for (const id of affectedIds) removed.add(id)
+    $locallyRemovedSessionIds.set(removed)
+
+    setSessions(current => current.filter(s => !affectedIds.has(s.id)))
+    setSessionsTotal(prev => Math.max(0, prev - affectedIds.size))
+
+    const activeId = $activeSessionId.get()
+    if (activeId && affectedIds.has(activeId)) {
+      setActiveSessionId(null)
+      setMessages([])
+      setBusy(false)
+      setAwaitingResponse(false)
+      setFreshDraftReady(true)
+    }
+  } else if (event.action === 'archived') {
+    setSessions(current => current.map(s => affectedIds.has(s.id) ? { ...s, archived: true } : s))
+  } else if (event.action === 'unarchived') {
+    setSessions(current => current.map(s => affectedIds.has(s.id) ? { ...s, archived: false } : s))
+  }
+}
+
+export function markSessionPendingRemoval(sessionId: string) {
+  const removed = new Set($locallyRemovedSessionIds.get())
+  removed.add(sessionId)
+  $locallyRemovedSessionIds.set(removed)
+}
+
+export function clearPendingRemoval(sessionId: string) {
+  const removed = new Set($locallyRemovedSessionIds.get())
+  removed.delete(sessionId)
+  $locallyRemovedSessionIds.set(removed)
+}
+
+let lifecycleListenerUnsubscribe: (() => void) | null = null
+
+export function initSessionLifecycleListener() {
+  if (lifecycleListenerUnsubscribe) return
+  try {
+    const karnaDesktop = (window as any).karnaDesktop
+    if (karnaDesktop?.karnaSession?.onLifecycleChanged) {
+      lifecycleListenerUnsubscribe = karnaDesktop.karnaSession.onLifecycleChanged((event: SessionLifecycleEvent) => {
+        applySessionLifecycleEvent(event)
+      })
+    }
+  } catch { /* not in electron context */ }
 }

@@ -4,9 +4,10 @@ import type { NavigateFunction } from 'react-router-dom'
 
 import { deleteSession, getSessionMessages, setSessionArchived } from '@/hermes'
 import { useI18n } from '@/i18n'
-import { preserveLocalAssistantErrors, toChatMessages } from '@/lib/chat-messages'
+import { preserveLocalAssistantErrors, toChatMessages, type ChatMessage } from '@/lib/chat-messages'
 import { setSessionYolo } from '@/lib/yolo-session'
 import { clearQueuedPrompts } from '@/store/composer-queue'
+import { resetDraftScope, setDraftConversationScope, setDraftPermissionMode, lockScope, unlockScope, $draftConversationScope, $draftPermissionMode } from '@/store/conversation-scope'
 import { $pinnedSessionIds } from '@/store/layout'
 import { clearNotifications, notify, notifyError } from '@/store/notifications'
 import {
@@ -17,6 +18,7 @@ import {
 } from '@/store/profile'
 import { resolveNewSessionCwd, tombstoneSessions, untombstoneSessions } from '@/store/projects'
 import {
+  $activeWriterProject,
   $currentCwd,
   $currentFastMode,
   $currentModel,
@@ -44,7 +46,8 @@ import {
   setSessionsTotal,
   setTurnStartedAt,
   setYoloActive,
-  workspaceCwdForNewSession
+  workspaceCwdForNewSession,
+  workspaceCwdForProjectSession
 } from '@/store/session'
 import { broadcastSessionsChanged } from '@/store/session-sync'
 import { isWatchWindow } from '@/store/windows'
@@ -114,12 +117,31 @@ export function useSessionActions({
   const resumeRequestRef = useRef(0)
 
   const startFreshSessionDraft = useCallback(
-    (replaceRoute = false) => {
+    (replaceRoute = false, opts?: { scope?: 'standalone' | 'project'; projectId?: string; projectName?: string; projectPath?: string; workspaceId?: string }) => {
       busyRef.current = false
       setBusy(false)
       setAwaitingResponse(false)
       clearNotifications()
       setIntroSeed(seed => seed + 1)
+      unlockScope()
+      resetDraftScope()
+
+      if (opts?.scope === 'project' && opts.projectId && opts.projectPath) {
+        const projectCwd = workspaceCwdForProjectSession(opts.projectPath)
+        setCurrentCwd(projectCwd)
+        setDraftConversationScope({
+          type: 'project',
+          workspaceId: opts.workspaceId || opts.projectId,
+          writerProjectId: opts.projectId,
+          projectName: opts.projectName || '项目',
+          cwd: projectCwd
+        })
+      } else {
+        const standaloneCwd = workspaceCwdForNewSession()
+        setCurrentCwd(standaloneCwd)
+        setDraftConversationScope({ type: 'standalone' })
+      }
+
       navigate(NEW_CHAT_ROUTE, { replace: replaceRoute })
       setActiveSessionId(null)
       activeSessionIdRef.current = null
@@ -134,20 +156,9 @@ export function useSessionActions({
       })
       setSessionStartedAt(null)
       setTurnStartedAt(null)
-      // The composer's model/effort/fast is sticky UI state (persisted in
-      // localStorage) — a new chat FOLLOWS your last pick instead of snapping
-      // back to the profile default, so we deliberately don't reset it here. The
-      // profile default still owns first-run seeding and profile switches (see
-      // refreshCurrentModel). Only $currentServiceTier (a live-session mirror)
-      // is cleared.
       setCurrentServiceTier('')
       setYoloActive(false)
-      // In a project → the repo's default-branch (main worktree) checkout; not in
-      // a project → detached. So cmd-n "knows" the project instead of inheriting
-      // whatever linked worktree the last session drifted into.
-      setCurrentCwd(resolveNewSessionCwd())
       setCurrentBranch('')
-      // Never clear the composer here — ChatBar's per-thread draft swap owns it.
       setFreshDraftReady(true)
     },
     [activeSessionIdRef, busyRef, navigate, selectedStoredSessionIdRef]
@@ -162,22 +173,73 @@ export function useSessionActions({
       creatingSessionRef.current = true
 
       try {
-        // A plain new session (top "New Session", /new, keybind) leaves
-        // $newChatProfile null to mean "use the live context"; the per-profile
-        // "+" sets it explicitly. Resolve null to the active gateway profile so
-        // session.create always carries it: in global-remote mode one backend
-        // serves every profile, so an omitted profile param silently lands the
-        // chat on the launch (default) profile — the "rubberbands back to
-        // default" bug. This is a no-op for single-profile/local-pooled users:
-        // a backend resolves its own launch profile to None (_profile_home).
         const newChatProfile = $newChatProfile.get() ?? normalizeProfileKey($activeGatewayProfile.get())
         await ensureGatewayProfile(newChatProfile)
-        const cwd = $currentCwd.get().trim() || workspaceCwdForNewSession()
-        // The composer's model/effort/fast is sticky UI state ($currentModel,
-        // $currentProvider, $currentReasoningEffort, $currentFastMode). Ship it
-        // with every session.create so the new chat opens on whatever the picker
-        // shows — applied as per-session overrides, never written to the profile
-        // default (that lives in Settings → Model).
+        const draftScope = $draftConversationScope.get()
+        const draftPermission = $draftPermissionMode.get()
+
+        let cwd: string
+        let sessionParams: Record<string, unknown> = {}
+
+        if (draftScope.type === 'project') {
+          cwd = draftScope.cwd
+          sessionParams = {
+            conversation_scope: 'project',
+            workspace_id: draftScope.workspaceId,
+            writer_project_id: draftScope.writerProjectId,
+            project_id: draftScope.writerProjectId,
+            project_title: draftScope.projectName
+          }
+
+          if (startingStoredSessionId) {
+            try {
+              const resumed = await requestGateway<{ session_id: string; messages?: ChatMessage[]; info?: Record<string, unknown> }>('session.resume', {
+                session_id: startingStoredSessionId
+              })
+
+              if (
+                activeSessionIdRef.current !== startingActiveSessionId ||
+                selectedStoredSessionIdRef.current !== startingStoredSessionId ||
+                getRouteToken() !== startingRouteToken
+              ) {
+                return null
+              }
+
+              activeSessionIdRef.current = resumed.session_id
+              ensureSessionState(resumed.session_id, startingStoredSessionId)
+              lockScope()
+
+              if (Array.isArray(resumed.messages)) {
+                updateSessionState(resumed.session_id, state => ({ ...state, messages: resumed.messages || [] }), startingStoredSessionId)
+              }
+
+              setFreshDraftReady(false)
+              setActiveSessionId(resumed.session_id)
+              const runtimeInfo = resumed.info ? applyRuntimeInfo(resumed.info) : null
+              if (runtimeInfo) {
+                updateSessionState(resumed.session_id, state => ({ ...state, ...runtimeInfo }), startingStoredSessionId)
+              }
+
+              broadcastSessionsChanged()
+              return resumed.session_id
+            } catch {
+              // Session resume failed; fall through to create new session
+            }
+          }
+        } else {
+          cwd = workspaceCwdForNewSession()
+          if (cwd) {
+            setCurrentCwd(cwd)
+          }
+          sessionParams = {
+            conversation_scope: 'standalone'
+          }
+        }
+
+        if (draftPermission !== 'restricted') {
+          sessionParams.permission_mode = draftPermission
+        }
+
         const uiModel = $currentModel.get().trim()
         const uiProvider = $currentProvider.get().trim()
         const uiEffort = $currentReasoningEffort.get().trim()
@@ -189,7 +251,8 @@ export function useSessionActions({
           ...(newChatProfile ? { profile: newChatProfile } : {}),
           ...(uiModel ? { model: uiModel, ...(uiProvider ? { provider: uiProvider } : {}) } : {}),
           ...(uiEffort ? { reasoning_effort: uiEffort } : {}),
-          ...(uiFast ? { fast: true } : {})
+          ...(uiFast ? { fast: true } : {}),
+          ...sessionParams
         })
 
         const stored = created.stored_session_id ?? null
@@ -207,16 +270,15 @@ export function useSessionActions({
         activeSessionIdRef.current = created.session_id
         selectedStoredSessionIdRef.current = stored
         ensureSessionState(created.session_id, stored)
+        lockScope()
+
+        const isProjectScope = draftScope.type === 'project'
 
         if (stored) {
-          // Seed the sidebar preview with the user's first message so the row
-          // reads meaningfully while the turn is in flight, instead of flashing
-          // "Untitled session" until the turn persists and auto-title runs. The
-          // server later returns its own preview/title and supersedes this.
           upsertOptimisticSession(created, stored, null, preview?.trim() || null)
-          navigate(sessionRoute(stored), { replace: true })
-          // Other windows (e.g. the main window when this is the pop-out) can't
-          // see this session until they re-pull the shared list.
+          if (!isProjectScope) {
+            navigate(sessionRoute(stored), { replace: true })
+          }
           broadcastSessionsChanged()
         }
 
@@ -231,8 +293,6 @@ export function useSessionActions({
           updateSessionState(created.session_id, state => ({ ...state, ...runtimeInfo }), stored)
         }
 
-        // User may have armed YOLO on the new-chat draft before the runtime
-        // session existed — apply it to the freshly created session.
         if (yoloArmed) {
           await setSessionYolo(requestGateway, created.session_id, true).catch(() => undefined)
         }

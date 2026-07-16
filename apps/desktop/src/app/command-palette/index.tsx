@@ -12,14 +12,10 @@ import { getHermesConfigRecord, listAllProfileSessions } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { sessionTitle } from '@/lib/chat-runtime'
 import {
-  Activity,
   Archive,
-  BarChart3,
   Brain,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Cpu,
   Download,
   Egg,
   FileText,
@@ -35,13 +31,11 @@ import {
   Palette,
   PawPrint,
   Plus,
-  RefreshCw,
   Settings,
   Settings2,
   Starmap,
   Sun,
   Terminal,
-  Users,
   Wrench,
   Zap
 } from '@/lib/icons'
@@ -62,17 +56,14 @@ import { type ThemeMode, useTheme } from '@/themes/context'
 import { isUserTheme, resolveTheme } from '@/themes/user-themes'
 
 import {
-  AGENTS_ROUTE,
-  ARTIFACTS_ROUTE,
-  COMMAND_CENTER_ROUTE,
-  CRON_ROUTE,
   KARNA_AGENTS_ROUTE,
+  KARNA_FLOW_ROUTE,
   KARNA_MCP_ROUTE,
+  KARNA_PLUGINS_ROUTE,
   KARNA_SOUL_ROUTE,
   KARNA_WRITER_ROUTE,
   MESSAGING_ROUTE,
   NEW_CHAT_ROUTE,
-  PROFILES_ROUTE,
   sessionRoute,
   SETTINGS_ROUTE,
   SKILLS_ROUTE,
@@ -376,6 +367,13 @@ export function CommandPalette() {
             run: go(KARNA_AGENTS_ROUTE)
           },
           {
+            icon: GitBranch,
+            id: 'nav-karna-flow',
+            keywords: ['karna', 'flow', 'workflow', '多智能体', 'flow studio'],
+            label: '多智能体工坊',
+            run: go(KARNA_FLOW_ROUTE)
+          },
+          {
             icon: FileText,
             id: 'nav-karna-writer',
             keywords: ['karna', 'writer', 'project'],
@@ -386,7 +384,7 @@ export function CommandPalette() {
             icon: Brain,
             id: 'nav-karna-soul',
             keywords: ['karna', 'soul', 'rag', 'knowledge'],
-            label: '灵魂工坊',
+            label: 'Soul 工坊',
             run: go(KARNA_SOUL_ROUTE)
           },
           {
@@ -397,29 +395,19 @@ export function CommandPalette() {
             run: go(KARNA_MCP_ROUTE)
           },
           {
+            icon: Package,
+            id: 'nav-karna-plugins',
+            keywords: ['karna', 'plugin', 'extension', 'addon', 'skill pack'],
+            label: '插件平台',
+            run: go(KARNA_PLUGINS_ROUTE)
+          },
+          {
             action: 'nav.messaging',
             icon: MessageCircle,
             id: 'nav-messaging',
             label: cc.nav.messaging.title,
             run: go(MESSAGING_ROUTE)
           },
-          {
-            action: 'nav.artifacts',
-            icon: Package,
-            id: 'nav-artifacts',
-            label: cc.nav.artifacts.title,
-            run: go(ARTIFACTS_ROUTE)
-          },
-          {
-            action: 'nav.cron',
-            icon: Clock,
-            id: 'nav-cron',
-            keywords: ['schedule', 'jobs'],
-            label: t.shell.statusbar.cron,
-            run: go(CRON_ROUTE)
-          },
-          { action: 'nav.profiles', icon: Users, id: 'nav-profiles', label: t.profiles.title, run: go(PROFILES_ROUTE) },
-          { action: 'nav.agents', icon: Cpu, id: 'nav-agents', label: t.agents.title, run: go(AGENTS_ROUTE) },
           {
             icon: Starmap,
             id: 'nav-starmap',
@@ -430,39 +418,6 @@ export function CommandPalette() {
         ]
       },
       ...branchGroup,
-      {
-        heading: cc.commandCenter,
-        items: [
-          {
-            icon: Archive,
-            id: 'cc-sessions',
-            keywords: ['command center', 'sessions', 'pin'],
-            label: cc.sections.sessions,
-            run: go(`${COMMAND_CENTER_ROUTE}?section=sessions`)
-          },
-          {
-            icon: Activity,
-            id: 'cc-system',
-            keywords: ['command center', 'system', 'status', 'logs'],
-            label: cc.sections.system,
-            run: go(`${COMMAND_CENTER_ROUTE}?section=system`)
-          },
-          {
-            icon: BarChart3,
-            id: 'cc-usage',
-            keywords: ['command center', 'usage', 'tokens', 'cost'],
-            label: cc.sections.usage,
-            run: go(`${COMMAND_CENTER_ROUTE}?section=usage`)
-          },
-          {
-            icon: RefreshCw,
-            id: 'cc-restart-gateway',
-            keywords: ['gateway', 'restart', 'messaging', 'reconnect', 'system'],
-            label: cc.restartGateway,
-            run: () => void runGatewayRestart()
-          }
-        ]
-      },
       {
         // Declared before Settings: cmdk keeps group order, so this keeps the
         // theme/mode pickers on top for "theme"/"color" queries instead of

@@ -49,6 +49,7 @@ import {
   type ToolStatus,
   type ToolTitleAction
 } from './fallback-model'
+import { extractPermissionErrorMessage, PermissionErrorCard } from './permission-error-card'
 
 // `true` when a ToolEntry is rendered inside an embedding wrapper that owns
 // the per-row chrome (timer / preview). The flat ToolGroupSlot sets this
@@ -274,7 +275,12 @@ function ToolEntry({ part }: ToolEntryProps) {
   const sideDiff = toolCallId ? liveDiffs[toolCallId] || '' : ''
   const inlineDiff = stripInlineDiffChrome(sideDiff) || inlineDiffFromResult(result)
   const isFileEdit = isFileEditTool(toolName)
-  const defaultOpen = Boolean(inlineDiff)
+
+  const permissionErrorMessage = useMemo(() => {
+    return extractPermissionErrorMessage(stablePart.result)
+  }, [stablePart.result])
+
+  const defaultOpen = Boolean(inlineDiff) || Boolean(permissionErrorMessage)
   const open = useDisclosureOpen(disclosureId, defaultOpen)
   const canDismiss = !isPending && !embedded
   // Only animate entries that mount while their message is actively
@@ -338,7 +344,8 @@ function ToolEntry({ part }: ToolEntryProps) {
 
   const showDetail =
     !view.inlineDiff &&
-    ((view.status === 'error' && Boolean(detailSections.summary || detailSections.body)) ||
+    (Boolean(permissionErrorMessage) ||
+      (view.status === 'error' && Boolean(detailSections.summary || detailSections.body)) ||
       (view.status !== 'error' &&
         Boolean(view.detail) &&
         !looksRedundant(view.title, view.detail) &&
@@ -496,7 +503,9 @@ function ToolEntry({ part }: ToolEntryProps) {
           )}
           {showDetail &&
             toolViewMode !== 'technical' &&
-            (view.status === 'error' ? (
+            (permissionErrorMessage ? (
+              <PermissionErrorCard message={permissionErrorMessage} />
+            ) : view.status === 'error' ? (
               detailSections.summary || detailSections.body ? (
                 <div className="max-w-full text-xs leading-relaxed text-destructive">
                   {detailSections.summary && (

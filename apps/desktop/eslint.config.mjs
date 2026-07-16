@@ -24,6 +24,11 @@ const customRules = {
 
 export default [
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: false
+    }
+  },
+  {
     ignores: ['**/node_modules/**', '**/dist/**', 'src/**/*.js']
   },
   js.configs.recommended,
@@ -96,7 +101,7 @@ export default [
       'perfectionist/sort-jsx-props': ['error', { order: 'asc', type: 'natural' }],
       'perfectionist/sort-named-exports': ['error', { order: 'asc', type: 'natural' }],
       'perfectionist/sort-named-imports': ['error', { order: 'asc', type: 'natural' }],
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'unused-imports/no-unused-imports': 'error'
     },

@@ -1,0 +1,35 @@
+manifest_version: 2
+name: tencent-cos
+description: 腾讯云对象存储(COS)的MCP服务器，支持文件上传、下载和管理
+source: https://www.mcp-cn.com/server/104
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - cos-mcp
+auth:
+  type: api_key
+  env:
+  - name: TENCENT_COS_API_KEY
+    prompt: tencent-cos API Key
+    required: true
+    secret: true
+post_install: 'tencent-cos MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: tencent-cos
+version: unresolved
+dependencies:
+  runtime: npm
+  package: cos-mcp
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

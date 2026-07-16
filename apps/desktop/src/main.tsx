@@ -24,8 +24,13 @@ async function installDevHelpers() {
   // Tree-shaken out of production builds. (Uses MODE rather than DEV because
   // our Vite setup currently bundles with PROD=true even in `vite dev`; see
   // scripts/dev-no-hmr.mjs for the surrounding workarounds.)
-  if (import.meta.env.MODE !== 'production') {
-    void import('./app/chat/perf-probe')
+  const browserDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('browser-demo') === '1'
+
+  if (import.meta.env.MODE !== 'production' || browserDemo) {
+    if (import.meta.env.MODE !== 'production') {
+      void import('./app/chat/perf-probe')
+    }
+
     const { installKarnaBrowserBridge } = await import('./dev/karna-browser-bridge')
     installKarnaBrowserBridge()
   }

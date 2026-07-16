@@ -143,3 +143,22 @@ apps/desktop/demo/
 # PR body is the archive. See the hermes-agent-dev skill's
 # pr-infographic-workflow reference (storage rule + lapse #8 / #COMMIT-1).
 infographic/
+
+# Project-specific ignores
+karna-data/
+output/
+.playwright-cli/
+apps/desktop/.playwright-cli/
+apps/desktop/test-results/
+apps/desktop/_restore_backup_*/
+*.log
+dist/
+.tmp-*
+Thumbs.db
+*.tsbuildinfo
+.eslintcache
+
+# Local migration scratch files
+.git-diff-before-android-dev.patch
+.git-status-before-android-dev.txt
+.trae/

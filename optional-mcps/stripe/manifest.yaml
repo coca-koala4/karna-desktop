@@ -1,0 +1,35 @@
+manifest_version: 2
+name: stripe
+description: Stripe的MCP服务器，支持Stripe的读取和写入
+source: https://www.mcp-cn.com/server/92
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@stripe/mcp'
+auth:
+  type: api_key
+  env:
+  - name: STRIPE_API_KEY
+    prompt: stripe API Key
+    required: true
+    secret: true
+post_install: 'stripe MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: stripe
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@stripe/mcp'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

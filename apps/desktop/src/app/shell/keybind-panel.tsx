@@ -75,7 +75,7 @@ export function KeybindPanel() {
           <div className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5">
             {KEYBIND_CATEGORIES.map(category => {
               const actions = KEYBIND_ACTIONS.filter(
-                action => action.category === category && action.id !== KEYBIND_PANEL_ACTION
+                action => action.category === category && action.id !== KEYBIND_PANEL_ACTION && action.visibility !== 'hidden'
               )
 
               const readonly = KEYBIND_READONLY.filter(shortcut => shortcut.category === category)

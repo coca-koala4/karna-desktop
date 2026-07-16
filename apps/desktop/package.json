@@ -18,9 +18,9 @@
     "profile:main": "wait-on http://127.0.0.1:5174 && cross-env XCURSOR_SIZE=24 HERMES_DESKTOP_DEV_SERVER=http://127.0.0.1:5174 electron --inspect=9229 .",
     "profile:main:cpu": "wait-on http://127.0.0.1:5174 && cross-env XCURSOR_SIZE=24 NODE_OPTIONS=--cpu-prof HERMES_DESKTOP_DEV_SERVER=http://127.0.0.1:5174 electron .",
     "start": "npm run build && electron .",
-    "build": "node scripts/assert-root-install.cjs && node scripts/write-build-stamp.cjs && node scripts/stage-native-deps.cjs && tsc -b && vite build && npm run postbuild",
-    "postbuild": "node scripts/assert-dist-built.cjs",
-    "prebuilder": "node scripts/patch-electron-builder-mac-binary.cjs",
+    "build": "node scripts/assert-root-install.cjs && node scripts/write-build-stamp.cjs && node scripts/generate-release-manifest.cjs && node scripts/stage-native-deps.cjs && tsc -b && vite build && npm run postbuild",
+    "postbuild": "node scripts/assert-dist-built.cjs && node scripts/assert-renderer-budget.cjs",
+    "prebuilder": "node scripts/assert-release-inputs.cjs && node scripts/patch-electron-builder-mac-binary.cjs",
     "builder": "cross-env NODE_OPTIONS=--max-old-space-size=16384 node scripts/run-electron-builder.cjs",
     "pack": "npm run build && npm run builder -- --dir",
     "dist": "npm run build && npm run builder",
@@ -37,14 +37,31 @@
     "test:desktop:nsis": "node scripts/test-desktop.mjs nsis",
     "test:desktop:existing": "node scripts/test-desktop.mjs existing",
     "test:desktop:fresh": "node scripts/test-desktop.mjs fresh",
-    "test:desktop:platforms": "node --test electron/bootstrap-platform.test.cjs electron/hardening.test.cjs electron/backend-env.test.cjs electron/backend-probes.test.cjs electron/backend-ready.test.cjs electron/bootstrap-runner.test.cjs electron/connection-config.test.cjs electron/dashboard-token.test.cjs electron/gateway-ws-probe.test.cjs electron/oauth-net-request.test.cjs electron/desktop-uninstall.test.cjs electron/session-windows.test.cjs electron/link-title-window.test.cjs electron/workspace-cwd.test.cjs electron/fs-read-dir.test.cjs electron/git-root.test.cjs electron/git-worktree-ops.test.cjs electron/windows-child-process.test.cjs electron/update-remote.test.cjs electron/update-count.test.cjs electron/update-rebuild.test.cjs electron/update-marker.test.cjs electron/update-relaunch.test.cjs electron/windows-user-env.test.cjs electron/wsl-clipboard-image.test.cjs electron/titlebar-overlay-width.test.cjs electron/window-state.test.cjs electron/windows-hermes-resolution.test.cjs",
+    "test:desktop:platforms": "node --test electron/bootstrap-platform.test.cjs electron/hardening.test.cjs electron/backend-env.test.cjs electron/backend-probes.test.cjs electron/backend-ready.test.cjs electron/bootstrap-runner.test.cjs electron/connection-config.test.cjs electron/dashboard-token.test.cjs electron/deep-link-manager.test.cjs electron/desktop-preferences.test.cjs electron/gateway-ws-probe.test.cjs electron/oauth-net-request.test.cjs electron/desktop-uninstall.test.cjs electron/release-updater.test.cjs electron/session-windows.test.cjs electron/link-title-window.test.cjs electron/workspace-cwd.test.cjs electron/fs-read-dir.test.cjs electron/git-root.test.cjs electron/git-worktree-ops.test.cjs electron/windows-child-process.test.cjs electron/update-remote.test.cjs electron/update-count.test.cjs electron/update-rebuild.test.cjs electron/update-marker.test.cjs electron/update-relaunch.test.cjs electron/windows-user-env.test.cjs electron/wsl-clipboard-image.test.cjs electron/titlebar-overlay-width.test.cjs electron/window-state.test.cjs electron/windows-hermes-resolution.test.cjs electron/karna/builtin-resources.test.cjs scripts/verify-release-contents.test.cjs",
+    "test:contracts": "vitest run --environment jsdom src/lib/writer-os-contract.test.ts src/lib/use-dialog-focus.test.tsx src/dev/karna-browser-bridge.contract.test.ts src/app/karna-workshop/connector-workshop.test.ts src/app/settings/soul-settings.test.tsx && node --test electron/karna/analytics.test.cjs electron/karna/artifacts-service.test.cjs electron/karna/capabilities-service.test.cjs electron/karna/config-service.test.cjs electron/karna/connector-bridge.test.cjs electron/karna/logs.test.cjs electron/karna/model-service.test.cjs electron/karna/skills-governance.test.cjs electron/karna/skills-service.test.cjs electron/karna/soul-governance.test.cjs electron/karna/soul-profile-api.test.cjs electron/karna/soul-prompt-service.test.cjs scripts/release-inputs.test.cjs",
+    "test:i18n": "node scripts/check-i18n.cjs",
+    "test:writer-os": "node scripts/writer-os-smoke.cjs && node scripts/writer-os-electron-smoke.cjs",
+    "test:routes": "node scripts/smoke-ui-nav.cjs",
+    "test:routes:e2e": "node scripts/ui-route-e2e.mjs",
+    "test:context-os:all": "npm --prefix ../.. run test:context-os:all",
+    "test:context-os:ui": "vitest run --environment jsdom src/app/writer-ide/lib/use-context-envelope.test.ts",
     "typecheck": "tsc -p . --noEmit",
     "lint": "eslint src/ electron/",
     "lint:fix": "eslint src/ electron/ --fix",
+    "check:i18n": "node scripts/check-i18n.cjs",
+    "check:a11y": "node scripts/check-a11y.cjs",
+    "clean:local-artifacts": "node scripts/clean-local-artifacts.cjs",
     "fmt": "prettier --write 'src/**/*.{ts,tsx}' 'electron/**/*.{js,cjs}' 'vite.config.ts'",
     "fix": "npm run lint:fix && npm run fmt",
     "test:ui": "vitest run --environment jsdom",
-    "preview": "node scripts/assert-root-install.cjs && vite preview --host 127.0.0.1 --port 4174"
+    "preview": "node scripts/assert-root-install.cjs && vite preview --host 127.0.0.1 --port 4174",
+    "flow-studio:sync": "node scripts/flow-studio-sync.cjs",
+    "flow-studio:build": "cd ../../../karna-flow-studio && npm run build && npm run sync",
+    "flow-studio:dev": "cd ../../../karna-flow-studio && npm run dev",
+    "workflow:migrate": "node scripts/migrate-workflow.cjs",
+    "workflow:check": "node scripts/check-integrity.cjs",
+    "test:workflow": "node tests/run-tests.cjs",
+    "test": "node tests/run-tests.cjs"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.12.28",
@@ -85,16 +102,19 @@
     "d3-force": "^3.0.0",
     "dnd-core": "^14.0.1",
     "dompurify": "^3.4.11",
+    "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
     "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-to-text": "^4.0.2",
     "ignore": "^7.0.5",
     "katex": "^0.16.45",
     "leva": "^0.10.1",
+    "lucide-react": "^1.24.0",
     "mermaid": "^11.15.0",
     "motion": "^12.38.0",
     "nanostores": "^1.3.0",
     "node-pty": "1.1.0",
+    "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.5",
     "react-arborist": "^3.5.0",
@@ -106,6 +126,7 @@
     "remend": "^1.3.0",
     "shiki": "^4.0.2",
     "simple-git": "^3.36.0",
+    "sql.js": "^1.14.1",
     "streamdown": "^2.5.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.4",
@@ -141,6 +162,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.5.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.55.0",
     "prettier": "^3.8.3",
     "rcedit": "^5.0.2",
     "typescript": "^6.0.3",
@@ -161,7 +183,7 @@
         ]
       },
       {
-        "name": "Hermes Protocol",
+        "name": "Karna Protocol",
         "schemes": [
           "hermes"
         ]
@@ -176,6 +198,9 @@
       "dist/**",
       "assets/**",
       "electron/**",
+      "!electron/**/*.test.cjs",
+      "!electron/**/test/**",
+      "!electron/**/tests/**",
       "public/**",
       "package.json"
     ],
@@ -194,8 +219,30 @@
       {
         "from": "assets/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "../../karna-builtin/plugins",
+        "to": "builtin-plugins"
+      },
+      {
+        "from": "../../karna-builtin/skills",
+        "to": "builtin-skills"
+      },
+      {
+        "from": "../../karna-builtin/workflows",
+        "to": "builtin-workflows"
+      },
+      {
+        "from": "build/release-manifest.json",
+        "to": "release-manifest.json"
       }
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "123abcbjs",
+      "repo": "karna-desktop",
+      "releaseType": "prerelease"
+    },
     "asar": true,
     "afterSign": "scripts/notarize.cjs",
     "asarUnpack": [
@@ -248,8 +295,7 @@
       "target": [
         "nsis",
         "msi"
-      ],
-      "signAndEditExecutable": false
+      ]
     },
     "linux": {
       "category": "Development",
@@ -265,6 +311,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
+      "include": "assets/installer.nsh",
+      "createDesktopShortcut": false,
       "shortcutName": "Karna",
       "uninstallDisplayName": "Karna",
       "warningsAsErrors": false

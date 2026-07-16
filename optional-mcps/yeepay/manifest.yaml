@@ -1,0 +1,35 @@
+manifest_version: 2
+name: yeepay
+description: Yeepay MCP服务通过模型上下文协议(MCP)集成易宝支付服务
+source: https://www.mcp-cn.com/server/133
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@yeepay/yeepay-mcp'
+auth:
+  type: api_key
+  env:
+  - name: YEEPAY_API_KEY
+    prompt: yeepay API Key
+    required: true
+    secret: true
+post_install: 'yeepay MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: yeepay
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@yeepay/yeepay-mcp'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

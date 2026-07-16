@@ -37,7 +37,7 @@ needs to replace the import + call site:
 """
 
 from contextvars import ContextVar
-from typing import Any
+from typing import Any, Optional
 
 # Sentinel to distinguish "never set in this context" from "explicitly set to empty".
 # When a contextvar holds _UNSET, we fall back to os.environ (CLI/cron compat).
@@ -112,6 +112,8 @@ _SESSION_ASYNC_DELIVERY: ContextVar = ContextVar("HERMES_SESSION_ASYNC_DELIVERY"
 _CRON_AUTO_DELIVER_PLATFORM: ContextVar = ContextVar("HERMES_CRON_AUTO_DELIVER_PLATFORM", default=_UNSET)
 _CRON_AUTO_DELIVER_CHAT_ID: ContextVar = ContextVar("HERMES_CRON_AUTO_DELIVER_CHAT_ID", default=_UNSET)
 _CRON_AUTO_DELIVER_THREAD_ID: ContextVar = ContextVar("HERMES_CRON_AUTO_DELIVER_THREAD_ID", default=_UNSET)
+
+_SESSION_CONTEXT_ENVELOPE: ContextVar = ContextVar("HERMES_SESSION_CONTEXT_ENVELOPE", default=_UNSET)
 
 _VAR_MAP = {
     "HERMES_SESSION_PLATFORM": _SESSION_PLATFORM,
@@ -333,3 +335,53 @@ def async_delivery_supported() -> bool:
     if value is _UNSET:
         return True
     return bool(value)
+
+
+def set_session_envelope(envelope: Any) -> Any:
+    """Set the ContextEnvelope for the current session/task.
+
+    Accepts a ``ContextEnvelope`` instance or a dict (which will be converted
+    via ``ContextEnvelope.from_dict``). Returns a reset token that can be
+    passed to :func:`reset_session_envelope`.
+    """
+    from agent.context.context_envelope import ContextEnvelope
+    if isinstance(envelope, dict):
+        envelope = ContextEnvelope.from_dict(envelope)
+    if envelope is None:
+        return _SESSION_CONTEXT_ENVELOPE.set(_UNSET)
+    return _SESSION_CONTEXT_ENVELOPE.set(envelope)
+
+
+def get_session_envelope() -> Optional[Any]:
+    """Return the current ContextEnvelope, or None if none is bound.
+
+    Also syncs the envelope into the agent.context contextvar machinery so
+    that compression and orchestrator code sees the same envelope without
+    importing gateway.session_context.
+    """
+    value = _SESSION_CONTEXT_ENVELOPE.get()
+    if value is _UNSET:
+        return None
+    try:
+        from agent.context.context_envelope import set_current_envelope
+        set_current_envelope(value)
+    except Exception:
+        pass
+    return value
+
+
+def reset_session_envelope(token: Any = None) -> None:
+    """Reset the session envelope to ``_UNSET`` (unbound).
+
+    If *token* is provided (returned from :func:`set_session_envelope`), reset
+    via ``ContextVar.reset(token)``; otherwise set to ``_UNSET`` explicitly.
+    """
+    if token is not None:
+        _SESSION_CONTEXT_ENVELOPE.reset(token)
+    else:
+        _SESSION_CONTEXT_ENVELOPE.set(_UNSET)
+    try:
+        from agent.context.context_envelope import set_current_envelope
+        set_current_envelope(None)
+    except Exception:
+        pass

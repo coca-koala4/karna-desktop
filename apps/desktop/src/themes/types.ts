@@ -52,6 +52,8 @@ export interface DesktopThemeTypography {
   fontMono: string
   /** Google/Bunny/self-hosted font stylesheet URL. */
   fontUrl?: string
+  /** Wordmark font for KARNA logo display */
+  fontWordmark?: string
 }
 
 /**

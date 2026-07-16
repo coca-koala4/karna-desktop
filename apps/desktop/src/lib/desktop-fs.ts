@@ -94,6 +94,22 @@ export async function writeDesktopFileText(path: string, content: string): Promi
   return { path: result.path || path }
 }
 
+export async function createDesktopDirectory(path: string): Promise<{ path: string }> {
+  const desktop = bridge()
+
+  if (!isDesktopFsRemoteMode()) {
+    if (!desktop.createDirectory) {
+      throw new Error('Directory creation is not available')
+    }
+
+    return desktop.createDirectory(path)
+  }
+
+  const result = await remoteFsApi<{ ok?: boolean; path?: string }>('/api/fs/mkdir', { path })
+
+  return { path: result.path || path }
+}
+
 export async function readDesktopFileDataUrl(path: string): Promise<string> {
   if (!isDesktopFsRemoteMode()) {
     return bridge().readFileDataUrl(path)

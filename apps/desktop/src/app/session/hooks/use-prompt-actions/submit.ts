@@ -1,7 +1,8 @@
 import { type MutableRefObject, useCallback } from 'react'
 
-import type { Translations } from '@/i18n'
 import { PROMPT_SUBMIT_REQUEST_TIMEOUT_MS } from '@/hermes'
+import { getIngestContextBlocks } from '@/hooks/use-attachment-ingest'
+import type { Translations } from '@/i18n'
 import { type ChatMessage, textPart } from '@/lib/chat-messages'
 import { optimisticAttachmentRef } from '@/lib/chat-runtime'
 import { setMutableRef } from '@/lib/mutable-ref'
@@ -11,10 +12,11 @@ import {
   type ComposerAttachment,
   terminalContextBlocksFromDraft
 } from '@/store/composer'
+import { $karnaPermissionLevel } from '@/store/karna-permission'
+import { $activeModeSession } from '@/store/mode'
 import { clearNotifications, notify, notifyError } from '@/store/notifications'
 import { requestDesktopOnboarding } from '@/store/onboarding'
-import { setAwaitingResponse, setBusy, setMessages } from '@/store/session'
-
+import { $currentProvider, setAwaitingResponse, setBusy, setMessages } from '@/store/session'
 import type { ClientSessionState } from '../../../types'
 
 import {
@@ -79,6 +81,18 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
       const terminalContextBlocks = terminalContextBlocksFromDraft(rawText).join('\n\n')
       const hasImage = attachments.some(a => a.kind === 'image')
 
+      if (hasImage) {
+        const provider = ($currentProvider.get() || '').toLowerCase()
+        if (provider === 'deepseek') {
+          notify({
+            kind: 'error',
+            title: '模型不支持图片',
+            message: '当前模型不支持图片，请配置视觉辅助模型后再发送图片。'
+          })
+          return false
+        }
+      }
+
       // Refs are recomputed after sync (file.attach rewrites @file: refs to
       // workspace-relative paths the remote gateway can resolve). Seed the
       // optimistic message with the pre-sync refs, then rewrite once synced.
@@ -96,8 +110,10 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
           .filter(Boolean)
           .join('\n')
 
+        const ingestBlocks = getIngestContextBlocks(present)
+
         return (
-          [contextRefs, terminalContextBlocks, visibleText].filter(Boolean).join('\n\n') ||
+          [contextRefs, ingestBlocks, terminalContextBlocks, visibleText].filter(Boolean).join('\n\n') ||
           (present.some(a => a.kind === 'image') ? 'What do you see in this image?' : '')
         )
       }
@@ -251,14 +267,38 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
         // while the desktop app still holds the old session ID. Detect this,
         // resume the stored session to re-register it, and retry once.
         let submitErr: unknown = null
+        const permissionMode = $karnaPermissionLevel.get()
+        const permissionParams = permissionMode === 'restricted' ? {} : { permission_mode: permissionMode }
+
+        const activeMode = $activeModeSession.get()
+        const modeParams: Record<string, unknown> = {}
+        if (activeMode && 'id' in activeMode) {
+          modeParams.mode_id = activeMode.mode
+          modeParams.mode_session_id = activeMode.id
+          modeParams.expected_mode_version = activeMode.stateVersion
+        } else {
+          modeParams.mode_id = 'direct'
+        }
+
+        let envelopeMetadata: Record<string, unknown> = {}
+        try {
+          const { getEnvelopeMetadata } = await import('@/app/writer-ide/lib/use-context-envelope')
+          envelopeMetadata = getEnvelopeMetadata()
+        } catch {
+        }
 
         try {
           await withSessionBusyRetry(() =>
-            requestGateway('prompt.submit', { session_id: sessionId, text }, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+            requestGateway('prompt.submit', {
+              ...permissionParams,
+              ...modeParams,
+              ...envelopeMetadata,
+              session_id: sessionId,
+              text
+            }, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
           )
         } catch (firstErr) {
           if (isSessionNotFoundError(firstErr) && selectedStoredSessionIdRef.current) {
-            // Re-register the session in the gateway and get a fresh live ID.
             const resumed = await requestGateway<{ session_id: string }>('session.resume', {
               session_id: selectedStoredSessionIdRef.current
             })
@@ -268,7 +308,13 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
             if (recoveredId) {
               activeSessionIdRef.current = recoveredId
               await withSessionBusyRetry(() =>
-                requestGateway('prompt.submit', { session_id: recoveredId, text }, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
+                requestGateway('prompt.submit', {
+                  ...permissionParams,
+                  ...modeParams,
+                  ...envelopeMetadata,
+                  session_id: recoveredId,
+                  text
+                }, PROMPT_SUBMIT_REQUEST_TIMEOUT_MS)
               )
             } else {
               submitErr = firstErr

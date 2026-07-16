@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import type * as React from 'react'
+import { useMemo, type ComponentProps, type HTMLAttributes } from 'react'
 
 import { writeSessionDrag } from '@/app/chat/composer/inline-refs'
 import { PlatformAvatar } from '@/app/messaging/platform-icon'
@@ -12,13 +12,14 @@ import { sessionTitle } from '@/lib/chat-runtime'
 import { triggerHaptic } from '@/lib/haptics'
 import { handoffOriginSource, sessionSourceLabel } from '@/lib/session-source'
 import { cn } from '@/lib/utils'
+import { $projects } from '@/store/projects'
 import { $attentionSessionIds } from '@/store/session'
 import { canOpenSessionWindow, openSessionInNewWindow } from '@/store/windows'
 
 import { SidebarRowBody, SidebarRowGrab, SidebarRowLabel, SidebarRowLead, SidebarRowShell } from './chrome'
 import { SessionActionsMenu, SessionContextMenu } from './session-actions-menu'
 
-interface SidebarSessionRowProps extends React.ComponentProps<'div'> {
+interface SidebarSessionRowProps extends ComponentProps<'div'> {
   session: SessionInfo
   /** TUI-style tree stem for branched sessions (`└─ ` / `├─ `). */
   branchStem?: string
@@ -32,7 +33,7 @@ interface SidebarSessionRowProps extends React.ComponentProps<'div'> {
   onResume: () => void
   reorderable?: boolean
   dragging?: boolean
-  dragHandleProps?: React.HTMLAttributes<HTMLElement>
+  dragHandleProps?: HTMLAttributes<HTMLElement>
 }
 
 const AGE_TICKS: ReadonlyArray<[number, 'ageDay' | 'ageHour' | 'ageMin']> = [
@@ -86,6 +87,32 @@ export function SidebarSessionRow({
   // the atom is tiny and rarely non-empty. True when a clarify prompt in this
   // session is waiting on the user.
   const needsInput = useStore($attentionSessionIds).includes(session.id)
+  const projects = useStore($projects)
+
+  const { isProjectSession, projectTitle } = useMemo(() => {
+    if (session.is_project_session || session.writer_project_id || session.project_id) {
+      return {
+        isProjectSession: true,
+        projectTitle: session.project_title || '项目对话'
+      }
+    }
+
+    if (session.cwd) {
+      const normalizedCwd = session.cwd.replace(/\\/g, '/').replace(/\/$/, '')
+      const matchedProject = projects.find(p => {
+        const primaryPath = p.primary_path?.replace(/\\/g, '/').replace(/\/$/, '')
+        return primaryPath && (normalizedCwd === primaryPath || normalizedCwd.startsWith(primaryPath + '/'))
+      })
+      if (matchedProject) {
+        return {
+          isProjectSession: true,
+          projectTitle: matchedProject.name
+        }
+      }
+    }
+
+    return { isProjectSession: false, projectTitle: null }
+  }, [session, projects])
 
   return (
     <SessionContextMenu
@@ -215,8 +242,20 @@ export function SidebarSessionRow({
               />
             </Tip>
           ) : null}
-          <SidebarRowLabel className="flex-1 font-normal group-hover:text-foreground group-data-[working=true]:text-foreground/90">
+          <SidebarRowLabel className="flex flex-1 items-center gap-1 font-normal group-hover:text-foreground group-data-[working=true]:text-foreground/90">
             {title}
+            {isProjectSession ? (
+              <span
+                className="shrink-0 rounded-sm bg-blue-500/10 px-1 text-[0.55rem] leading-4 text-blue-600/80"
+                title={projectTitle || '项目对话'}
+              >
+                项目
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-sm bg-muted/50 px-1 text-[0.55rem] leading-4 text-muted-foreground/60">
+                独立
+              </span>
+            )}
           </SidebarRowLabel>
         </SidebarRowBody>
       </SidebarRowShell>

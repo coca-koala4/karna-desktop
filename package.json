@@ -20,17 +20,25 @@
     "audit:tui": "npm audit --workspace ui-tui",
     "audit:fix:root": "npm audit fix --workspaces=false",
     "audit:fix:web": "npm audit fix --workspace web",
-    "audit:fix:tui": "npm audit fix --workspace ui-tui"
+    "audit:fix:tui": "npm audit fix --workspace ui-tui",
+    "test:context-os:all": "python test_context_os.py && python test_context_os_e2e.py && python test_context_os_runtime.py && node --check apps/desktop/electron/karna-adapter.cjs && npm --prefix apps/desktop run test:context-os:ui && npm --prefix apps/desktop run typecheck",
+    "test:token-os:core": "python test_token_os_core.py",
+    "test:token-os:runtime": "python test_token_os_runtime.py && python test_token_os_api.py",
+    "test:token-os:providers": "python test_token_os_runtime.py && python test_token_os_api.py",
+    "test:token-os:workflow": "node apps/desktop/electron/token-os-integration.test.cjs && python test_token_os_runtime.py && python test_token_os_api.py",
+    "test:token-os:longform": "node apps/desktop/electron/token-os-integration.test.cjs && python test_token_os_core.py",
+    "test:token-os:electron": "node --check apps/desktop/electron/karna-adapter.cjs && node --check apps/desktop/electron/main.cjs && node apps/desktop/electron/token-os-integration.test.cjs && npm --prefix apps/desktop run typecheck",
+    "test:token-os:all": "npm run test:token-os:core && npm run test:token-os:runtime && python -m compileall -q agent/context/token_os agent/context/context_orchestrator.py agent/conversation_loop.py agent/context/api/context_memory_api.py && npm run test:token-os:electron"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NousResearch/Hermes-Agent.git"
+    "url": "git+https://github.com/123abcbjs/karna-desktop.git"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/NousResearch/Hermes-Agent/issues"
+    "url": "https://github.com/123abcbjs/karna-desktop/issues"
   },
-  "homepage": "https://github.com/NousResearch/Hermes-Agent#readme",
+  "homepage": "https://github.com/123abcbjs/karna-desktop#readme",
   "dependencies": {
     "@streamdown/math": "^1.0.2",
     "agent-browser": "^0.26.0"

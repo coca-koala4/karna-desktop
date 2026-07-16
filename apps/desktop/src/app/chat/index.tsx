@@ -7,7 +7,7 @@ import {
 import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import type * as React from 'react'
-import { Suspense, useCallback, useMemo, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import { Thread } from '@/components/assistant-ui/thread'
@@ -27,6 +27,7 @@ import { $pinnedSessionIds } from '@/store/layout'
 import { $gatewaySwapTarget } from '@/store/profile'
 import {
   $activeSessionId,
+  $activeWriterProject,
   $awaitingResponse,
   $busy,
   $contextSuggestions,
@@ -43,7 +44,8 @@ import {
   $resumeExhaustedSessionId,
   $selectedStoredSessionId,
   $sessions,
-  sessionPinId
+  sessionPinId,
+  setActiveWriterProject
 } from '@/store/session'
 import { isSecondaryWindow, isWatchWindow } from '@/store/windows'
 import type { ModelOptionsResponse } from '@/types/hermes'
@@ -65,6 +67,7 @@ import { threadLoadingState } from './thread-loading'
 
 interface ChatViewProps extends Omit<React.ComponentProps<'div'>, 'onSubmit'> {
   gateway: HermesGateway | null
+  variant?: 'default' | 'embedded'
   modelMenuContent?: React.ReactNode
   onToggleSelectedPin: () => void
   onDeleteSelectedSession: () => void
@@ -256,6 +259,7 @@ function ChatRuntimeBoundary({
 export function ChatView({
   className,
   gateway,
+  variant = 'default',
   modelMenuContent,
   onToggleSelectedPin,
   onDeleteSelectedSession,
@@ -347,6 +351,36 @@ export function ChatView({
   const showChatBar = !loadingSession && !resumeExhausted && !isWatchWindow()
   const threadKey = selectedSessionId || activeSessionId || (isRoutedSessionView ? location.pathname : 'new')
 
+  const activeWriterProject = useStore($activeWriterProject)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const handleProjectChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<{ projectId: string; title: string; folder?: string }>
+      setActiveWriterProject({ id: customEvent.detail.projectId, title: customEvent.detail.title, folder: customEvent.detail.folder })
+    }
+
+    void window.karnaDesktop.api<{ active_project_id?: string; projects?: Array<{ id: string; title: string; folder?: string }> }>({
+      method: 'GET',
+      path: '/api/writer/projects?includeArchived=1'
+    }).then(result => {
+      if (cancelled) {return}
+      const active = result.projects?.find(project => project.id === result.active_project_id)
+
+      setActiveWriterProject(active ? { id: active.id, title: active.title, folder: active.folder } : null)
+    }).catch(() => {
+      // Project context is optional; chat remains usable if Writer OS is unavailable.
+    })
+
+    window.addEventListener('karna:writer-project-changed', handleProjectChanged)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('karna:writer-project-changed', handleProjectChanged)
+    }
+  }, [])
+
   const modelOptionsQuery = useQuery<ModelOptionsResponse>({
     queryKey: ['model-options', activeSessionId || 'global'],
     queryFn: () => {
@@ -421,21 +455,26 @@ export function ChatView({
 
   const { dragKind, dropHandlers } = useFileDropZone({ enabled: showChatBar, onDropFiles, onDropSession })
 
+  const isEmbedded = variant === 'embedded'
+
   return (
     <div
       className={cn(
         'relative isolate flex h-full min-w-0 flex-col overflow-hidden bg-(--ui-chat-surface-background)',
+        isEmbedded && 'bg-transparent',
         className
       )}
     >
-      <Backdrop />
-      <ChatHeader
-        activeSessionId={activeSessionId}
-        isRoutedSessionView={isRoutedSessionView}
-        onDeleteSelectedSession={onDeleteSelectedSession}
-        onToggleSelectedPin={onToggleSelectedPin}
-        selectedSessionId={selectedSessionId}
-      />
+      {!isEmbedded && <Backdrop />}
+      {!isEmbedded && (
+        <ChatHeader
+          activeSessionId={activeSessionId}
+          isRoutedSessionView={isRoutedSessionView}
+          onDeleteSelectedSession={onDeleteSelectedSession}
+          onToggleSelectedPin={onToggleSelectedPin}
+          selectedSessionId={selectedSessionId}
+        />
+      )}
 
       <PromptOverlays />
 
@@ -448,10 +487,27 @@ export function ChatView({
         suppressMessages={routeSessionMismatch}
       >
         <div
-          className="relative min-h-0 max-w-full flex-1 overflow-hidden bg-(--ui-chat-surface-background) contain-[layout_paint]"
+          className={cn(
+            'relative flex min-h-0 max-w-full flex-1 flex-col overflow-hidden bg-(--ui-chat-surface-background) contain-[layout_paint]',
+            isEmbedded && 'bg-transparent'
+          )}
           data-slot="composer-bounds"
           {...dropHandlers}
         >
+          {!isEmbedded && activeWriterProject && (
+            <div className="z-20 flex shrink-0 items-center justify-center gap-2 border-b border-(--ui-stroke-secondary) bg-(--theme-primary)/8 px-3 py-1.5 text-xs text-(--theme-primary) backdrop-blur-sm">
+              <Codicon name="notebook" size={12} />
+              <span>当前创作项目：<strong>{activeWriterProject.title}</strong></span>
+              <button
+                className="ml-2 text-(--theme-primary)/60 transition-colors hover:text-(--theme-primary)"
+                onClick={() => setActiveWriterProject(null)}
+                title="关闭"
+              >
+                <Codicon name="close" size={12} />
+              </button>
+            </div>
+          )}
+          <div className="min-h-0 flex-1">
           <Thread
             clampToComposer={showChatBar}
             cwd={currentCwd}
@@ -465,6 +521,7 @@ export function ChatView({
             sessionId={activeSessionId}
             sessionKey={threadKey}
           />
+          </div>
           {resumeExhausted && routedSessionId && (
             <div className="absolute inset-0 z-10 grid place-items-center bg-(--ui-chat-surface-background) px-8 py-10">
               <ErrorState

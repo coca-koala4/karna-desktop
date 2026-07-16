@@ -1,15 +1,12 @@
-import { useStore } from '@nanostores/react'
 import { type RefObject, useCallback, useEffect } from 'react'
 
 import { triggerHaptic } from '@/lib/haptics'
 import {
   $composerPopoutPosition,
-  $composerPoppedOut,
   readPopoutBounds,
   setComposerPopoutPosition,
   setComposerPoppedOut
 } from '@/store/composer-popout'
-import { isSecondaryWindow } from '@/store/windows'
 
 import { useComposerPopoutGestures } from './use-popout-drag'
 
@@ -25,9 +22,9 @@ interface UseComposerPopoutOptions {
  * window's composer out via the shared atom.
  */
 export function useComposerPopout({ composerRef }: UseComposerPopoutOptions) {
-  const popoutAllowed = !isSecondaryWindow()
-  const poppedOut = useStore($composerPoppedOut) && popoutAllowed
-  const popoutPosition = useStore($composerPopoutPosition)
+  const popoutAllowed = false
+  const poppedOut = false
+  const popoutPosition = { bottom: 0, right: 0 }
 
   const handleComposerPopOut = useCallback(() => {
     triggerHaptic('open')

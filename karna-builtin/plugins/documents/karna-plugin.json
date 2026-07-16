@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "karna.documents",
+  "name": "Documents",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Read, create, edit, comment, and verify DOCX documents",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "documents",
+    "icon": "assets/icon.png",
+    "capabilities": ["read", "write"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "filesystem:project",
+    "filesystem:read",
+    "filesystem:write"
+  ],
+  "dependencies": {
+    "python": ["python-docx", "docx2txt"]
+  }
+}

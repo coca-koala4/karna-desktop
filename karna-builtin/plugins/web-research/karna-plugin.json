@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "karna.web-research",
+  "name": "Web Research",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Search, scrape, cite sources, deduplicate references, and generate Evidence Packs",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "research",
+    "icon": "assets/icon.png",
+    "capabilities": ["read", "interactive"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "network:request",
+    "browser:isolated",
+    "filesystem:project"
+  ],
+  "dependencies": {}
+}

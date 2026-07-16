@@ -23,6 +23,7 @@ move-and-name refactor with no semantic change.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import uuid
 from dataclasses import dataclass
@@ -166,6 +167,33 @@ def build_turn_context(
 
     # Tag log records on this thread with the session ID for ``hermes logs``.
     set_session_context(agent.session_id)
+
+    # Install the trusted permission mode selected by the client/session.
+    # Never infer authorization from user-controlled prompt text: doing so
+    # would let a prompt grant itself broader host permissions.
+    try:
+        from tools.capability_sandbox.scope_store import set_scope_by_mode
+        permission_mode = str(getattr(agent, "_permission_mode", "project") or "project").lower()
+        if permission_mode not in {"project", "computer", "free"}:
+            permission_mode = "project"
+
+        workspace_root = getattr(agent, "cwd", None) or os.getcwd()
+        workspace_id = agent.session_id or "default"
+
+        set_scope_by_mode(
+            session_id=agent.session_id or "default",
+            workspace_id=workspace_id,
+            workspace_root=workspace_root,
+            mode_str=permission_mode,
+        )
+        logger.info(
+            "Set permission scope: session=%s mode=%s workspace=%s",
+            agent.session_id or "default",
+            permission_mode,
+            workspace_root,
+        )
+    except Exception as exc:
+        logger.debug("Failed to set permission scope: %s", exc)
 
     # Bind the skill write-origin ContextVar for this thread.
     set_current_write_origin(getattr(agent, "_memory_write_origin", "assistant_tool"))

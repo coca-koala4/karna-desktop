@@ -1,7 +1,9 @@
 import { useStore } from '@nanostores/react'
 import type * as React from 'react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
+import { ideRoute } from '@/app/routes'
 import { Codicon } from '@/components/ui/codicon'
 import { ColorSwatches } from '@/components/ui/color-swatches'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -26,6 +28,7 @@ import {
   setActiveProject,
   updateProject
 } from '@/store/projects'
+import { canOpenSessionWindow } from '@/store/windows'
 
 import type { SidebarProjectTree } from './workspace-groups'
 
@@ -86,6 +89,7 @@ export function ProjectMenu({
   anchorRef?: React.RefObject<HTMLElement | null>
 }) {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const p = t.sidebar.projects
   const target = { id: project.id, name: project.label }
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
@@ -93,6 +97,10 @@ export function ProjectMenu({
   // Open toward the content area: right when the sidebar is on the left, left
   // when the panes are flipped (sidebar on the right).
   const panesFlipped = useStore($panesFlipped)
+
+  const openInIDE = () => {
+    navigate(ideRoute(project.id))
+  }
 
   const removeAuto = () => {
     dismissAutoProject(project.id)
@@ -140,15 +148,23 @@ export function ProjectMenu({
             Suppress that refocus so it survives. */}
         <DropdownMenuContent
           align="end"
-          className="w-48"
+          className="w-56"
           onCloseAutoFocus={event => event.preventDefault()}
           sideOffset={6}
         >
+          <div className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.08em] text-muted-foreground/70">
+            项目操作
+          </div>
+          <DropdownMenuItem onSelect={openInIDE}>
+            <Codicon name="edit-layout" size="0.875rem" />
+            <span>打开为 Writer IDE</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           {!project.isAuto && (
             <>
               <DropdownMenuItem onSelect={() => openProjectRename(target)}>
                 <Codicon name="edit" size="0.875rem" />
-                <span>{p.menuRename}</span>
+                <span>重命名项目</span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setAppearanceOpen(true)}>
                 <Codicon name="symbol-color" size="0.875rem" />
@@ -160,29 +176,29 @@ export function ProjectMenu({
               </DropdownMenuItem>
               <DropdownMenuItem disabled={isActive} onSelect={() => void setActiveProject(project.id)}>
                 <Codicon name="target" size="0.875rem" />
-                <span>{p.menuSetActive}</span>
+                <span>设为活动项目</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           )}
           <DropdownMenuItem disabled={!project.path} onSelect={() => void revealPath(project.path)}>
             <Codicon name="folder-opened" size="0.875rem" />
-            <span>{p.reveal}</span>
+            <span>在文件夹中显示</span>
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!project.path} onSelect={() => void copyPath(project.path)}>
             <Codicon name="copy" size="0.875rem" />
-            <span>{p.copyPath}</span>
+            <span>复制项目路径</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {project.isAuto ? (
             <DropdownMenuItem onSelect={removeAuto} variant="destructive">
               <Codicon name="trash" size="0.875rem" />
-              <span>{p.removeFromSidebar}</span>
+              <span>从侧边栏移除</span>
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem onSelect={() => setConfirmDeleteOpen(true)} variant="destructive">
               <Codicon name="trash" size="0.875rem" />
-              <span>{`${p.menuDelete}…`}</span>
+              <span>删除项目…</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

@@ -4,6 +4,9 @@ export const SETTINGS_ROUTE = '/settings'
 export const COMMAND_CENTER_ROUTE = '/command-center'
 export const SKILLS_ROUTE = '/skills'
 export const MESSAGING_ROUTE = '/messaging'
+// ARTIFACTS_ROUTE: Internal compatibility route only.
+// User-facing artifacts entry points (sidebar, command palette, keybinds) have been removed.
+// Direct access to /artifacts will redirect to home page.
 export const ARTIFACTS_ROUTE = '/artifacts'
 export const CRON_ROUTE = '/cron'
 export const PROFILES_ROUTE = '/profiles'
@@ -13,7 +16,27 @@ export const KARNA_ROUTE = '/karna'
 export const KARNA_AGENTS_ROUTE = '/karna/agents'
 export const KARNA_WRITER_ROUTE = '/karna/writer'
 export const KARNA_SOUL_ROUTE = '/karna/soul'
+export const KARNA_FLOW_ROUTE = '/karna/flow'
 export const KARNA_MCP_ROUTE = '/karna/mcp'
+export const KARNA_PLUGINS_ROUTE = '/karna/plugins'
+export const KARNA_HOME_DEMO_ROUTE = '/karna/home-demo'
+export const IDE_ROUTE_PREFIX = '/ide'
+
+export function ideRoute(workspaceId: string): string {
+  return `${IDE_ROUTE_PREFIX}/${encodeURIComponent(workspaceId)}`
+}
+
+export function workspaceIdFromIdeRoute(pathname: string): string | null {
+  if (!pathname.startsWith(IDE_ROUTE_PREFIX + '/')) {
+    return null
+  }
+
+  const id = pathname.slice(IDE_ROUTE_PREFIX.length + 1)
+
+  return id && !id.includes('/') ? decodeURIComponent(id) : null
+}
+
+export const IDE_ROUTE = `${IDE_ROUTE_PREFIX}/:workspaceId`
 
 export type AppView =
   | 'agents'
@@ -25,25 +48,35 @@ export type AppView =
   | 'karna-agents'
   | 'karna-writer'
   | 'karna-soul'
+  | 'karna-flow'
   | 'karna-mcp'
+  | 'karna-plugins'
+  | 'karna-home-demo'
   | 'messaging'
+  | 'not-found'
   | 'profiles'
   | 'settings'
   | 'skills'
   | 'starmap'
+  | 'writer-ide'
 
 export type AppRouteId =
   | 'agents'
   | 'artifacts'
   | 'command-center'
   | 'cron'
+  | 'ide'
   | 'karna'
   | 'karna-agents'
   | 'karna-writer'
   | 'karna-soul'
+  | 'karna-flow'
   | 'karna-mcp'
+  | 'karna-plugins'
+  | 'karna-home-demo'
   | 'messaging'
   | 'new'
+  | 'not-found'
   | 'profiles'
   | 'settings'
   | 'skills'
@@ -61,20 +94,22 @@ export const APP_ROUTES = [
   { id: 'command-center', path: COMMAND_CENTER_ROUTE, view: 'command-center' },
   { id: 'skills', path: SKILLS_ROUTE, view: 'skills' },
   { id: 'messaging', path: MESSAGING_ROUTE, view: 'messaging' },
-  { id: 'artifacts', path: ARTIFACTS_ROUTE, view: 'artifacts' },
   { id: 'cron', path: CRON_ROUTE, view: 'cron' },
   { id: 'karna', path: KARNA_ROUTE, view: 'karna-agents' },
   { id: 'karna-agents', path: KARNA_AGENTS_ROUTE, view: 'karna-agents' },
   { id: 'karna-writer', path: KARNA_WRITER_ROUTE, view: 'karna-writer' },
   { id: 'karna-soul', path: KARNA_SOUL_ROUTE, view: 'karna-soul' },
+  { id: 'karna-flow', path: KARNA_FLOW_ROUTE, view: 'karna-flow' },
   { id: 'karna-mcp', path: KARNA_MCP_ROUTE, view: 'karna-mcp' },
+  { id: 'karna-plugins', path: KARNA_PLUGINS_ROUTE, view: 'karna-plugins' },
+  { id: 'karna-home-demo', path: KARNA_HOME_DEMO_ROUTE, view: 'karna-home-demo' },
   { id: 'profiles', path: PROFILES_ROUTE, view: 'profiles' },
   { id: 'agents', path: AGENTS_ROUTE, view: 'agents' },
   { id: 'starmap', path: STARMAP_ROUTE, view: 'starmap' }
 ] as const satisfies readonly AppRoute[]
 
 const APP_VIEW_BY_PATH = new Map<string, AppView>(APP_ROUTES.map(route => [route.path, route.view]))
-const RESERVED_PATHS: ReadonlySet<string> = new Set(APP_ROUTES.map(route => route.path))
+const RESERVED_PATHS: ReadonlySet<string> = new Set([...APP_ROUTES.map(route => route.path), ARTIFACTS_ROUTE])
 
 // Views that render as a full-screen modal card (OverlayView) over the shell.
 // While one is open the app's titlebar control clusters must hide so they don't
@@ -111,9 +146,13 @@ export function sessionRoute(sessionId: string): string {
 }
 
 export function appViewForPath(pathname: string): AppView {
+  if (workspaceIdFromIdeRoute(pathname)) {
+    return 'writer-ide'
+  }
+
   if (isNewChatRoute(pathname) || routeSessionId(pathname)) {
     return 'chat'
   }
 
-  return APP_VIEW_BY_PATH.get(pathname) ?? 'chat'
+  return APP_VIEW_BY_PATH.get(pathname) ?? 'not-found'
 }

@@ -1,4 +1,4 @@
-﻿import { defineFieldCopy } from '@/app/settings/field-copy'
+import { defineFieldCopy } from '@/app/settings/field-copy'
 
 import type { Translations } from './types'
 
@@ -297,9 +297,11 @@ export const zh: Translations = {
       keysTools: '工具',
       keysSettings: '设置',
       mcp: 'MCP',
+      remote: '移动端与远程控制',
       archivedChats: '已归档对话',
       about: '关于',
-      notifications: '通知'
+      notifications: '通知',
+      soul: 'Karna 人格'
     },
     notifications: {
       title: '通知',
@@ -338,6 +340,84 @@ export const zh: Translations = {
       completionSoundDesc: '智能体回合结束时播放。可在此选择预设并预览。',
       completionSoundPreview: '预览'
     },
+    soul: {
+      title: 'Karna 人格',
+      intro: '这是 Karna 自身的系统人格提示词，用来设定语气、工作习惯和与你协作的方式；它不同于 Soul 工坊中的作家、角色与方法论资料。',
+      loading: '正在加载 Karna 人格…',
+      loadFailed: '无法加载 Karna 人格',
+      editorTitle: '个性化人格提示词',
+      editorDesc: '内容会加入每个新对话的系统提示词。你可以写称呼、语气、偏好和工作规则，但不能覆盖安全、隐私和权限策略。',
+      charCount: (count, max) => `${count}/${max} 字符`,
+      preview: '查看注入顺序',
+      previewTitle: '系统提示词组成顺序',
+      coreSummary: '查看不可修改的安全规则',
+      coreTitle: '内置安全与权限规则（不可修改）',
+      restoreDefault: '恢复默认人格',
+      resetConfirm: '确定恢复默认 Karna 人格吗？当前内容会先自动备份。',
+      resetTitle: '已恢复默认人格',
+      savedTitle: 'Karna 人格已保存',
+      savedMessage: '新建对话将使用更新后的人格；现有对话不会被强制重写。',
+      saveFailed: '无法保存 Karna 人格',
+      resetFailed: '无法恢复默认人格'
+    },
+    remote: {
+      title: '移动端与远程控制',
+      intro: '通过局域网配对移动设备，远程访问和控制 Karna。所有连接均经过端到端加密，设备权限可单独管理。',
+      enableRemoteAccess: '启用远程访问',
+      enableRemoteAccessDesc: '开启后，同一局域网内的受信任设备可以连接并控制 Karna。',
+      listenAddress: '监听地址',
+      listenAddressDesc: '选择用于接收移动设备连接的网络接口。',
+      selectInterface: '选择网卡...',
+      lanAddress: '局域网地址',
+      lanAddressDesc: '移动设备需要连接到此地址进行配对。',
+      addDevice: '添加设备',
+      pairedDevices: '已配对设备',
+      noDevices: '暂无已配对设备',
+      addDeviceHint: '点击"添加设备"按钮，使用移动应用扫描二维码开始配对。',
+      deviceName: '设备名称',
+      lastSeen: '上次在线',
+      fingerprint: '设备指纹',
+      lastIp: '最后IP',
+      permissions: '权限',
+      actions: '操作',
+      pause: '暂停',
+      resume: '恢复',
+      revoke: '撤销',
+      revokeConfirm: '确定要撤销此设备的配对吗？该设备将需要重新配对才能连接。',
+      repair: '重新配对',
+      auditLog: '审计日志',
+      viewAuditLog: '查看审计日志',
+      viewAuditLogDesc: '查看所有远程设备的连接和操作记录。',
+      emergencyDisconnect: '紧急断开所有设备',
+      emergencyDisconnectConfirm: '确定要断开所有已配对的移动设备吗？此操作会立即终止所有远程连接。',
+      emergencyConfirmTitle: '确认紧急断开',
+      qrPairing: '扫码配对',
+      waitingForDevice: '等待设备连接...',
+      scanQrHint: '请使用移动应用扫描二维码',
+      confirmationCode: '确认码',
+      confirmationCodeHint: '请确认移动设备上显示的确认码与此处一致',
+      codeMatch: '确认匹配',
+      codeMismatch: '不匹配',
+      deviceConnected: '设备已连接',
+      deviceConnectedNamed: '"{0}" 已连接',
+      confirming: '正在确认配对...',
+      pairingSuccess: '配对成功',
+      pairingSuccessDesc: '设备已成功配对，可以开始使用远程控制功能',
+      pairingFailed: '配对失败',
+      pairingFailedDesc: '配对过程中出现错误，请重试',
+      creatingPairing: '正在创建配对会话...',
+      devicePaired: '设备已成功添加到已配对列表',
+      devicePairedNamed: '"{0}" 已成功添加到已配对列表',
+      permissionFull: '完全访问',
+      permissionReadonly: '只读',
+      never: '从未连接',
+      justNow: '刚刚',
+      minutesAgo: '{0}分钟前',
+      hoursAgo: '{0}小时前',
+      daysAgo: '{0}天前',
+      relayNotConfiguredTitle: 'Relay 未配置',
+      relayNotConfiguredDesc: '公网 Relay 中转服务未配置，移动设备仅能在同一局域网内连接。如需外网访问，请配置 Relay 服务器。'
+    },
     sections: {
       model: '模型',
       chat: '对话',
@@ -354,6 +434,7 @@ export const zh: Translations = {
       gateway: '网关连接…',
       keys: '搜索 API 密钥…',
       mcp: '搜索 MCP 服务器…',
+      remote: '搜索远程控制设置…',
       sessions: '搜索已归档会话…'
     },
     modeOptions: {
@@ -587,18 +668,18 @@ export const zh: Translations = {
     fieldDescriptions: defineFieldCopy({
       model: '用于新对话，除非你在输入框中选择其他模型。',
       modelContextLength: '保持为 0 则使用所选模型检测到的上下文窗口。',
-      fallbackProviders: '默认模型失败时尝试的备用 provider:model 条目。',
+      fallbackProviders: '仅在默认模型调用失败时按顺序尝试。格式为 provider:model，多个条目用英文逗号分隔；不需要备用模型可以留空。',
       display: {
         personality: '新会话的默认助手风格。',
         showReasoning: '当后端提供推理内容时予以显示。'
       },
-      timezone: '当 Karna 需要本地时间上下文时使用。留空则使用系统时区。',
+      timezone: '影响日程、提醒和“今天/明天”等时间理解。建议选择“跟随系统”；出差或远程协作时才手动指定。',
       agent: {
         imageInputMode: '控制图片附件如何发送给模型。',
         maxTurns: 'Karna 停止一次运行前工具调用轮次的上限。'
       },
       terminal: {
-        cwd: '工具与终端操作的默认项目目录。',
+        cwd: '新建独立对话、运行命令和选择文件时默认使用的目录。项目内对话仍优先使用该项目自己的目录。',
         persistentShell: '当后端支持时，在命令之间保留 Shell 状态。',
         envPassthrough: '传入工具执行的环境变量。'
       },
@@ -607,14 +688,16 @@ export const zh: Translations = {
       },
       fileReadMaxChars: 'Karna 单次文件读取可读取的最大字符数。',
       approvals: {
-        mode: 'Karna 如何处理需要显式审批的命令。',
-        timeout: '审批提示在超时前等待的时长。'
+        mode: '“每次询问”最安全；“低风险自动允许”会放行只读和低风险操作；“不询问”可能直接执行危险命令。',
+        timeout: '等待你批准或拒绝的秒数，超时后本次操作取消。',
+        mcpReloadConfirm: 'MCP 工具配置变化并准备重载时，是否再次询问确认。'
       },
       security: {
-        redactSecrets: '尽可能从模型可见内容中隐藏检测到的密钥。'
+        redactSecrets: '尽可能从模型可见内容、日志和错误信息中隐藏检测到的 API Key、Token 和密码。',
+        allowPrivateUrls: '允许工具访问 localhost、192.168.x.x 等内网地址。仅在连接本地模型或可信局域网服务时开启。'
       },
       checkpoints: {
-        enabled: '在文件编辑前创建可回滚的快照。'
+        enabled: 'Karna 修改文件前自动创建可回滚快照。建议保持开启。'
       },
       memory: {
         memoryEnabled: '保存有助于未来会话的持久记忆。',
@@ -1484,7 +1567,7 @@ export const zh: Translations = {
   sidebar: {
     nav: {
       'new-session': '新建会话',
-      skills: '技能与工具',
+      skills: '技能与工具工坊',
       messaging: '消息平台',
       artifacts: '产物'
     },
@@ -1658,7 +1741,7 @@ export const zh: Translations = {
       '/resume': '恢复之前的会话',
       '/details': '控制对话记录的详细程度',
       '/copy': '复制所选内容或最后一条助手消息',
-      '/quit': '退出 hermes'
+      '/quit': '退出 Karna'
     },
     hotkeyDescs: {
       'composer.mention': '引用文件、文件夹、URL、git',
@@ -2008,6 +2091,9 @@ export const zh: Translations = {
       inferenceNotReady: '推理未就绪',
       checkingInference: '正在检查推理',
       disconnected: '已断开',
+      browserDemo: '浏览器演示',
+      browserDemoReady: '本地预览已就绪',
+      browserDemoHint: '浏览器演示模式使用本地预览数据，不会启动真实网关。需要配置模型或执行真实任务时，请打开桌面版并在设置中连接网关。',
       openSystem: '打开系统面板',
       connection: label => `连接：${label}`,
       recentActivity: '最近活动',
@@ -2030,22 +2116,23 @@ export const zh: Translations = {
       openCommandCenter: '打开命令中心',
       showTerminal: '显示终端',
       hideTerminal: '隐藏终端',
-      gateway: '网关',
+      gateway: '运行环境',
+      gatewayBrowserDemo: '浏览器演示',
       gatewayReady: '就绪',
       gatewayNeedsSetup: '需要设置',
       gatewayChecking: '检查中',
       gatewayConnecting: '连接中',
       gatewayOffline: '离线',
       gatewayRestarting: '重启中…',
-      gatewayTitle: 'Karna 推理网关状态',
-      agents: '代理',
-      closeAgents: '关闭代理',
-      openAgents: '打开代理',
-      subagents: count => `${count} 个子代理`,
+      gatewayTitle: 'Karna 运行环境状态',
+      agents: '后台任务',
+      closeAgents: '关闭后台任务',
+      openAgents: '查看后台任务',
+      subagents: count => `${count} 个子任务`,
       failed: count => `${count} 个失败`,
       running: count => `${count} 个运行中`,
-      cron: '排程',
-      openCron: '打开排程任务',
+      cron: '定时任务',
+      openCron: '打开定时任务',
       starmap: '记忆图谱',
       openStarmap: '打开记忆图谱',
       turnRunning: '运行中',
@@ -2058,7 +2145,7 @@ export const zh: Translations = {
           memory: '记忆',
           rules: '规则',
           skills: '技能',
-          subagent_definitions: '子代理定义',
+          subagent_definitions: '子任务定义',
           system_prompt: '系统提示词',
           tool_definitions: '工具定义'
         },
@@ -2071,8 +2158,6 @@ export const zh: Translations = {
       openContextUsage: '打开上下文用量明细',
       session: '会话',
       runtimeSessionElapsed: '运行时会话已用时间',
-      yoloOn: 'YOLO 已开启 - 自动批准危险命令。点击关闭。Shift+点击可全局切换。',
-      yoloOff: 'YOLO 已关闭 - 点击自动批准危险命令。Shift+点击可全局切换。',
       modelNone: '无',
       noModel: '无模型',
       switchModel: '切换模型',
@@ -2367,11 +2452,6 @@ export const zh: Translations = {
     desktopCommands: '桌面端命令',
     skillCommandsAvailable: count => `${count} 个技能命令可用。`,
     warningLine: message => `警告：${message}`,
-    yoloArmed: '此对话已启用 YOLO',
-    yoloOff: 'YOLO 已关闭',
-    yoloSystem: active => `此会话 YOLO ${active ? '已开启' : '已关闭'}`,
-    yoloTitle: 'YOLO',
-    yoloToggleFailed: '无法切换 YOLO',
     profileStatus: current => `配置档案：${current}。使用 /profile <name> 或“新建会话”选择器在其他配置档案中开始对话。`,
     unknownProfile: '未知配置档案',
     noProfileNamed: (target, available) => `没有名为“${target}”的配置档案。可用：${available}`,
@@ -2423,7 +2503,7 @@ export const zh: Translations = {
       success: platform => `已移交到 ${platform}。随时可在此处恢复。`,
       systemNote: platform => `↻ 已移交到 ${platform} — 随时可在此处恢复。`,
       failed: error => `移交失败：${error}`,
-      timedOut: '等待网关超时。`hermes gateway` 是否正在运行？'
+      timedOut: '等待 Karna 运行时超时。请检查本地运行时是否已启动（兼容命令：`hermes gateway`）。'
     }
   },
 

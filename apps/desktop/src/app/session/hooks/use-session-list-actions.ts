@@ -10,6 +10,7 @@ import {
 import { setCronJobs } from '@/store/cron'
 import { $pinnedSessionIds, $sessionsLimit, bumpSessionsLimit, SIDEBAR_SESSIONS_PAGE_SIZE } from '@/store/layout'
 import { ALL_PROFILES, normalizeProfileKey } from '@/store/profile'
+import { $removedSessionIds } from '@/store/projects'
 import {
   $messagingSessions,
   $selectedStoredSessionId,
@@ -65,6 +66,16 @@ function sessionsToKeep(scope?: string): Set<string> {
   }
 
   return keep
+}
+
+function filterTombstoned(sessions: SessionInfo[]): SessionInfo[] {
+  const tombstones = $removedSessionIds.get()
+
+  if (!tombstones.size) {return sessions}
+
+  return sessions.filter(
+    s => !tombstones.has(s.id) && !(s._lineage_root_id != null && tombstones.has(s._lineage_root_id))
+  )
 }
 
 interface UseSessionListActionsArgs {
@@ -178,7 +189,7 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
       })
 
       if (refreshSessionsRequestRef.current === requestId) {
-        setSessions(prev => mergeSessionPage(prev, result.sessions, sessionsToKeep()))
+        setSessions(prev => filterTombstoned(mergeSessionPage(prev, result.sessions, sessionsToKeep())))
         setSessionsTotal(typeof result.total === 'number' ? result.total : result.sessions.length)
         setSessionProfileTotals(result.profile_totals ?? {})
       }
@@ -213,7 +224,7 @@ export function useSessionListActions({ profileScope }: UseSessionListActionsArg
 
     setSessions(prev => [
       ...prev.filter(s => !inKey(s)),
-      ...mergeSessionPage(prev.filter(inKey), result.sessions, keep)
+      ...filterTombstoned(mergeSessionPage(prev.filter(inKey), result.sessions, keep))
     ])
 
     const total = result.profile_totals?.[key] ?? result.total ?? result.sessions.length

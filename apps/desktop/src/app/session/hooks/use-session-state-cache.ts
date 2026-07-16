@@ -6,6 +6,13 @@ import { preserveLocalAssistantErrors } from '@/lib/chat-messages'
 import { createClientSessionState } from '@/lib/chat-runtime'
 import { setMutableRef } from '@/lib/mutable-ref'
 import {
+  $draftConversationScope,
+  setDraftConversationScope,
+  setDraftPermissionMode,
+  lockScope
+} from '@/store/conversation-scope'
+import { setKarnaPermissionLevelStore } from '@/store/karna-permission'
+import {
   $busy,
   $messages,
   noteSessionActivity,
@@ -63,6 +70,20 @@ function syncRuntimeMetadataToView(state: ClientSessionState) {
   setCurrentFastMode(state.fast ?? false)
   setYoloActive(state.yolo ?? false)
   setCurrentPersonality(state.personality ?? '')
+  setKarnaPermissionLevelStore(state.permissionMode ?? 'restricted')
+  setDraftPermissionMode(state.permissionMode ?? 'restricted')
+  if (state.conversationScope === 'project' && state.writerProjectId) {
+    setDraftConversationScope({
+      type: 'project',
+      workspaceId: state.workspaceId || state.writerProjectId,
+      writerProjectId: state.writerProjectId,
+      projectName: state.projectName || '项目',
+      cwd: state.cwd
+    })
+  } else {
+    setDraftConversationScope({ type: 'standalone' })
+  }
+  lockScope()
 }
 
 export function useSessionStateCache({

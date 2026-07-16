@@ -270,6 +270,8 @@ export interface Translations {
       archivedChats: string
       about: string
       notifications: string
+      soul: string
+      remote: string
     }
     notifications: {
       title: string
@@ -290,8 +292,28 @@ export interface Translations {
       completionSoundDesc: string
       completionSoundPreview: string
     }
+    soul: {
+      title: string
+      intro: string
+      loading: string
+      loadFailed: string
+      editorTitle: string
+      editorDesc: string
+      charCount: (count: number, max: number) => string
+      preview: string
+      previewTitle: string
+      coreSummary: string
+      coreTitle: string
+      restoreDefault: string
+      resetConfirm: string
+      resetTitle: string
+      savedTitle: string
+      savedMessage: string
+      saveFailed: string
+      resetFailed: string
+    }
     sections: Record<string, string>
-    searchPlaceholder: Record<'about' | 'config' | 'gateway' | 'keys' | 'mcp' | 'sessions', string>
+    searchPlaceholder: Record<'about' | 'config' | 'gateway' | 'keys' | 'mcp' | 'sessions' | 'remote', string>
     modeOptions: Record<'light' | 'dark' | 'system', ModeOptionCopy>
     appearance: {
       title: string
@@ -618,6 +640,64 @@ export interface Translations {
       postSetupErrorTitle: string
       postSetupErrorMessage: (step: string) => string
       postSetupFailed: (step: string) => string
+    }
+    remote: {
+      title: string
+      intro: string
+      enableRemoteAccess: string
+      enableRemoteAccessDesc: string
+      listenAddress: string
+      listenAddressDesc: string
+      selectInterface: string
+      lanAddress: string
+      lanAddressDesc: string
+      addDevice: string
+      pairedDevices: string
+      noDevices: string
+      addDeviceHint: string
+      deviceName: string
+      lastSeen: string
+      fingerprint: string
+      lastIp: string
+      permissions: string
+      actions: string
+      pause: string
+      resume: string
+      revoke: string
+      revokeConfirm: string
+      repair: string
+      auditLog: string
+      viewAuditLog: string
+      viewAuditLogDesc: string
+      emergencyDisconnect: string
+      emergencyDisconnectConfirm: string
+      emergencyConfirmTitle: string
+      qrPairing: string
+      waitingForDevice: string
+      scanQrHint: string
+      confirmationCode: string
+      confirmationCodeHint: string
+      codeMatch: string
+      codeMismatch: string
+      deviceConnected: string
+      deviceConnectedNamed: string
+      confirming: string
+      pairingSuccess: string
+      pairingSuccessDesc: string
+      pairingFailed: string
+      pairingFailedDesc: string
+      creatingPairing: string
+      devicePaired: string
+      devicePairedNamed: string
+      permissionFull: string
+      permissionReadonly: string
+      never: string
+      justNow: string
+      minutesAgo: string
+      hoursAgo: string
+      daysAgo: string
+      relayNotConfiguredTitle: string
+      relayNotConfiguredDesc: string
     }
   }
 
@@ -1489,6 +1569,9 @@ export interface Translations {
       inferenceNotReady: string
       checkingInference: string
       disconnected: string
+      browserDemo: string
+      browserDemoReady: string
+      browserDemoHint: string
       openSystem: string
       connection: (label: string) => string
       recentActivity: string
@@ -1512,6 +1595,7 @@ export interface Translations {
       showTerminal: string
       hideTerminal: string
       gateway: string
+      gatewayBrowserDemo: string
       gatewayReady: string
       gatewayNeedsSetup: string
       gatewayChecking: string
@@ -1552,8 +1636,6 @@ export interface Translations {
       openContextUsage: string
       session: string
       runtimeSessionElapsed: string
-      yoloOn: string
-      yoloOff: string
       modelNone: string
       noModel: string
       switchModel: string
@@ -1822,11 +1904,6 @@ export interface Translations {
     desktopCommands: string
     skillCommandsAvailable: (count: number) => string
     warningLine: (message: string) => string
-    yoloArmed: string
-    yoloOff: string
-    yoloSystem: (active: boolean) => string
-    yoloTitle: string
-    yoloToggleFailed: string
     profileStatus: (current: string) => string
     unknownProfile: string
     noProfileNamed: (target: string, available: string) => string

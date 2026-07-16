@@ -17,11 +17,15 @@ export const KEYBIND_PANEL_ACTION = 'keybinds.openPanel'
 // layout, appearance, and the panel-opener.
 export const KEYBIND_CATEGORIES: readonly KeybindCategory[] = ['composer', 'profiles', 'session', 'navigation', 'view']
 
+export type KeybindVisibility = 'default' | 'advanced' | 'hidden'
+
 export interface KeybindActionMeta {
   id: string
   category: KeybindCategory
   /** Default combos. Empty = shipped unbound (user can assign one). */
   defaults: readonly string[]
+  /** Visibility level: 'default' for normal users, 'advanced' for power users, 'hidden' for internal use only */
+  visibility?: KeybindVisibility
 }
 
 // Positional switch slots for *named* profiles: ⌘1…⌘9 for profiles 1-9, then
@@ -59,13 +63,13 @@ export const KEYBIND_ACTIONS: readonly KeybindActionMeta[] = [
   // stealing the long-standing sidebar binding.
   { id: 'composer.voice', category: 'composer', defaults: IS_MAC ? ['ctrl+b'] : [] },
 
-  // ── Profiles ─────────────────────────────────────────────────────────────
-  { id: 'profile.default', category: 'profiles', defaults: ['mod+d'] },
-  ...PROFILE_SWITCH_ACTIONS,
-  { id: 'profile.next', category: 'profiles', defaults: ['mod+shift+]'] },
-  { id: 'profile.prev', category: 'profiles', defaults: ['mod+shift+['] },
-  { id: 'profile.toggleAll', category: 'profiles', defaults: ['mod+shift+0'] },
-  { id: 'profile.create', category: 'profiles', defaults: [] },
+  // ── Profiles (Hidden - legacy compatibility only) ────────────────────────
+  { id: 'profile.default', category: 'profiles', defaults: ['mod+d'], visibility: 'hidden' },
+  ...PROFILE_SWITCH_ACTIONS.map(action => ({ ...action, visibility: 'hidden' as const })),
+  { id: 'profile.next', category: 'profiles', defaults: ['mod+shift+]'], visibility: 'hidden' },
+  { id: 'profile.prev', category: 'profiles', defaults: ['mod+shift+['], visibility: 'hidden' },
+  { id: 'profile.toggleAll', category: 'profiles', defaults: ['mod+shift+0'], visibility: 'hidden' },
+  { id: 'profile.create', category: 'profiles', defaults: [], visibility: 'hidden' },
 
   // ── Session ──────────────────────────────────────────────────────────────
   { id: 'session.new', category: 'session', defaults: ['mod+n', 'shift+n'] },
@@ -82,14 +86,13 @@ export const KEYBIND_ACTIONS: readonly KeybindActionMeta[] = [
 
   // ── Navigation ───────────────────────────────────────────────────────────
   { id: 'nav.commandPalette', category: 'navigation', defaults: ['mod+k', 'mod+p'] },
-  { id: 'nav.commandCenter', category: 'navigation', defaults: ['mod+.'] },
+  { id: 'nav.commandCenter', category: 'navigation', defaults: ['mod+.'], visibility: 'hidden' },
   { id: 'nav.settings', category: 'navigation', defaults: ['mod+,'] },
-  { id: 'nav.profiles', category: 'navigation', defaults: [] },
+  { id: 'nav.profiles', category: 'navigation', defaults: [], visibility: 'hidden' },
   { id: 'nav.skills', category: 'navigation', defaults: [] },
   { id: 'nav.messaging', category: 'navigation', defaults: [] },
-  { id: 'nav.artifacts', category: 'navigation', defaults: [] },
-  { id: 'nav.cron', category: 'navigation', defaults: [] },
-  { id: 'nav.agents', category: 'navigation', defaults: [] },
+  { id: 'nav.cron', category: 'navigation', defaults: [], visibility: 'hidden' },
+  { id: 'nav.agents', category: 'navigation', defaults: [], visibility: 'hidden' },
 
   // ── View (layout + appearance + the shortcuts panel itself) ───────────────
   { id: 'view.toggleSidebar', category: 'view', defaults: ['mod+b'] },

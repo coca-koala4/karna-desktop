@@ -5,7 +5,7 @@ import { BrandMark } from '@/components/brand-mark'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { type Translations, useI18n } from '@/i18n'
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw } from '@/lib/icons'
+import { CheckCircle2, Loader2, RefreshCw } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
   $desktopVersion,
@@ -20,8 +20,6 @@ import {
 
 import { ListRow, SectionHeading, SettingsContent } from './primitives'
 import { UninstallSection } from './uninstall-section'
-
-const RELEASE_NOTES_URL = 'https://github.com/NousResearch/hermes-agent/releases'
 
 function relativeTime(ms: number | undefined, a: Translations['settings']['about']) {
   if (!ms) {
@@ -54,10 +52,6 @@ export function AboutSettings() {
   const checking = useStore($updateChecking)
   const [justChecked, setJustChecked] = useState(false)
 
-  // The version atom is loaded once at app boot, which makes About show a
-  // stale number after a self-update (the running binary is current, the
-  // displayed string is not). Re-read on mount so opening About always
-  // reflects the running build.
   useEffect(() => {
     void refreshDesktopVersion()
   }, [])
@@ -96,11 +90,14 @@ export function AboutSettings() {
   return (
     <SettingsContent>
       <div className="flex flex-col items-center gap-3 pt-6 pb-2 text-center">
-        <BrandMark className="size-16" />
+        <BrandMark className="size-16" variant="about" />
         <div>
           <h2 className="text-lg font-semibold tracking-tight">{a.heading}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             {version?.appVersion ? a.version(version.appVersion) : a.versionUnavailable}
+          </p>
+          <p className="mt-1 text-[0.7rem] text-muted-foreground/70">
+            Powered by Hermes runtime
           </p>
         </div>
       </div>
@@ -152,21 +149,6 @@ export function AboutSettings() {
                 </Button>
               </>
             )}
-
-            <Button asChild className="ml-auto" size="sm" variant="text">
-              <a
-                href={RELEASE_NOTES_URL}
-                onClick={event => {
-                  event.preventDefault()
-                  void window.hermesDesktop?.openExternal?.(RELEASE_NOTES_URL)
-                }}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <ExternalLink className="size-3" />
-                {a.releaseNotes}
-              </a>
-            </Button>
           </div>
         </div>
 

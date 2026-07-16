@@ -4,29 +4,38 @@ import {
   type ClipboardEvent,
   type FormEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   useEffect,
+  useMemo,
   useRef,
   useState
 } from 'react'
 
 import { composerFill, composerSurfaceGlass } from '@/components/chat/composer-dock'
 import { Button } from '@/components/ui/button'
+import { Codicon } from '@/components/ui/codicon'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useI18n } from '@/i18n'
 import { chatMessageText } from '@/lib/chat-messages'
 import { DATA_IMAGE_URL_RE } from '@/lib/embedded-images'
 import { triggerHaptic } from '@/lib/haptics'
+import { ChevronDown, Cpu, Palette, Search, Users, Wrench, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { $composerAttachments } from '@/store/composer'
 import { browseBackward, browseForward, deriveUserHistory, isBrowsingHistory } from '@/store/composer-input-history'
 import { POPOUT_WIDTH_REM } from '@/store/composer-popout'
 import { removeQueuedPrompt } from '@/store/composer-queue'
+import { $karnaPermissionLevel, setKarnaPermissionLevelStore } from '@/store/karna-permission'
+import { $draftConversationScope, $draftPermissionMode, $scopeLocked, setDraftConversationScope, setDraftPermissionMode } from '@/store/conversation-scope'
+import { notifyError } from '@/store/notifications'
 import { $activeSessionAwaitingInput } from '@/store/prompts'
+import { $projects } from '@/store/projects'
 import { toggleReview } from '@/store/review'
 import { $gatewayState, $messages } from '@/store/session'
 import { $threadScrolledUp } from '@/store/thread-scroll'
-import { $autoSpeakReplies } from '@/store/voice-prefs'
-import { notifyError } from '@/store/notifications'
 import { useTheme } from '@/themes'
+import type { ResolvedWorkflowContext } from '@/types/karna'
+import { BUILT_IN_MCPS } from '@/app/karna-workshop/built-in-mcps'
 
 import { AttachmentList } from './attachments'
 import {
@@ -40,6 +49,8 @@ import { COMPOSER_DROP_ACTIVE_CLASS, COMPOSER_DROP_FADE_CLASS } from './drop-aff
 import { markActiveComposer } from './focus'
 import { HelpHint } from './help-hint'
 import { useAtCompletions } from './hooks/use-at-completions'
+import { useAttachmentIngest } from '@/hooks/use-attachment-ingest'
+import { isAutoParseType } from '@/lib/ingest-api'
 import { useComposerBranch } from './hooks/use-composer-branch'
 import { useComposerDraft } from './hooks/use-composer-draft'
 import { useComposerDrop } from './hooks/use-composer-drop'
@@ -74,6 +85,16 @@ import { VoiceActivity, VoicePlaybackActivity } from './voice-activity'
 interface KarnaComposerResourceRow {
   id: string
   name: string
+  enabled?: boolean
+  tools?: string[]
+  icon?: string
+  iconImage?: string
+  bgColor?: string
+  textColor?: string
+  connected?: boolean
+  isConnector?: boolean
+  isBuiltIn?: boolean
+  isInstance?: boolean
 }
 
 interface KarnaComposerWorkflowRow {
@@ -106,28 +127,16 @@ export function ChatBar({
 }: ChatBarProps) {
   const attachments = useStore($composerAttachments)
   const scrolledUp = useStore($threadScrolledUp)
-  const autoSpeak = useStore($autoSpeakReplies)
-  // The turn is parked on the user (clarify / approval / sudo / secret). Esc must
-  // not interrupt it — there's nothing actively running to stop, and stopping
-  // would discard a question the user may want to come back to. The blocking
-  // prompt owns its own dismissal (Skip, Reject, dialog close).
   const awaitingInput = useStore($activeSessionAwaitingInput)
   const activeQueueSessionKey = queueSessionKey || sessionId || null
 
-  // Status items (subagents, background processes) are keyed by the RUNTIME
-  // session id — gateway events and process.list both speak that id. Only the
-  // queue uses the stored-session fallback key (prompts can queue pre-resume).
   const statusSessionId = sessionId ?? null
 
-  // Coarse edge: re-renders ChatBar only when the stack shows/hides, NOT on
-  // every per-item status mutation or other sessions' churn (see the hook).
   const statusPresent = useSessionStatusPresence(statusSessionId)
 
   const composerRef = useRef<HTMLFormElement | null>(null)
   const composerSurfaceRef = useRef<HTMLDivElement | null>(null)
 
-  // Pop-out engine: docked↔floating state, dock/float/toggle, drag gestures, and
-  // the on-screen re-clamp. Secondary windows can't pop out.
   const {
     dockProximity,
     dragging,
@@ -138,40 +147,92 @@ export function ChatBar({
     poppedOut
   } = useComposerPopout({ composerRef })
 
-  // Coordinator-owned: the draft engine reads the live queue-edit snapshot off
-  // this ref (to suppress its stash while editing a queued prompt) and the queue
-  // engine writes it — an explicit shared handle, not a back-reference.
   const queueEditRef = useRef<QueueEditState | null>(null)
-  const composingRef = useRef(false) // true during IME composition (CJK input)
+  const composingRef = useRef(false)
 
   const { availableThemes, themeName } = useTheme()
   const at = useAtCompletions({ gateway: gateway ?? null, sessionId: sessionId ?? null, cwd: cwd ?? null })
   const slash = useSlashCompletions({ activeSkin: themeName, gateway: gateway ?? null, skinThemes: availableThemes })
 
   const { t } = useI18n()
-  const [karnaMode, setKarnaMode] = useState<'chat' | 'goal' | 'plan'>('chat')
-  const [karnaResourcesOpen, setKarnaResourcesOpen] = useState(false)
+  const { parseAttachment } = useAttachmentIngest()
+  const autoParseStartedRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    for (const att of attachments) {
+      if (
+        att.path &&
+        isAutoParseType(att.path) &&
+        !att.parseState &&
+        !autoParseStartedRef.current.has(att.id)
+      ) {
+        autoParseStartedRef.current.add(att.id)
+        void parseAttachment(att)
+      }
+    }
+  }, [attachments, parseAttachment])
+
+  const [karnaMode, setKarnaMode] = useState<'direct' | 'plan' | 'goal' | 'living_work'>('direct')
   const [karnaResourcesLoading, setKarnaResourcesLoading] = useState(false)
   const [karnaEnhancing, setKarnaEnhancing] = useState(false)
+  const [karnaEnhanced, setKarnaEnhanced] = useState(false)
+  const [karnaOriginalText, setKarnaOriginalText] = useState('')
+  const [karnaEnhancedText, setKarnaEnhancedText] = useState('')
+  const [karnaSouls, setKarnaSouls] = useState<string[]>([])
+  const storePermissionLevel = useStore($karnaPermissionLevel)
+  const draftPermissionMode = useStore($draftPermissionMode)
+  const [karnaPermissionLevel, setKarnaPermissionLevelState] = useState<'restricted' | 'computer' | 'dangerous'>(draftPermissionMode)
+  const draftConversationScope = useStore($draftConversationScope)
+  const scopeLocked = useStore($scopeLocked)
+  const projects = useStore($projects)
+
+  const setKarnaPermissionLevel = (level: 'restricted' | 'computer' | 'dangerous') => {
+    setKarnaPermissionLevelState(level)
+    setKarnaPermissionLevelStore(level)
+    setDraftPermissionMode(level)
+  }
+
+  useEffect(() => {
+    if (storePermissionLevel !== karnaPermissionLevel) {
+      setKarnaPermissionLevelState(storePermissionLevel)
+      setDraftPermissionMode(storePermissionLevel)
+    }
+  }, [storePermissionLevel, karnaPermissionLevel])
+
+  useEffect(() => {
+    if (draftPermissionMode !== karnaPermissionLevel) {
+      setKarnaPermissionLevelState(draftPermissionMode)
+      setKarnaPermissionLevelStore(draftPermissionMode)
+    }
+  }, [draftPermissionMode])
+  const [skillPopoverSearch, setSkillPopoverSearch] = useState('')
+  const [mcpPopoverSearch, setMcpPopoverSearch] = useState('')
+  const [soulPopoverSearch, setSoulPopoverSearch] = useState('')
+  const [composerHeight, setComposerHeight] = useState<number | null>(130)
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null)
+
   const [karnaResources, setKarnaResources] = useState<{
     knowledge: KarnaComposerResourceRow[]
     mcp: KarnaComposerResourceRow[]
     skills: KarnaComposerResourceRow[]
+    souls: { id: string; name: string; slug: string }[]
     workflows: KarnaComposerWorkflowRow[]
-  }>({ knowledge: [], mcp: [], skills: [], workflows: [] })
+  }>({ knowledge: [], mcp: [], skills: [], souls: [], workflows: [] })
+
   const [selectedKarnaResources, setSelectedKarnaResources] = useState<{
     knowledge: string[]
     mcp: string[]
     skills: string[]
   }>({ knowledge: [], mcp: [], skills: [] })
+
   const [selectedKarnaWorkflowId, setSelectedKarnaWorkflowId] = useState('')
+  const [resolvedWorkflow, setResolvedWorkflow] = useState<ResolvedWorkflowContext | null>(null)
+  const [workflowResolveError, setWorkflowResolveError] = useState<string | null>(null)
+  const [workflowResolving, setWorkflowResolving] = useState(false)
   const gatewayState = useStore($gatewayState)
   const reconnecting = gatewayState === 'closed' || gatewayState === 'error'
   const inputDisabled = disabled && !reconnecting
 
-  // The draft engine — detached source of truth (DOM + draftRef + edge
-  // selectors); typing never re-renders the chrome. ChatBar owns `queueEditRef`
-  // and threads it in so the draft↔queue coupling is an explicit dep, not a tangle.
   const {
     activeQueueSessionKeyRef,
     clearDraft,
@@ -190,15 +251,11 @@ export function ChatBar({
     stashAt
   } = useComposerDraft({ activeQueueSessionKey, focusKey, inputDisabled, queueEditRef, sessionId })
 
-  // "Add URL" dialog — open/value state, autofocus, and submit (host onAddUrl or
-  // an @url: directive into the draft).
   const { openUrlDialog, setUrlOpen, setUrlValue, submitUrl, urlInputRef, urlOpen, urlValue } = useComposerUrlDialog({
     insertText,
     onAddUrl
   })
 
-  // The queue engine — queued turns, in-place editing, the shared drain lock,
-  // and bounded auto-drain. Consumes the draft API and writes `queueEditRef`.
   const {
     beginQueuedEdit,
     drainNextQueued,
@@ -231,34 +288,71 @@ export function ChatBar({
   const canSubmit = busy || hasComposerPayload
   const busyAction = busy && hasComposerPayload ? 'queue' : 'stop'
 
-  // Steer only makes sense mid-turn, text-only (the gateway can't carry images
-  // into a tool result) and never for a slash command (those execute inline).
   const canSteer = busy && !!onSteer && attachments.length === 0 && isSteerableText
 
   const showHelpHint = isHelpHint
 
-  const formatKarnaModePrompt = (text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed && karnaMode === 'chat') return text
-    const resourceLine =
-      selectedKarnaResources.skills.length || selectedKarnaResources.mcp.length || selectedKarnaResources.knowledge.length
-        ? `\n可用资源：技能=${selectedKarnaResources.skills.join('、') || '无'}；MCP/工具=${selectedKarnaResources.mcp.join('、') || '无'}；知识库=${selectedKarnaResources.knowledge.join('、') || '无'}\n`
-        : ''
-    const workflowLine = selectedKarnaWorkflowId ? `\n工作流：${selectedKarnaWorkflowId}\n` : ''
-    if (!trimmed) return `${resourceLine}${workflowLine}`.trim()
-    const withResources = `${text}${resourceLine}${workflowLine}`
-    if (karnaMode === 'chat') return withResources
-    const prefix =
-      karnaMode === 'plan'
-        ? '请先制定清晰计划，再分步骤执行：'
-        : '把下面内容作为目标持续推进，直到完成前不要只给建议：'
-    return `${prefix}\n\n${withResources}`
+  const toggleKarnaSoul = (name: string) => {
+    setKarnaSouls(current =>
+      current.includes(name) ? current.filter(s => s !== name) : [...current, name]
+    )
+  }
+
+  const selectKarnaWorkflow = async (id: string) => {
+    setSelectedKarnaWorkflowId(id)
+    setResolvedWorkflow(null)
+    setWorkflowResolveError(null)
+
+    if (id) {
+      setKarnaSouls([])
+      setWorkflowResolving(true)
+      try {
+        const result = await window.karnaDesktop.api<{
+          ok?: boolean
+          binding?: ResolvedWorkflowContext['binding']
+          workflow?: ResolvedWorkflowContext['workflow']
+          agents?: ResolvedWorkflowContext['agents']
+          executionPlan?: ResolvedWorkflowContext['executionPlan']
+          error?: string
+          code?: string
+        }>({
+          body: {
+            workflow_id: id,
+            workspace_id: null,
+            session_id: sessionId || null
+          },
+          method: 'POST',
+          path: '/api/writer/workflows/resolve'
+        })
+
+        if (result.error) {
+          setWorkflowResolveError(result.error)
+          setSelectedKarnaWorkflowId('')
+          notifyError('工作流加载失败', result.error)
+        } else if (result.ok && result.workflow && result.binding) {
+          setResolvedWorkflow({
+            binding: result.binding,
+            workflow: result.workflow,
+            agents: result.agents || [],
+            executionPlan: result.executionPlan || { workflowId: id, steps: [] }
+          })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        setWorkflowResolveError(message)
+        setSelectedKarnaWorkflowId('')
+        notifyError('工作流加载失败', message)
+      } finally {
+        setWorkflowResolving(false)
+      }
+    }
   }
 
   const loadKarnaResources = async () => {
     setKarnaResourcesLoading(true)
+
     try {
-      const [resources, workflows] = await Promise.all([
+      const [resources, workflows, souls, connectorsResult, skillsResult] = await Promise.all([
         window.karnaDesktop
           .api<{
             knowledge?: KarnaComposerResourceRow[]
@@ -275,12 +369,93 @@ export function ChatBar({
           ),
         window.karnaDesktop
           .api<{ workflows?: KarnaComposerWorkflowRow[] }>({ path: '/api/writer/workflows' })
-          .catch(() => ({ workflows: [] }))
+          .catch(() => ({ workflows: [] })),
+        window.karnaDesktop
+          .api<{ authors?: { id: string; name: string; slug: string }[]; ok?: boolean }>({ path: '/api/soul/authors' })
+          .catch(() => ({ authors: [] })),
+        window.karnaDesktop
+          .api<{ items?: Array<{ id: string; name: string; displayName: string; description: string; icon?: string; toolsPreview?: Array<{ name: string }> }> }>({ path: '/api/connectors/definitions' })
+          .catch(() => ({ items: [] })),
+        window.karnaDesktop
+          .api<Array<{ id?: string; name: string; category: string; description: string; enabled: boolean; displayName?: string; displayDescription?: string; displayCategory?: string; isKarnaOfficial?: boolean; source?: string }>>({ path: '/api/skills' })
+          .catch(() => [])
       ])
+
+      const connectorInstances = await window.karnaDesktop
+        .api<{ items?: Array<{ id: string; connectorId: string; displayName: string; connectionStatus: string; discoveredTools?: Array<{ name: string; enabled?: boolean }>; definition?: { id: string; displayName: string; name: string; icon?: string; toolsPreview?: Array<{ name: string }>; customDefinition?: boolean } }> }>({ path: '/api/connectors/instances' })
+        .catch(() => ({ items: [] }))
+
+      const instanceList: KarnaComposerResourceRow[] = (connectorInstances.items || [])
+        .filter(inst => inst.id)
+        .map(inst => {
+          const def = inst.definition
+          const tools = (inst.discoveredTools || []).filter(t => t.enabled !== false).map(t => t.name)
+          const isConnected = inst.connectionStatus === 'connected'
+          return {
+            id: inst.id,
+            name: inst.displayName || def?.displayName || def?.name || inst.connectorId,
+            icon: def?.icon,
+            connected: isConnected,
+            isConnector: true,
+            enabled: isConnected,
+            tools: tools.length > 0 ? tools : (def?.toolsPreview || []).map(t => t.name),
+            isInstance: true
+          }
+        })
+
+      const connectedConnectorIds = new Set((connectorInstances.items || []).filter(i => i.connectionStatus === 'connected').map(i => i.connectorId))
+      const seenConnectorIds = new Set((connectorInstances.items || []).map(i => i.connectorId))
+
+      const connectorDefList: KarnaComposerResourceRow[] = (connectorsResult.items || [])
+        .filter(def => def.id && !seenConnectorIds.has(def.id))
+        .map(def => ({
+          id: def.id,
+          name: def.displayName || def.name,
+          icon: def.icon,
+          connected: connectedConnectorIds.has(def.id),
+          isConnector: true,
+          enabled: connectedConnectorIds.has(def.id),
+          tools: (def.toolsPreview || []).map(t => t.name)
+        }))
+
+      const seenIds = new Set([...instanceList.map(c => c.id), ...connectorDefList.map(c => c.id)])
+      const builtInMcpList = BUILT_IN_MCPS
+        .filter(mcp => !seenIds.has(`builtin_${mcp.id}`))
+        .map(mcp => ({
+          id: `builtin_${mcp.id}`,
+          name: mcp.displayName,
+          icon: mcp.icon,
+          iconImage: mcp.iconImage,
+          bgColor: mcp.bgColor,
+          textColor: mcp.textColor,
+          connected: false,
+          isConnector: true,
+          isBuiltIn: true,
+          enabled: false,
+          tools: mcp.toolsPreview.map(t => t.name)
+        }))
+
+      const mcpServers = (resources.mcp || []).map(s => ({ ...s, connected: s.enabled !== false, isConnector: false }))
+      const allMcp = [...instanceList, ...builtInMcpList, ...connectorDefList, ...mcpServers]
+
+      const skillsFromApi: KarnaComposerResourceRow[] = (skillsResult || [])
+        .filter(s => s.name)
+        .map(s => ({
+          id: s.id || s.name,
+          name: s.name,
+          enabled: s.enabled,
+          icon: s.category || 'skill',
+        }))
+
+      const seenSkillNames = new Set(skillsFromApi.map(s => s.name))
+      const extraSkills = (resources.skills || []).filter(s => !seenSkillNames.has(s.name))
+      const allSkills = [...skillsFromApi, ...extraSkills]
+
       setKarnaResources({
         knowledge: resources.knowledge || [],
-        mcp: resources.mcp || [],
-        skills: resources.skills || [],
+        mcp: allMcp,
+        skills: allSkills,
+        souls: (souls.authors || []).slice(0, 50),
         workflows: workflows.workflows || []
       })
     } catch (error) {
@@ -290,9 +465,14 @@ export function ChatBar({
     }
   }
 
+  useEffect(() => {
+    void loadKarnaResources()
+  }, [])
+
   const toggleKarnaResource = (kind: 'knowledge' | 'mcp' | 'skills', name: string) => {
     setSelectedKarnaResources(current => {
       const values = current[kind]
+
       return {
         ...current,
         [kind]: values.includes(name) ? values.filter(item => item !== name) : [...values, name]
@@ -300,48 +480,152 @@ export function ChatBar({
     })
   }
 
-  const toggleKarnaResourcesOpen = () => {
-    setKarnaResourcesOpen(open => !open)
-    if (!karnaResourcesOpen && !karnaResources.skills.length && !karnaResources.mcp.length && !karnaResources.knowledge.length) {
-      void loadKarnaResources()
+  const formatKarnaModePrompt = (text: string) => {
+    const trimmed = text.trim()
+
+    const hasExtras =
+      selectedKarnaWorkflowId ||
+      karnaSouls.length ||
+      selectedKarnaResources.skills.length ||
+      selectedKarnaResources.mcp.length
+
+    if (!trimmed && !hasExtras) {return text}
+    const parts: string[] = []
+
+    if (selectedKarnaResources.skills.length || selectedKarnaResources.mcp.length) {
+      parts.push(`可用资源：技能=${selectedKarnaResources.skills.join('、') || '无'}；MCP/工具=${selectedKarnaResources.mcp.join('、') || '无'}`)
     }
+
+    if (resolvedWorkflow) {
+      const { workflow, agents, executionPlan } = resolvedWorkflow
+      const agentDescriptions = agents.map(a => `- ${a.name}（${a.role}）：${a.duties || a.tagline || ''}`).join('\n')
+      const steps = executionPlan.steps?.map((s, i) => `${i + 1}. 节点 ${s.nodeId}${s.agentId ? `（Agent: ${agents.find(a => a.id === s.agentId)?.name || s.agentId}）` : ''}`).join('\n') || ''
+      parts.push(
+        `绑定工作流：${workflow.name}（版本：${workflow.version}，来源：${resolvedWorkflow.binding.source === 'global' ? '全局' : '项目'}）\n` +
+        `工作流描述：${workflow.description || '无'}\n` +
+        `工作流包含的Agent：\n${agentDescriptions || '无'}\n` +
+        `执行计划步骤：\n${steps || '无'}\n` +
+        `请严格按照此工作流的节点定义、Agent职责分工和执行顺序来推进任务，不要随意改变流程。`
+      )
+    } else if (selectedKarnaWorkflowId) {
+      const workflow = karnaResources.workflows.find(w => w.id === selectedKarnaWorkflowId)
+      parts.push(`工作流模板：${workflow?.name || selectedKarnaWorkflowId}（正在加载工作流详情...）`)
+    }
+
+    if (karnaSouls.length && !selectedKarnaWorkflowId) {parts.push(`Soul / 人格设定：${karnaSouls.join('、')}`)}
+
+    const extrasBlock = parts.filter(Boolean).map(p => `- ${p}`).join('\n')
+    const extras = extrasBlock ? `\n${extrasBlock}\n` : ''
+
+    if (!trimmed) {return extras.trim()}
+
+    return extras ? `${text}\n\n执行要求：\n${extras}` : text
   }
 
   const enhanceKarnaPrompt = async () => {
+    if (karnaEnhanced && karnaOriginalText) {
+      draftRef.current = karnaOriginalText
+      setComposerText(karnaOriginalText)
+
+      if (editorRef.current) {editorRef.current.textContent = karnaOriginalText}
+      setKarnaEnhanced(false)
+      setKarnaOriginalText('')
+      setKarnaEnhancedText('')
+      focusInput()
+
+      return
+    }
+
     const text = draftRef.current.trim()
-    if (!text) return
+
+    if (!text) {return}
     setKarnaEnhancing(true)
+
     try {
       const result = await window.karnaDesktop.api<{ ok?: boolean; text?: string; error?: string }>({
         body: {
-          knowledge: selectedKarnaResources.knowledge,
+          cwd: cwd || null,
           mcp: selectedKarnaResources.mcp,
-          mode: karnaMode,
+          model: state.model?.model || '',
+          mode: karnaMode === 'direct' ? 'chat' : karnaMode,
+          permission: karnaPermissionLevel,
+          provider: state.model?.provider || '',
           skills: selectedKarnaResources.skills,
+          soul: karnaSouls.join('、'),
           text,
           workflow: selectedKarnaWorkflowId
         },
         method: 'POST',
         path: '/api/prompt/enhance'
       })
-      if (result.error) throw new Error(result.error)
-      if (result.text) {
+
+      if (result.error) {throw new Error(result.error)}
+
+      if (result.text && result.text !== text) {
+        setKarnaOriginalText(text)
+        setKarnaEnhancedText(result.text)
+        setKarnaEnhanced(true)
         draftRef.current = result.text
         setComposerText(result.text)
-        if (editorRef.current) {
-          editorRef.current.textContent = result.text
-        }
+
+        if (editorRef.current) {editorRef.current.textContent = result.text}
         focusInput()
       }
     } catch (error) {
-      notifyError('Karna Prompt 增强失败', error instanceof Error ? error.message : String(error))
+      notifyError('提示词增强失败', error instanceof Error ? error.message : String(error))
     } finally {
       setKarnaEnhancing(false)
     }
   }
 
-  // The submit engine — the orchestration seam where draft + queue meet. Owns
-  // the submit decision tree, the send-with-restore primitive, and steer.
+  const handleResizePointerDown = (e: ReactPointerEvent) => {
+    e.preventDefault()
+    const editorEl = editorRef.current
+
+    if (!editorEl) {return}
+    resizeRef.current = {
+      startY: e.clientY,
+      startHeight: editorEl.offsetHeight
+    }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const handleResizePointerMove = (e: ReactPointerEvent) => {
+    if (!resizeRef.current) {return}
+    const delta = resizeRef.current.startY - e.clientY
+    const newHeight = Math.max(80, Math.min(600, resizeRef.current.startHeight + delta))
+    setComposerHeight(newHeight)
+  }
+
+  const handleResizePointerUp = () => {
+    resizeRef.current = null
+  }
+
+  const filteredSkillsList = useMemo(() => {
+    if (!skillPopoverSearch) {return karnaResources.skills}
+    const q = skillPopoverSearch.toLowerCase()
+
+    return karnaResources.skills.filter(s => s.name.toLowerCase().includes(q))
+  }, [karnaResources.skills, skillPopoverSearch])
+
+  const filteredMcpList = useMemo(() => {
+    if (!mcpPopoverSearch) {return karnaResources.mcp}
+    const q = mcpPopoverSearch.toLowerCase()
+
+    return karnaResources.mcp.filter(m => m.name.toLowerCase().includes(q))
+  }, [karnaResources.mcp, mcpPopoverSearch])
+
+  const filteredSoulsList = useMemo(() => {
+    if (!soulPopoverSearch) {return karnaResources.souls}
+    const q = soulPopoverSearch.toLowerCase()
+
+    return karnaResources.souls.filter(s => s.name.toLowerCase().includes(q))
+  }, [karnaResources.souls, soulPopoverSearch])
+
+  const selectedWorkflow = karnaResources.workflows.find(w => w.id === selectedKarnaWorkflowId)
+
+  const TOOLBAR_BTN = 'flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors data-[state=open]:bg-accent/60 data-[state=open]:text-foreground disabled:opacity-50 disabled:pointer-events-none'
+
   const { steerDraft, submitDraft } = useComposerSubmit({
     activeQueueSessionKey,
     activeQueueSessionKeyRef,
@@ -349,17 +633,31 @@ export function ChatBar({
     busy,
     canSteer,
     clearDraft,
-    disabled,
+    disabled: disabled || workflowResolving || !!workflowResolveError || (!!selectedKarnaWorkflowId && !resolvedWorkflow),
     draftRef,
     drainNextQueued,
     editorRef,
     exitQueuedEdit,
     focusInput,
-    inputDisabled,
+    inputDisabled: inputDisabled || workflowResolving || !!workflowResolveError || (!!selectedKarnaWorkflowId && !resolvedWorkflow),
     loadIntoComposer,
     onCancel,
     onSteer,
-    onSubmit: (value, options) => onSubmit(formatKarnaModePrompt(value), options),
+    onSubmit: (value, options) => {
+      if (workflowResolveError) {
+        notifyError('工作流错误', workflowResolveError)
+        return false
+      }
+      if (workflowResolving) {
+        notifyError('请稍候', '工作流正在加载中，请稍候再发送')
+        return false
+      }
+      if (selectedKarnaWorkflowId && !resolvedWorkflow) {
+        notifyError('请稍候', '工作流尚未加载完成，请稍候再发送')
+        return false
+      }
+      return onSubmit(formatKarnaModePrompt(value), options)
+    },
     queueCurrentDraft,
     queueEdit,
     queuedPrompts,
@@ -368,13 +666,8 @@ export function ChatBar({
     stashAt
   })
 
-  // Resting / reconnecting / starting placeholder text, re-rolled only on a real
-  // conversation change.
   const placeholder = useComposerPlaceholder({ disabled, reconnecting, sessionId })
 
-  // Trigger / completion engine: @// detection, the adapter-driven item list,
-  // popover selection, and chip insertion. The keydown nav block below consumes
-  // this API; keyup uses triggerKeyConsumedRef to skip its refresh.
   const {
     argStageEmpty,
     closeTrigger,
@@ -389,15 +682,6 @@ export function ChatBar({
     triggerLoading
   } = useComposerTrigger({ at, draftRef, editorRef, requestMainFocus, setComposerText, slash })
 
-  // Pull the live contentEditable text into draftRef + the AUI composer state
-  // (which drives `hasComposerPayload` → the send button). Shared by the input
-  // and compositionend paths so committed IME text reaches state through either.
-  // A pending coalesced flush (rAF id). `composerPlainText` serializes the whole
-  // editor (O(n)), so running it on every event during a burst — holding a key,
-  // or holding Cmd+V into a growing editor — is O(n²) across the burst. The
-  // contentEditable DOM is the source of truth (submit + the compositionend /
-  // keydown paths re-read it synchronously), so collapsing the input/paste
-  // flushes to one per paint is lossless.
   const flushRafRef = useRef<number | undefined>(undefined)
 
   const flushEditorToDraft = (editor: HTMLDivElement) => {
@@ -418,9 +702,6 @@ export function ChatBar({
     window.setTimeout(refreshTrigger, 0)
   }
 
-  // Coalesce the high-frequency input/paste flushes to one per frame. Immediate
-  // paths (compositionend, Enter/keydown, submit) keep calling
-  // flushEditorToDraft directly, which cancels any pending coalesced run first.
   const scheduleFlushEditorToDraft = (editor: HTMLDivElement) => {
     if (flushRafRef.current !== undefined) {
       return
@@ -442,11 +723,18 @@ export function ChatBar({
   )
 
   const handleEditorInput = (event: FormEvent<HTMLDivElement>) => {
-    // During IME composition the DOM contains uncommitted preedit text
-    // mixed with real content.  Skip state writes — compositionend flushes
-    // the finalized text (see onCompositionEnd).
     if (composingRef.current) {
       return
+    }
+
+    if (karnaEnhanced && karnaEnhancedText) {
+      const text = event.currentTarget.textContent || ''
+
+      if (text !== karnaEnhancedText) {
+        setKarnaEnhanced(false)
+        setKarnaOriginalText('')
+        setKarnaEnhancedText('')
+      }
     }
 
     scheduleFlushEditorToDraft(event.currentTarget)
@@ -469,20 +757,11 @@ export function ChatBar({
       return
     }
 
-    // Trim surrounding whitespace so a copy that dragged along leading/trailing
-    // blank lines (common when selecting from terminals, code blocks, web pages)
-    // doesn't dump multiline padding into the composer. Internal newlines are
-    // preserved — only the edges are cleaned up.
     const pastedText = event.clipboardData.getData('text').trim()
 
     if (!pastedText) {
       event.preventDefault()
 
-      // Under WSL2/WSLg the Windows host clipboard doesn't bridge *images* to
-      // the Linux clipboard the DOM paste event reads, so a host screenshot
-      // arrives as an empty paste (no blobs, no text). Fall back to the main
-      // process, which pulls the image straight off the Windows clipboard.
-      // Silent so a genuinely-empty paste doesn't pop a "no image" warning.
       if (onPasteClipboardImage) {
         triggerHaptic('selection')
         void onPasteClipboardImage({ silent: true })
@@ -503,18 +782,10 @@ export function ChatBar({
   }
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    // IME composition: Enter confirms composed text, not a message submission.
-    // We check both composingRef (set by compositionstart/compositionend, robust
-    // across browsers) and nativeEvent.isComposing (Chromium fallback).  Without
-    // this guard, pressing Enter to finalise a Korean/Japanese/Chinese IME
-    // preedit fires submitDraft() and splits the message mid-word.
     if (composingRef.current || event.nativeEvent.isComposing) {
       return
     }
 
-    // Plain Backspace right after a directive chip: remove the chip + its
-    // auto-inserted trailing space as one unit, so deleting a directive never
-    // leaves an orphaned space. (Modified backspaces stay native.)
     if (
       event.key === 'Backspace' &&
       !event.metaKey &&
@@ -528,8 +799,6 @@ export function ChatBar({
       return
     }
 
-    // Non-collapsed Backspace/Delete: native selection-delete is ~O(n²) on large
-    // drafts (Ctrl+A → Delete froze ~1.3s). Collapsed carets fall through.
     if ((event.key === 'Backspace' || event.key === 'Delete') && deleteSelectionInEditor(event.currentTarget)) {
       event.preventDefault()
       flushEditorToDraft(event.currentTarget)
@@ -537,8 +806,6 @@ export function ChatBar({
       return
     }
 
-    // Cmd/Ctrl+Shift+K drains the next queued message. Plain Cmd/Ctrl+K is
-    // reserved for the global command palette.
     if ((event.metaKey || event.ctrlKey) && !event.altKey && event.shiftKey && event.key.toLowerCase() === 'k') {
       event.preventDefault()
 
@@ -566,11 +833,6 @@ export function ChatBar({
         return
       }
 
-      // Enter / Tab / Space all accept the highlighted item: a no-arg command
-      // commits its directive chip, an arg-taking command expands to its
-      // options step, and an arg option commits the full `/cmd arg` chip. Space
-      // is slash-only (an `@` mention takes a literal space) and gated to a
-      // non-empty query so a bare `/ ` still types a space.
       const acceptOnSpace = event.key === ' ' && trigger.kind === '/' && Boolean(trigger.query.trim())
       const accept = event.key === 'Enter' || event.key === 'Tab' || acceptOnSpace
 
@@ -595,10 +857,6 @@ export function ChatBar({
       }
     }
 
-    // Arg stage with nothing left to suggest — a fully-typed arg the backend
-    // completer no longer echoes (it drops the exact match), e.g.
-    // `/personality creative`. Space/Tab still commit what's typed as a single
-    // directive chip; Enter falls through to submit (send it as-is).
     if (
       trigger?.kind === '/' &&
       !triggerItems.length &&
@@ -613,13 +871,9 @@ export function ChatBar({
       return
     }
 
-    // ArrowUp/ArrowDown navigate, in priority order: the queue (edit entries in
-    // place) then sent-message history. The history ring is derived from live
-    // session messages each press — single source of truth, no mirror.
     if (event.key === 'ArrowUp') {
       const currentDraft = draftRef.current
 
-      // Editing a queued turn → walk to the older entry.
       if (queueEdit && stepQueuedEdit(-1)) {
         event.preventDefault()
         triggerKeyConsumedRef.current = true
@@ -627,8 +881,6 @@ export function ChatBar({
         return
       }
 
-      // Empty composer + a queued turn → open the newest queued entry for edit
-      // (the row's pencil), not a text recall. Enter saves it back to the queue.
       if (!currentDraft.trim() && !queueEdit && queuedPrompts.length > 0) {
         event.preventDefault()
         triggerKeyConsumedRef.current = true
@@ -637,7 +889,6 @@ export function ChatBar({
         return
       }
 
-      // Don't hijack a typed draft unless already browsing — they'd lose it.
       if (currentDraft.trim() && !isBrowsingHistory(sessionId)) {
         return
       }
@@ -645,8 +896,6 @@ export function ChatBar({
       event.preventDefault()
       triggerKeyConsumedRef.current = true
 
-      // $messages is read imperatively (not subscribed) so the composer
-      // doesn't re-render on every streaming delta flush.
       const history = deriveUserHistory($messages.get(), chatMessageText)
       const entry = browseBackward(sessionId, currentDraft, history)
 
@@ -658,7 +907,6 @@ export function ChatBar({
     }
 
     if (event.key === 'ArrowDown') {
-      // Editing a queued turn → walk to the newer entry (past the newest exits).
       if (queueEdit) {
         event.preventDefault()
         triggerKeyConsumedRef.current = true
@@ -667,7 +915,6 @@ export function ChatBar({
         return
       }
 
-      // Browsing sent history → step toward the present, restoring the draft.
       if (isBrowsingHistory(sessionId)) {
         event.preventDefault()
         triggerKeyConsumedRef.current = true
@@ -683,9 +930,6 @@ export function ChatBar({
       return
     }
 
-    // Cmd/Ctrl+Enter is reserved for steering the live run — never a send.
-    // Steer when there's a steerable draft, otherwise swallow it so it can't
-    // surprise-send. (Plain Enter still queues while busy / sends when idle.)
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
       event.preventDefault()
 
@@ -699,12 +943,6 @@ export function ChatBar({
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
 
-      // Decide from the DOM, not React state. `hasComposerPayload` is derived
-      // from the AUI composer state, which lags the latest keystroke by a
-      // render, so on fast typing / IME the just-typed text isn't in state yet.
-      // Without the live read, a real message typed while prompts are queued
-      // would drain the queue instead of sending. submitDraft() re-syncs and
-      // sends the live editor text.
       const editorText = editorRef.current ? composerPlainText(editorRef.current) : draftRef.current
       const hasLivePayload = editorText.trim().length > 0 || attachments.length > 0
 
@@ -718,11 +956,6 @@ export function ChatBar({
         return
       }
 
-      // Empty Enter while busy is a no-op — interrupting is explicit (Stop/Esc),
-      // never a stray Enter after sending. With a payload, submitDraft queues it.
-      // Gate on the live DOM payload (not the render-lagged composer state) so a
-      // message typed fast / via IME while busy still reaches submitDraft() and
-      // gets queued instead of being mistaken for an empty Enter.
       if (busy && !hasLivePayload) {
         return
       }
@@ -733,7 +966,6 @@ export function ChatBar({
     }
 
     if (event.key === 'Escape') {
-      // Editing a queued turn → Esc cancels the edit, restoring the prior draft.
       if (queueEdit) {
         event.preventDefault()
         exitQueuedEdit('cancel')
@@ -741,9 +973,6 @@ export function ChatBar({
         return
       }
 
-      // Otherwise Esc interrupts the running turn (Stop-button parity) — unless
-      // the turn is parked waiting on the user, where Esc must not discard the
-      // pending prompt.
       if (busy && !awaitingInput) {
         event.preventDefault()
         triggerHaptic('cancel')
@@ -753,12 +982,6 @@ export function ChatBar({
   }
 
   const handleEditorKeyUp = () => {
-    // If this keyup belongs to a key the open trigger popover already consumed
-    // in keydown (Arrow/Enter/Tab/Escape), skip the refresh. Those keys never
-    // edit text, and for Escape the keydown already closed the menu — a refresh
-    // here would re-detect the still-present `/` and instantly reopen it. We
-    // read a ref set during keydown rather than `trigger`, because by keyup
-    // time React has re-rendered and `trigger` may already be null.
     if (triggerKeyConsumedRef.current) {
       triggerKeyConsumedRef.current = false
 
@@ -778,19 +1001,15 @@ export function ChatBar({
     handleInputDrop
   } = useComposerDrop({ cwd, insertInlineRefs, onAttachDroppedItems, requestMainFocus })
 
-  // Branch / worktree hand-offs (CodingStatusRow). Owns the worktree open +
-  // branch-off/convert/list/switch actions; draft travels into the new session.
   const { handleBranchOff, handleConvertBranch, handleListBranches, handleSwitchBranch, openInWorktree } =
     useComposerBranch({ clearDraft, cwd, draftRef })
 
-  // Global Esc-to-cancel when the chat (not the composer input) has focus.
   useComposerEscCancel({ awaitingInput, busy, onCancel })
 
   const {
     conversation,
     dictate,
     endConversation,
-    handleToggleAutoSpeak,
     startConversation,
     voiceActivityState,
     voiceConversationActive,
@@ -809,19 +1028,20 @@ export function ChatBar({
 
   const contextMenu = (
     <ContextMenu
+      karnaMode={karnaMode}
       onInsertText={insertText}
       onOpenUrlDialog={openUrlDialog}
       onPasteClipboardImage={onPasteClipboardImage}
       onPickFiles={onPickFiles}
       onPickFolders={onPickFolders}
       onPickImages={onPickImages}
+      onSetMode={setKarnaMode}
       state={state}
     />
   )
 
   const controls = (
     <ComposerControls
-      autoSpeak={autoSpeak}
       busy={busy}
       busyAction={busyAction}
       canSteer={canSteer}
@@ -838,28 +1058,29 @@ export function ChatBar({
         status: conversation.status
       }}
       disabled={disabled}
+      enhanced={karnaEnhanced}
+      enhancing={karnaEnhancing}
       hasComposerPayload={hasComposerPayload}
       onDictate={dictate}
+      onEnhance={() => void enhanceKarnaPrompt()}
       onSteer={steerDraft}
-      onToggleAutoSpeak={handleToggleAutoSpeak}
       state={state}
       voiceStatus={voiceStatus}
     />
   )
 
   const input = (
-    <div className={cn('relative', stacked ? 'w-full' : 'min-w-(--composer-input-inline-min-width) flex-1')}>
+    <div className="relative w-full">
       <div
         aria-disabled={inputDisabled ? true : undefined}
         aria-label={t.composer.message}
         autoCapitalize="off"
         autoCorrect="off"
         className={cn(
-          'min-h-(--composer-input-min-height) max-h-(--composer-input-max-height) cursor-text overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-transparent pb-1 pr-1 pt-1 leading-normal text-foreground outline-none disabled:cursor-not-allowed',
+          'min-h-(--composer-input-min-height) max-h-(--composer-input-max-height) cursor-text overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-transparent pb-1 pl-1 pr-1 pt-1 leading-normal text-foreground outline-none disabled:cursor-not-allowed',
           'empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/60',
           '**:data-ref-text:cursor-default',
-          stacked && 'pl-3',
-          stacked ? 'w-full' : 'min-w-(--composer-input-inline-min-width) flex-1'
+          stacked && 'pl-3'
         )}
         contentEditable={!inputDisabled}
         data-placeholder={placeholder}
@@ -867,14 +1088,6 @@ export function ChatBar({
         onBlur={() => window.setTimeout(closeTrigger, 80)}
         onCompositionEnd={event => {
           composingRef.current = false
-
-          // The input events fired *during* composition were skipped (they
-          // carried uncommitted preedit text), and Chromium does NOT reliably
-          // emit a trailing input event after compositionend on Windows IMEs.
-          // Without flushing here, committed multi-character IME input (e.g.
-          // Chinese "你好", Japanese, Korean) never reaches composer state, so
-          // `hasComposerPayload` stays false and the send button stays hidden
-          // until an unrelated edit forces a sync (#39614).
           flushEditorToDraft(event.currentTarget)
         }}
         onCompositionStart={() => {
@@ -891,23 +1104,9 @@ export function ChatBar({
         ref={editorRef}
         role="textbox"
         spellCheck={false}
+        style={composerHeight ? { minHeight: `${composerHeight}px`, maxHeight: `${composerHeight}px` } : undefined}
         suppressContentEditableWarning
       />
-      {/* assistant-ui requires ComposerPrimitive.Input somewhere in the tree
-        so the composer-state binding (text + IME + paste + form-submit hookup)
-        wires up. We render the real input UI ourselves above via the
-        contentEditable, so the primitive is invisible (sr-only).
-
-        IMPORTANT: don't let it render its default <TextareaAutosize>. That
-        component runs `useLayoutEffect(resizeTextarea)` on every value change
-        and reads `node.scrollHeight` against a hidden measurement textarea,
-        forcing two synchronous layouts per keystroke for an element the
-        user can't see. Profiling 400-char synthetic typing showed >900ms
-        cumulative cost in getHeight2/calculateNodeHeight alone (~2.3ms/key)
-        on top of the per-keystroke React commit.
-
-        `asChild` swaps TextareaAutosize for a Radix Slot wrapping our
-        plain <textarea>, which carries the binding but skips autosize. */}
       <ComposerPrimitive.Input asChild submitMode="ctrlEnter" tabIndex={-1} unstable_focusOnScrollToBottom={false}>
         <textarea
           aria-hidden
@@ -927,19 +1126,10 @@ export function ChatBar({
       {dragging && poppedOut && (
         <div
           aria-hidden
-          // `absolute`, not `fixed`: anchor to the chat-column root (the same
-          // `relative isolate` container the docked composer centers in) so the
-          // glow spans the thread area only — never the full viewport / under the
-          // sidebar. The dock target IS the docked position, so they must share
-          // a containing block.
           className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-32"
           style={{
-            // A bottom-centered radial glow — soft on every side by construction,
-            // so it reads as the dock target without any hard band edges. Its
-            // intensity tracks how close the composer is to the dock (1 = peak).
             background:
               'radial-gradient(64% 130% at 50% 100%, color-mix(in srgb, var(--color-primary) 26%, transparent) 0%, transparent 70%)',
-            // Scaled by --dock-glow-scale (lower in light mode — see styles.css).
             opacity: `calc(${0.1 + dockProximity * 0.57} * var(--dock-glow-scale, 1))`
           }}
         />
@@ -949,9 +1139,7 @@ export function ChatBar({
           className={cn(
             'group/composer z-30 overflow-visible rounded-2xl',
             poppedOut
-              ? // Floating: the composer (with its own border) floats with an even
-                // 5px transparent grab margin around it — drag that to move it.
-                'fixed w-[var(--composer-popout-width)] max-w-[calc(100vw-1.5rem)] bg-transparent p-[5px]'
+              ? 'fixed w-[var(--composer-popout-width)] max-w-[calc(100vw-1.5rem)] bg-transparent p-[5px]'
               : 'absolute bottom-0 left-1/2 w-[min(var(--composer-width),calc(100%-2rem))] max-w-full -translate-x-1/2 pt-2 pb-[var(--composer-shell-pad-block-end)]',
             dragging && 'cursor-grabbing select-none touch-none'
           )}
@@ -980,7 +1168,6 @@ export function ChatBar({
               ? {
                   bottom: `${popoutPosition.bottom}px`,
                   right: `${popoutPosition.right}px`,
-                  // A compact one-sentence width when floating.
                   ['--composer-popout-width' as string]: `${POPOUT_WIDTH_REM}rem`
                 }
               : undefined
@@ -997,11 +1184,6 @@ export function ChatBar({
               onPick={replaceTriggerWithChip}
             />
           )}
-          {/* Session-scoped status stack (todos, subagents, background tasks,
-              queue). Out of flow so it never inflates the composer's measured
-              height; it overlays the chat instead of pushing it, and publishes
-              its own --status-stack-measured-height so the thread's clearance
-              accounts for it. Collapses to nothing when every status is empty. */}
           <ComposerStatusStack
             queue={
               activeQueueSessionKey && queuedPrompts.length > 0 ? (
@@ -1027,11 +1209,6 @@ export function ChatBar({
               style={{ background: COMPOSER_FADE_BACKGROUND }}
             />
           )}
-          {/* Drag region: covers the transparent grab margin around the surface.
-              The surface sits on top (z-4) so only the exposed ring receives this
-              element's hover/cursor — grab cursor + a diagonal hatch (/////)
-              appear when you hover the draggable margin, never over the input.
-              The hatch pattern + opacity ladder live in styles.css. */}
           {popoutAllowed && (
             <div
               aria-hidden
@@ -1051,6 +1228,14 @@ export function ChatBar({
               data-slot="composer-surface"
               ref={composerSurfaceRef}
             >
+              <div
+                className="absolute left-0 right-0 top-0 z-20 flex h-3 cursor-ns-resize items-center justify-center opacity-0 transition-opacity hover:opacity-100"
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={handleResizePointerUp}
+              >
+                <div className="h-1 w-12 rounded-full bg-border/60 transition-colors hover:bg-primary/60" />
+              </div>
               <div
                 aria-hidden
                 className={cn(
@@ -1078,101 +1263,328 @@ export function ChatBar({
               >
                 <VoiceActivity state={voiceActivityState} />
                 <VoicePlaybackActivity />
-                <div className="flex flex-wrap items-center gap-1.5 text-[0.68rem] text-muted-foreground/80">
-                  <span className="mr-1 font-medium text-foreground/70">Karna</span>
-                  {(['chat', 'plan', 'goal'] as const).map(mode => (
-                    <button
-                      className={cn(
-                        'rounded-full border border-transparent px-2 py-0.5 transition-colors hover:bg-accent/45',
-                        karnaMode === mode && 'border-primary/25 bg-primary/12 text-primary'
-                      )}
-                      key={mode}
-                      onClick={() => setKarnaMode(mode)}
-                      type="button"
-                    >
-                      {mode === 'chat' ? '聊天' : mode === 'plan' ? '计划模式' : '目标模式'}
-                    </button>
-                  ))}
-                  <span className="mx-1 h-3 w-px bg-border/70" />
-                  <button
-                    className={cn(
-                      'rounded-full border px-2 py-0.5 transition-colors hover:bg-accent/45',
-                      karnaResourcesOpen ? 'border-primary/25 bg-primary/12 text-primary' : 'border-border/70'
-                    )}
-                    onClick={toggleKarnaResourcesOpen}
-                    type="button"
-                  >
-                    {karnaResourcesLoading ? '资源加载中…' : '资源'}
-                  </button>
-                  <button
-                    className="rounded-full border border-border/70 px-2 py-0.5 transition-colors hover:bg-accent/45 disabled:opacity-50"
-                    disabled={karnaEnhancing || !hasText}
-                    onClick={() => void enhanceKarnaPrompt()}
-                    type="button"
-                  >
-                    {karnaEnhancing ? '增强中…' : '增强'}
-                  </button>
-                </div>
-                {karnaResourcesOpen && (
-                  <div className="grid gap-1 rounded-lg border border-border/70 bg-background/80 p-2 text-[0.68rem]">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span className="mr-1 text-muted-foreground">多 Agent</span>
-                      <button
-                        className={cn(
-                          'rounded border px-1.5 py-0.5',
-                          !selectedKarnaWorkflowId
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border text-muted-foreground'
-                        )}
-                        onClick={() => setSelectedKarnaWorkflowId('')}
-                        type="button"
-                      >
-                        不使用
+                <div className="flex flex-wrap items-center gap-1">
+                  {contextMenu}
+                  <Popover onOpenChange={open => { if (!open) {setSkillPopoverSearch('')} }}>
+                    <PopoverTrigger asChild>
+                      <button className={TOOLBAR_BTN} type="button">
+                        <Wrench className="size-3.5" />
+                        技能
+                        <ChevronDown className="size-3" />
                       </button>
-                      {karnaResources.workflows.slice(0, 8).map(row => (
-                        <button
-                          className={cn(
-                            'rounded border px-1.5 py-0.5',
-                            selectedKarnaWorkflowId === row.id
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-border text-muted-foreground'
-                          )}
-                          key={row.id}
-                          onClick={() => setSelectedKarnaWorkflowId(row.id)}
-                          type="button"
-                        >
-                          {row.name}
-                        </button>
-                      ))}
-                    </div>
-                    {(['skills', 'mcp', 'knowledge'] as const).map(kind => {
-                      const label = kind === 'skills' ? '技能' : kind === 'mcp' ? 'MCP/工具' : '知识库'
-                      return (
-                        <div className="flex flex-wrap items-center gap-1" key={kind}>
-                          <span className="mr-1 text-muted-foreground">{label}</span>
-                          {karnaResources[kind].slice(0, 8).map(row => (
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-0">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <input
+                            className="w-full rounded-md border border-border/60 bg-transparent py-1.5 pl-8 pr-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-primary/40"
+                            onChange={e => setSkillPopoverSearch(e.target.value)}
+                            placeholder="搜索技能…"
+                            value={skillPopoverSearch}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto p-1">
+                        {filteredSkillsList.length === 0 && (
+                          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                            {karnaResourcesLoading ? '加载中…' : '暂无技能'}
+                          </div>
+                        )}
+                        {filteredSkillsList.map(row => {
+                          const selected = selectedKarnaResources.skills.includes(row.name)
+                          const disabled = row.enabled === false
+
+                          return (
                             <button
                               className={cn(
-                                'rounded border px-1.5 py-0.5',
-                                selectedKarnaResources[kind].includes(row.name)
-                                  ? 'border-primary bg-primary/10 text-primary'
-                                  : 'border-border text-muted-foreground'
+                                'flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                                selected
+                                  ? 'border border-primary/30 bg-primary/10 text-primary'
+                                  : 'hover:bg-accent/40',
+                                disabled && !selected && 'opacity-50'
                               )}
                               key={row.id}
-                              onClick={() => toggleKarnaResource(kind, row.name)}
+                              onClick={() => toggleKarnaResource('skills', row.name)}
+                              title={row.tools?.join(', ')}
                               type="button"
                             >
-                              {row.name}
+                              <span className="font-mono font-medium">{row.name}</span>
+                              {row.tools && row.tools.length > 0 && (
+                                <span className="text-[0.65rem] text-muted-foreground">
+                                  {row.tools.slice(0, 3).join(', ')}{row.tools.length > 3 ? '…' : ''}
+                                </span>
+                              )}
                             </button>
-                          ))}
-                          {!karnaResources[kind].length && (
-                            <span className="rounded border border-dashed border-border/70 px-1.5 py-0.5 text-muted-foreground/70">
-                              暂无
-                            </span>
-                          )}
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover onOpenChange={open => { if (!open) {setMcpPopoverSearch('')} }}>
+                    <PopoverTrigger asChild>
+                      <button className={TOOLBAR_BTN} type="button">
+                        <Cpu className="size-3.5" />
+                        MCP
+                        <ChevronDown className="size-3" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-0">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <input
+                            className="w-full rounded-md border border-border/60 bg-transparent py-1.5 pl-8 pr-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-primary/40"
+                            onChange={e => setMcpPopoverSearch(e.target.value)}
+                            placeholder="搜索MCP…"
+                            value={mcpPopoverSearch}
+                          />
                         </div>
-                      )
-                    })}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto p-1">
+                        {filteredMcpList.length === 0 && (
+                          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                            {karnaResourcesLoading ? '加载中…' : '暂无MCP'}
+                          </div>
+                        )}
+                        {filteredMcpList.map(row => {
+                          const selected = selectedKarnaResources.mcp.includes(row.name)
+                          const canUse = row.connected || row.enabled !== false
+
+                          return (
+                            <div
+                              className={cn(
+                                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
+                                selected
+                                  ? 'border border-primary/30 bg-primary/10 text-primary'
+                                  : 'hover:bg-accent/40',
+                                !canUse && !selected && 'opacity-70'
+                              )}
+                              key={row.id}
+                            >
+                              <div
+                                className="relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-[2px] text-[10px] ring-1 ring-black/10 dark:ring-white/10"
+                                style={!row.iconImage ? { backgroundColor: row.bgColor || 'var(--muted)', color: row.textColor || 'var(--muted-foreground)' } : undefined}
+                              >
+                                {row.iconImage ? (
+                                  <img alt="" className="h-full w-full object-cover" src={row.iconImage} />
+                                ) : (
+                                  <span className="select-none text-[11px]">{row.icon || '🔧'}</span>
+                                )}
+                              </div>
+                              <button
+                                className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5 text-left"
+                                disabled={!canUse && !selected}
+                                onClick={() => canUse && toggleKarnaResource('mcp', row.name)}
+                                title={row.tools?.join(', ')}
+                                type="button"
+                              >
+                                <span className="font-medium w-full text-left text-ellipsis overflow-hidden whitespace-nowrap">{row.name}</span>
+                                {row.tools && row.tools.length > 0 && (
+                                  <span className="text-[0.65rem] text-muted-foreground text-left">
+                                    {row.tools.length} 个工具
+                                  </span>
+                                )}
+                              </button>
+                              {row.isConnector && !row.connected && (
+                                <button
+                                  className="shrink-0 rounded-md border border-primary/40 px-2 py-0.5 text-[0.65rem] text-primary hover:bg-primary/10 transition-colors"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    window.location.href = '/#/karna/mcp'
+                                  }}
+                                  type="button"
+                                >
+                                  连接
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover onOpenChange={open => { if (!open) {setSoulPopoverSearch('')} }}>
+                    <PopoverTrigger asChild>
+                      <button className={TOOLBAR_BTN} disabled={!!selectedKarnaWorkflowId} type="button">
+                        <Palette className="size-3.5" />
+                        Soul
+                        <ChevronDown className="size-3" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-0">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <input
+                            className="w-full rounded-md border border-border/60 bg-transparent py-1.5 pl-8 pr-2 text-xs outline-none placeholder:text-muted-foreground/50 focus:border-primary/40"
+                            onChange={e => setSoulPopoverSearch(e.target.value)}
+                              placeholder="搜索 Soul…"
+                            value={soulPopoverSearch}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto p-1">
+                        {filteredSoulsList.length === 0 && (
+                          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                              {karnaResourcesLoading ? '加载中…' : '暂无 Soul'}
+                          </div>
+                        )}
+                        {filteredSoulsList.map(soul => {
+                          const selected = karnaSouls.includes(soul.name)
+
+                          return (
+                            <button
+                              className={cn(
+                                'flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                                selected
+                                  ? 'border border-primary/30 bg-primary/10 text-primary'
+                                  : 'hover:bg-accent/40'
+                              )}
+                              key={soul.id}
+                              onClick={() => toggleKarnaSoul(soul.name)}
+                              type="button"
+                            >
+                              <span className="font-medium">{soul.name}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={TOOLBAR_BTN} type="button">
+                        <Users className="size-3.5" />
+                        多Agent
+                        <ChevronDown className="size-3" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-72 p-0">
+                      <div className="max-h-80 overflow-y-auto p-1">
+                        {workflowResolveError && (
+                          <div className="mx-1 mb-1 rounded border border-red-400/30 bg-red-500/10 px-2 py-1.5 text-xs text-red-500">
+                            {workflowResolveError}
+                            <button
+                              className="ml-2 underline"
+                              onClick={() => {
+                                setSelectedKarnaWorkflowId('')
+                                setResolvedWorkflow(null)
+                                setWorkflowResolveError(null)
+                              }}
+                              type="button"
+                            >
+                              清除
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          className={cn(
+                            'flex w-full items-center rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                            !selectedKarnaWorkflowId
+                              ? 'border border-primary/30 bg-primary/10 text-primary'
+                              : 'hover:bg-accent/40'
+                          )}
+                          onClick={() => selectKarnaWorkflow('')}
+                          type="button"
+                        >
+                          不使用
+                        </button>
+                        {karnaResourcesLoading || workflowResolving ? (
+                          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                            {workflowResolving ? '工作流解析中…' : '加载中…'}
+                          </div>
+                        ) : karnaResources.workflows.length === 0 ? (
+                          <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                            暂无工作流
+                          </div>
+                        ) : (
+                          karnaResources.workflows.map(workflow => {
+                            const selected = selectedKarnaWorkflowId === workflow.id
+
+                            return (
+                              <button
+                                className={cn(
+                                  'flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                                  selected
+                                    ? 'border border-primary/30 bg-primary/10 text-primary'
+                                    : 'hover:bg-accent/40'
+                                )}
+                                disabled={workflowResolving}
+                                key={workflow.id}
+                                onClick={() => selectKarnaWorkflow(workflow.id)}
+                                type="button"
+                              >
+                                <span className="font-medium">{workflow.name}</span>
+                                {selected && resolvedWorkflow && (
+                                  <span className="text-[0.65rem] text-muted-foreground">
+                                    v{resolvedWorkflow.workflow.version} · {resolvedWorkflow.binding.source === 'global' ? '全局' : '项目'} · {resolvedWorkflow.agents.length} 个Agent
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {(karnaMode !== 'direct' || selectedKarnaWorkflowId || karnaPermissionLevel !== 'restricted') && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {karnaMode !== 'direct' && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-medium text-primary">
+                        {karnaMode === 'plan' ? '计划模式' : karnaMode === 'goal' ? '目标模式' : '作品演化'}
+                      </span>
+                    )}
+                    {selectedKarnaWorkflowId && selectedWorkflow && (
+                      <span className="rounded-full bg-accent/60 px-2 py-0.5 text-[0.65rem] font-medium text-foreground/70">
+                        多Agent: {selectedWorkflow.name}
+                      </span>
+                    )}
+                    {karnaPermissionLevel !== 'restricted' && (
+                      <span className={cn(
+                        'rounded-full px-2 py-0.5 text-[0.65rem] font-medium',
+                        karnaPermissionLevel === 'dangerous' ? 'bg-violet-500/12 text-violet-500' : 'bg-amber-500/12 text-amber-600'
+                      )}>
+                        {karnaPermissionLevel === 'computer' ? '电脑授权' : '高危操作'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {(selectedKarnaResources.skills.length > 0 || selectedKarnaResources.mcp.length > 0 || karnaSouls.length > 0 || selectedKarnaWorkflowId) && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    {selectedKarnaResources.skills.map(name => (
+                      <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" key={`skill-${name}`}>
+                        {name}
+                        <button onClick={() => toggleKarnaResource('skills', name)} type="button">
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {selectedKarnaResources.mcp.map(name => (
+                      <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" key={`mcp-${name}`}>
+                        {name}
+                        <button onClick={() => toggleKarnaResource('mcp', name)} type="button">
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {karnaSouls.map(name => (
+                      <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" key={`soul-${name}`}>
+                        {name}
+                        <button onClick={() => toggleKarnaSoul(name)} type="button">
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {selectedKarnaWorkflowId && selectedWorkflow && (
+                      <span className="bg-accent/60 text-foreground/70 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
+                        多Agent: {selectedWorkflow.name}
+                        <button onClick={() => selectKarnaWorkflow('')} type="button">
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    )}
                   </div>
                 )}
                 {queueEdit && editingQueuedPrompt && (
@@ -1199,18 +1611,94 @@ export function ChatBar({
                     </div>
                   </div>
                 )}
-                {attachments.length > 0 && <AttachmentList attachments={attachments} onRemove={onRemoveAttachment} />}
-                <div
-                  className={cn(
-                    'grid w-full',
-                    stacked
-                      ? 'grid-cols-[auto_1fr] gap-(--composer-row-gap) [grid-template-areas:"input_input"_"menu_controls"]'
-                      : 'grid-cols-[auto_1fr_auto] items-center gap-(--composer-control-gap) [grid-template-areas:"menu_input_controls"]'
-                  )}
-                >
-                  <div className="flex translate-y-[3px] items-start self-start [grid-area:menu]">{contextMenu}</div>
-                  <div className="min-w-0 [grid-area:input]">{input}</div>
-                  <div className="flex items-center justify-end [grid-area:controls]">{controls}</div>
+                {attachments.length > 0 && <AttachmentList attachments={attachments} onRemove={onRemoveAttachment} onParse={parseAttachment} />}
+                <div className="w-full">
+                  {input}
+                </div>
+                <div className="flex items-center justify-between pt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    {scopeLocked && draftConversationScope.type === 'project' ? (
+                      <span
+                        className="flex items-center gap-1 rounded-md border border-blue-400/40 bg-blue-500/5 px-2 py-0.5 text-[0.68rem] text-blue-600/80"
+                        title={`当前绑定到项目：${draftConversationScope.projectName}\n路径：${draftConversationScope.cwd}`}
+                      >
+                        <Codicon name="folder" size="0.65rem" />
+                        <span className="max-w-[10rem] truncate">项目：{draftConversationScope.projectName}</span>
+                      </span>
+                    ) : (
+                      <select
+                        className={cn(
+                          'h-6 max-w-[11rem] truncate rounded-md border bg-transparent px-2 text-[0.68rem] outline-none transition-colors',
+                          scopeLocked ? 'opacity-60 cursor-not-allowed' : '',
+                          draftConversationScope.type === 'project'
+                            ? 'border-blue-400/40 text-blue-600/80 focus:border-blue-500/60'
+                            : 'border-transparent text-muted-foreground/60 hover:border-border/50 hover:text-muted-foreground focus:border-primary/40'
+                        )}
+                        disabled={scopeLocked}
+                        onChange={e => {
+                          if (scopeLocked) return
+                          const val = e.target.value
+                          if (val === 'standalone') {
+                            setDraftConversationScope({ type: 'standalone' })
+                          } else {
+                            const proj = projects.find(p => p.id === val)
+                            if (proj) {
+                              setDraftConversationScope({
+                                type: 'project',
+                                workspaceId: proj.id,
+                                writerProjectId: proj.id,
+                                projectName: proj.name,
+                                cwd: proj.primary_path || ''
+                              })
+                            }
+                          }
+                        }}
+                        title={
+                          scopeLocked
+                            ? '对话归属已锁定，请在目标项目中新建对话'
+                            : draftConversationScope.type === 'project'
+                              ? `当前绑定到项目：${draftConversationScope.projectName}\n路径：${draftConversationScope.cwd}`
+                              : '独立对话不绑定到任何项目'
+                        }
+                        value={draftConversationScope.type === 'project' ? draftConversationScope.writerProjectId : 'standalone'}
+                      >
+                        <option value="standalone">独立对话</option>
+                        {projects.length > 0 && (
+                          <optgroup label="绑定到项目">
+                            {projects.map(proj => (
+                              <option key={proj.id} value={proj.id} title={proj.primary_path || ''}>
+                                项目：{proj.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    )}
+                    <select
+                      className={cn(
+                        'h-6 rounded-md border bg-transparent px-2 text-[0.68rem] outline-none transition-colors',
+                        karnaPermissionLevel === 'dangerous'
+                          ? 'border-violet-400/40 text-violet-500/80 focus:border-violet-500/60'
+                          : karnaPermissionLevel === 'computer'
+                            ? 'border-amber-400/40 text-amber-600/80 focus:border-amber-500/60'
+                            : 'border-transparent text-muted-foreground/60 hover:border-border/50 hover:text-muted-foreground focus:border-primary/40'
+                      )}
+                      onChange={e => setKarnaPermissionLevel(e.target.value as 'restricted' | 'computer' | 'dangerous')}
+                      title={
+                        karnaPermissionLevel === 'restricted'
+                          ? 'AI只能在当前对话范围内操作，不能执行终端命令或联网'
+                          : karnaPermissionLevel === 'computer'
+                            ? 'AI可以访问整个电脑、执行命令和联网，但危险操作会请求确认'
+                            : 'AI可以自由执行所有操作，无需确认，请谨慎使用'
+                      }
+                      value={karnaPermissionLevel}
+                    >
+                      <option title="AI只能在当前对话范围内操作，不能执行终端命令或联网" value="restricted">项目内受限</option>
+                      <option title="AI可以访问整个电脑、执行命令和联网，但危险操作会请求确认" value="computer">电脑授权</option>
+                      <option title="AI可以自由执行所有操作，无需确认，请谨慎使用" value="dangerous">高危操作</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-end">{controls}</div>
                 </div>
               </div>
             </div>

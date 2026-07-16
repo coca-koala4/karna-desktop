@@ -1,0 +1,30 @@
+manifest_version: 2
+name: markitdown
+description: MarkItDown MCP服务器，提供无Docker依赖的NPX包装器，支持直接运行Microsoft的markitdown-mcp服务器
+source: https://www.mcp-cn.com/server/132
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - markitdown-mcp-npx
+auth:
+  type: none
+post_install: 'markitdown MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: markitdown
+version: unresolved
+dependencies:
+  runtime: npm
+  package: markitdown-mcp-npx
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

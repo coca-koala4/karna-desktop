@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/pairing.json",
+  "title": "Karna Remote Protocol Pairing Types",
+  "description": "Pairing and authentication type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "PairingOffer": {
+      "type": "object",
+      "required": ["protocolVersion", "offerId", "serverPublicKey", "expiresAt", "serverName"],
+      "properties": {
+        "protocolVersion": {
+          "$ref": "common.json#/definitions/ProtocolVersion"
+        },
+        "offerId": {
+          "type": "string",
+          "pattern": "^offer_[a-zA-Z0-9]{16}$",
+          "description": "Unique pairing offer identifier"
+        },
+        "serverPublicKey": {
+          "$ref": "common.json#/definitions/PublicKey",
+          "description": "Server's ECDSA P-256 public key for this pairing session"
+        },
+        "expiresAt": {
+          "$ref": "common.json#/definitions/Timestamp",
+          "description": "Offer expiration timestamp"
+        },
+        "serverName": {
+          "type": "string",
+          "description": "Human-readable server name (Karna instance name)"
+        },
+        "serverId": {
+          "type": "string",
+          "description": "Server instance identifier"
+        },
+        "capabilities": {
+          "$ref": "#/definitions/ServerCapabilities",
+          "description": "Server capability flags"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Pairing offer data encoded in the QR code or deep link"
+    },
+    "PairingInitiateRequest": {
+      "type": "object",
+      "required": ["offerId", "deviceInfo", "clientPublicKey"],
+      "properties": {
+        "offerId": {
+          "type": "string",
+          "description": "Pairing offer ID from the QR code"
+        },
+        "deviceInfo": {
+          "$ref": "common.json#/definitions/DeviceInfo"
+        },
+        "clientPublicKey": {
+          "$ref": "common.json#/definitions/PublicKey",
+          "description": "Client's ECDSA P-256 public key"
+        },
+        "pairingCode": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{6,8}$",
+          "description": "Optional pairing code for additional verification"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PairingChallenge": {
+      "type": "object",
+      "required": ["challengeId", "nonce", "expiresAt"],
+      "properties": {
+        "challengeId": {
+          "type": "string",
+          "pattern": "^chal_[a-zA-Z0-9]{16}$"
+        },
+        "nonce": {
+          "type": "string",
+          "format": "base64",
+          "description": "Random nonce to sign (32 bytes)"
+        },
+        "expiresAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Challenge sent to client for proof of private key possession"
+    },
+    "PairingChallengeResponse": {
+      "type": "object",
+      "required": ["challengeId", "signature"],
+      "properties": {
+        "challengeId": {
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "common.json#/definitions/Signature",
+          "description": "ECDSA signature over the nonce using client's private key"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PairingConfirmResponse": {
+      "type": "object",
+      "required": ["deviceId", "sessionToken", "sessionExpiresAt", "serverInfo"],
+      "properties": {
+        "deviceId": {
+          "$ref": "common.json#/definitions/DeviceId",
+          "description": "Assigned device identifier"
+        },
+        "sessionToken": {
+          "type": "string",
+          "description": "Encrypted session token for subsequent requests"
+        },
+        "sessionExpiresAt": {
+          "$ref": "common.json#/definitions/Timestamp",
+          "description": "Session token expiration time"
+        },
+        "serverInfo": {
+          "$ref": "#/definitions/ServerInfo"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ServerCapabilities": {
+      "type": "object",
+      "properties": {
+        "projects": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server supports project management"
+        },
+        "conversations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server supports conversations"
+        },
+        "workflows": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server supports workflow runs"
+        },
+        "fileTransfer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server supports file upload/download"
+        },
+        "approvalRequired": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server requires approval for tool execution"
+        },
+        "liveStreaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Server supports live event streaming via WebSocket"
+        },
+        "maxUploadSize": {
+          "type": "integer",
+          "minimum": 1048576,
+          "default": 104857600,
+          "description": "Maximum file upload size in bytes (default 100MB)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ServerInfo": {
+      "type": "object",
+      "required": ["name", "version", "protocolVersion"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Server instance name"
+        },
+        "version": {
+          "type": "string",
+          "description": "Server software version"
+        },
+        "protocolVersion": {
+          "$ref": "common.json#/definitions/ProtocolVersion"
+        },
+        "capabilities": {
+          "$ref": "#/definitions/ServerCapabilities"
+        },
+        "motd": {
+          "type": ["string", "null"],
+          "description": "Message of the day, shown to clients after pairing"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeviceStatus": {
+      "type": "string",
+      "enum": ["pending", "approved", "revoked", "expired"],
+      "description": "Device pairing status"
+    },
+    "Device": {
+      "type": "object",
+      "required": ["deviceId", "deviceInfo", "status", "pairedAt"],
+      "properties": {
+        "deviceId": {
+          "$ref": "common.json#/definitions/DeviceId"
+        },
+        "deviceInfo": {
+          "$ref": "common.json#/definitions/DeviceInfo"
+        },
+        "status": {
+          "$ref": "#/definitions/DeviceStatus"
+        },
+        "pairedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "lastSeenAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "lastIpAddress": {
+          "type": ["string", "null"],
+          "description": "Last seen IP address (server-side only, not sent to untrusted clients)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

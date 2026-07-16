@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "karna.calendar",
+  "name": "Calendar",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Connect to Google Calendar and Microsoft 365 Calendar for event management",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "productivity",
+    "icon": "assets/icon.png",
+    "capabilities": ["read", "write", "interactive"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64", "darwin-x64", "darwin-arm64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "calendar:read",
+    "calendar:write",
+    "network:request",
+    "oauth:desktop"
+  ],
+  "dependencies": {}
+}

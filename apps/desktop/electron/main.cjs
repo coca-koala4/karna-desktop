@@ -15,16 +15,21 @@ const {
   screen,
   session,
   shell,
-  systemPreferences
+  systemPreferences,
+  Tray
 } = require('electron')
 const crypto = require('node:crypto')
 const fs = require('node:fs')
 const http = require('node:http')
 const https = require('node:https')
 const path = require('node:path')
+const os = require('node:os')
 const { pathToFileURL } = require('node:url')
 const { execFileSync, spawn } = require('node:child_process')
 const { installEmbedReferer } = require('./embed-referer.cjs')
+const { createDeepLinkManager } = require('./deep-link-manager.cjs')
+const { createDesktopPreferences } = require('./desktop-preferences.cjs')
+const { createReleaseUpdater } = require('./release-updater.cjs')
 const { detectRemoteDisplay, isWindowsBinaryPathInWsl, isWslEnvironment } = require('./bootstrap-platform.cjs')
 const { runBootstrap } = require('./bootstrap-runner.cjs')
 const {
@@ -121,8 +126,34 @@ const {
 } = require('./hardening.cjs')
 const {
   handleKarnaApiRequest,
-  stopKarnaAdapter
+  setHermesApiBridge,
+  stopKarnaAdapter,
+  registerRemoteIpcHandlers
 } = require('./karna-adapter.cjs')
+const {
+  startFlowStudio,
+  stopFlowStudio,
+  getFlowStudioStatus,
+  getFlowStudioUrl,
+  isFlowStudioRunning,
+  isBuilt: isFlowStudioBuilt
+} = require('./flow-studio-host.cjs')
+const karnaPaths = require('./karna/paths.cjs')
+const { createStorageUtils } = require('./karna/storage.cjs')
+const { installBuiltinWorkflowResources } = require('./karna/builtin-resources.cjs')
+const { createWriterProjectsService } = require('./karna/writer-projects-service.cjs')
+const { createRemoteGateway } = require('./remote/index.cjs')
+const { createDocumentPreviewService } = require('./remote/document-preview-service.cjs')
+
+const writerPreviewTempDir = path.join(os.tmpdir(), 'karna-writer-previews')
+try {
+  fs.mkdirSync(writerPreviewTempDir, { recursive: true })
+} catch {
+  // The preview service will fall back to the OS temp directory if this path is unavailable.
+}
+const writerPreviewService = createDocumentPreviewService({ tempDir: writerPreviewTempDir })
+
+const KARNA_WS_BRIDGE_PORT = 17891
 
 let nodePty = null
 let nodePtyDir = null
@@ -165,6 +196,7 @@ const IS_MAC = process.platform === 'darwin'
 const IS_WINDOWS = process.platform === 'win32'
 const IS_WSL = isWslEnvironment()
 const APP_ROOT = app.getAppPath()
+const desktopPreferences = createDesktopPreferences({ app, fs, path, shell })
 
 function hiddenWindowsChildOptions(options = {}) {
   if (!IS_WINDOWS || Object.prototype.hasOwnProperty.call(options, 'windowsHide')) {
@@ -189,7 +221,7 @@ if (REMOTE_DISPLAY_REASON) {
   // with only --disable-gpu: force compositing onto the CPU too.
   app.commandLine.appendSwitch('disable-gpu-compositing')
   console.log(
-    `[hermes] remote display detected (${REMOTE_DISPLAY_REASON}); disabling GPU hardware acceleration to prevent flicker`
+    `[karna] remote display detected (${REMOTE_DISPLAY_REASON}); disabling GPU hardware acceleration to prevent flicker`
   )
 }
 
@@ -200,7 +232,7 @@ if (IS_WSL && !REMOTE_DISPLAY_REASON && fs.existsSync('/dev/dxg')) {
   app.commandLine.appendSwitch('ignore-gpu-blocklist')
   app.commandLine.appendSwitch('enable-gpu-rasterization')
   app.commandLine.appendSwitch('enable-zero-copy')
-  console.log('[hermes] WSL GPU passthrough (/dev/dxg) detected; enabling GPU acceleration')
+  console.log('[karna] WSL GPU passthrough (/dev/dxg) detected; enabling GPU acceleration')
 }
 
 ipcMain.handle('hermes:get-remote-display-reason', () => REMOTE_DISPLAY_REASON)
@@ -250,7 +282,7 @@ function loadInstallStamp() {
       if (parsed && typeof parsed === 'object' && typeof parsed.commit === 'string' && parsed.commit.length >= 7) {
         if (parsed.schemaVersion !== INSTALL_STAMP_SCHEMA_VERSION) {
           console.warn(
-            `[hermes] install-stamp.json schemaVersion ${parsed.schemaVersion} != expected ${INSTALL_STAMP_SCHEMA_VERSION}; ignoring`
+            `[karna] install-stamp.json schemaVersion ${parsed.schemaVersion} != expected ${INSTALL_STAMP_SCHEMA_VERSION}; ignoring`
           )
           continue
         }
@@ -273,13 +305,13 @@ function loadInstallStamp() {
 const INSTALL_STAMP = loadInstallStamp()
 if (INSTALL_STAMP) {
   console.log(
-    `[hermes] install stamp: ${INSTALL_STAMP.commit.slice(0, 12)}${INSTALL_STAMP.branch ? ` (${INSTALL_STAMP.branch})` : ''}${INSTALL_STAMP.dirty ? ' [DIRTY]' : ''} from ${INSTALL_STAMP.source || 'unknown'}`
+    `[karna] install stamp: ${INSTALL_STAMP.commit.slice(0, 12)}${INSTALL_STAMP.branch ? ` (${INSTALL_STAMP.branch})` : ''}${INSTALL_STAMP.dirty ? ' [DIRTY]' : ''} from ${INSTALL_STAMP.source || 'unknown'}`
   )
 } else if (IS_PACKAGED) {
   // Dev builds without a stamp are normal; packaged builds without one
   // mean the bootstrap won't know what to clone. Surface clearly.
   console.error(
-    '[hermes] WARNING: no install-stamp.json found in packaged build. First-launch bootstrap will not have a pinned ref to install.'
+    '[karna] WARNING: no install-stamp.json found in packaged build. First-launch bootstrap will not have a pinned ref to install.'
   )
 }
 
@@ -825,6 +857,8 @@ function registerMediaProtocol() {
 }
 
 let mainWindow = null
+let tray = null
+let isQuittingExplicitly = false
 let hermesProcess = null
 let connectionPromise = null
 // Additional per-profile backends, keyed by profile name. The PRIMARY backend
@@ -876,12 +910,13 @@ let nativeThemeListenerInstalled = false
 let bootProgressState = {
   error: null,
   fakeMode: BOOT_FAKE_MODE,
-  message: 'Waiting to start Hermes backend',
+  message: 'Waiting to start Karna backend',
   phase: 'idle',
   progress: 0,
   running: false,
   timestamp: Date.now()
 }
+let remoteGateway = null
 
 // Pure planner: ordered fs ops to bound a live log of `size`. [] = nothing.
 // Each step is ['rm', path] or ['mv', src, dst]; executed best-effort so a
@@ -979,7 +1014,7 @@ function scheduleDesktopLogFlush() {
 function rememberLog(chunk) {
   const text = String(chunk || '').trim()
   if (!text) return
-  const lines = text.split(/\r?\n/).map(line => `[hermes] ${line}`)
+  const lines = text.split(/\r?\n/).map(line => `[karna] ${line}`)
   hermesLog.push(...lines)
   if (hermesLog.length > 300) {
     hermesLog.splice(0, hermesLog.length - 300)
@@ -1323,7 +1358,7 @@ async function waitForUpdateToFinish() {
   while (marker && Date.now() < deadline) {
     await advanceBootProgress(
       'backend.update-wait',
-      'An update is finishing — Hermes will start automatically when it completes…',
+      'An update is finishing — Karna will start automatically when it completes…',
       12
     )
     await new Promise(r => setTimeout(r, UPDATE_WAIT_POLL_MS))
@@ -2284,7 +2319,7 @@ async function applyUpdates(opts = {}) {
     emitUpdateProgress({
       stage: 'restart',
       message:
-        'Updating Hermes — this window will close and the updater will open. Don’t reopen Hermes yourself; it restarts automatically when the update finishes.',
+        'Updating Karna — this window will close and the updater will open. Don’t reopen Karna yourself; it restarts automatically when the update finishes.',
       percent: 100
     })
     repairMacUpdaterHelper(updater)
@@ -2502,7 +2537,7 @@ async function applyUpdatesPosixInApp() {
     // best effort
   }
 
-  emitUpdateProgress({ stage: 'update', message: 'Updating Hermes (git + dependencies)…', percent: 10 })
+  emitUpdateProgress({ stage: 'update', message: 'Updating Karna (git + dependencies)…', percent: 10 })
   const updated = await runStreamedUpdate(hermes, ['update', '--yes', ...branchArgs], {
     cwd: updateRoot,
     env,
@@ -2526,7 +2561,7 @@ async function applyUpdatesPosixInApp() {
   if (rebuilt.code !== 0) {
     emitUpdateProgress({
       stage: 'error',
-      message: 'Backend updated, but the desktop rebuild failed. Restart Hermes to retry.',
+      message: 'Backend updated, but the desktop rebuild failed. Restart Karna to retry.',
       error: rebuilt.error || 'rebuild-failed'
     })
     return { ok: false, backendUpdated: true, error: 'desktop rebuild failed' }
@@ -2570,7 +2605,7 @@ async function applyUpdatesPosixInApp() {
     const outcome = decideRelaunchOutcome({ underUnpacked, sandboxOk })
 
     if (outcome === 'relaunch') {
-      emitUpdateProgress({ stage: 'restart', message: 'Restarting Hermes…', percent: 100 })
+      emitUpdateProgress({ stage: 'restart', message: 'Restarting Karna…', percent: 100 })
       // Preserve launch context across the re-exec: replay the original args
       // (filtered of Electron internals) and the env/cwd that define which
       // backend/profile/root this instance talks to. Without this the
@@ -2603,7 +2638,7 @@ async function applyUpdatesPosixInApp() {
           backendUpdated: true,
           guiUpdated: false,
           manualRestart: true,
-          message: 'Backend updated. Quit and reopen Hermes to load the new version.'
+          message: 'Backend updated. Quit and reopen Karna to load the new version.'
         }
       }
     }
@@ -2613,7 +2648,7 @@ async function applyUpdatesPosixInApp() {
         stage: 'guiSkew',
         message:
           'Backend updated, but the desktop app package was not changed. ' +
-          'Update or reinstall the Hermes desktop app to match.',
+          'Update or reinstall the Karna desktop app to match.',
         percent: 100
       })
       rememberLog(
@@ -2637,7 +2672,7 @@ async function applyUpdatesPosixInApp() {
       sandboxBlocked: true,
       message:
         'Backend updated. The rebuilt app can’t relaunch automatically ' +
-        '(sandbox helper needs root). Quit and reopen Hermes to finish.'
+        '(sandbox helper needs root). Quit and reopen Karna to finish.'
     }
   }
 
@@ -2652,7 +2687,7 @@ async function applyUpdatesPosixInApp() {
   if (!rebuiltApp || !targetApp) {
     emitUpdateProgress({
       stage: 'done',
-      message: 'Backend updated. Restart Hermes to load the new version.',
+      message: 'Backend updated. Restart Karna to load the new version.',
       percent: 100
     })
     return { ok: true, backendUpdated: true, rebuiltApp: rebuiltApp || null }
@@ -2688,7 +2723,7 @@ fi
   } catch (err) {
     emitUpdateProgress({
       stage: 'done',
-      message: 'Backend + app updated. Restart Hermes to load the new version.',
+      message: 'Backend + app updated. Restart Karna to load the new version.',
       percent: 100
     })
     rememberLog(`[updates] could not write swap script: ${err.message}; rebuilt app at ${rebuiltApp}`)
@@ -3100,7 +3135,7 @@ function resolveHermesBackend(backendArgs) {
   //    is a recoverable state the GUI can drive through.
   return {
     kind: 'bootstrap-needed',
-    label: 'Hermes Agent not installed yet; bootstrap required',
+    label: 'Karna Agent not installed yet; bootstrap required',
     command: null,
     args: backendArgs,
     bootstrap: true,
@@ -3130,11 +3165,11 @@ async function ensureRuntime(backend) {
   // will rewire startup to spawn the window first and route bootstrap events
   // to a renderer-side install overlay.
   if (backend.kind === 'bootstrap-needed') {
-    rememberLog('[bootstrap] no Hermes install found; starting first-launch bootstrap')
+    rememberLog('[bootstrap] no Karna install found; starting first-launch bootstrap')
 
     if (await handOffWindowsBootstrapRecovery('bootstrap-needed')) {
       const handoffError = new Error(
-        'Hermes recovery was handed off to Hermes Setup. The desktop will restart when recovery completes.'
+        'Karna recovery was handed off to Karna Setup. The desktop will restart when recovery completes.'
       )
       handoffError.isBootstrapFailure = true
       handoffError.bootstrapHandedOff = true
@@ -3189,7 +3224,7 @@ async function ensureRuntime(backend) {
     bootstrapAbortController = null
 
     if (bootstrapResult.cancelled) {
-      const cancelledError = new Error('Hermes install was cancelled.')
+      const cancelledError = new Error('Karna install was cancelled.')
       cancelledError.isBootstrapFailure = true
       cancelledError.bootstrapCancelled = true
       bootstrapFailure = cancelledError
@@ -3198,7 +3233,7 @@ async function ensureRuntime(backend) {
 
     if (!bootstrapResult.ok) {
       const bootstrapError = new Error(
-        `Hermes bootstrap failed${bootstrapResult.failedStage ? ` at stage '${bootstrapResult.failedStage}'` : ''}: ` +
+        `Karna bootstrap failed${bootstrapResult.failedStage ? ` at stage '${bootstrapResult.failedStage}'` : ''}: ` +
           `${bootstrapResult.error || 'unknown error'}. ` +
           `Check ${path.join(HERMES_HOME, 'logs', 'desktop.log')} for the full transcript.`
       )
@@ -4524,7 +4559,7 @@ function openOauthLoginWindow(baseUrl) {
       win = new BrowserWindow({
         width: 520,
         height: 720,
-        title: 'Sign in to Hermes gateway',
+        title: 'Sign in to Karna gateway',
         autoHideMenuBar: true,
         webPreferences: {
           contextIsolation: true,
@@ -5395,6 +5430,7 @@ async function spawnPoolBackend(profile, entry) {
         // scheduler tick loop (the gateway isn't running under the app).
         HERMES_DESKTOP: '1',
         HERMES_WEB_DIST: webDist,
+        KARNA_CONTEXT_DIR: karnaPaths.contextDir({ app }),
         ...(readyFile ? { HERMES_DESKTOP_READY_FILE: readyFile } : {})
       },
       shell: backend.shell,
@@ -5618,6 +5654,7 @@ async function startHermes() {
           // scheduler tick loop (the gateway isn't running under the app).
           HERMES_DESKTOP: '1',
           HERMES_WEB_DIST: webDist,
+          KARNA_CONTEXT_DIR: karnaPaths.contextDir({ app }),
           ...(readyFile ? { HERMES_DESKTOP_READY_FILE: readyFile } : {})
         },
         shell: backend.shell,
@@ -5776,7 +5813,7 @@ function spawnSecondaryWindow({ sessionId, watch, newSession } = {}) {
     height: SESSION_WINDOW_MIN_HEIGHT,
     minWidth: SESSION_WINDOW_MIN_WIDTH,
     minHeight: SESSION_WINDOW_MIN_HEIGHT,
-    title: 'Hermes',
+    title: APP_NAME,
     titleBarStyle: 'hidden',
     titleBarOverlay: getTitleBarOverlayOptions(),
     trafficLightPosition: IS_MAC ? WINDOW_BUTTON_POSITION : undefined,
@@ -6030,6 +6067,64 @@ function closePetOverlay() {
   petOverlayWindow = null
 }
 
+function resolveElectronAutoUpdater() {
+  try {
+    return require('electron-updater').autoUpdater
+  } catch (firstError) {
+    try {
+      return require(path.join(process.resourcesPath, 'native-deps', 'vendor', 'node_modules', 'electron-updater')).autoUpdater
+    } catch {
+      rememberLog(`[updates] electron-updater unavailable: ${firstError.message}`)
+      return null
+    }
+  }
+}
+
+const electronAutoUpdater = resolveElectronAutoUpdater()
+const releaseUpdater = electronAutoUpdater ? createReleaseUpdater({
+  app,
+  autoUpdater: electronAutoUpdater,
+  emitProgress: payload => emitUpdateProgress(payload),
+  onInstall: () => { isQuittingForHandoff = true },
+  promptInstall: async info => {
+    const result = await dialog.showMessageBox(mainWindow || undefined, {
+      type: 'info',
+      title: 'Karna 更新已准备好',
+      message: `Karna ${info.version} 已下载完成。`,
+      detail: '立即重启安装，或稍后继续当前写作。',
+      buttons: ['立即重启安装', '稍后'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    })
+    return result.response === 0
+  }
+}) : null
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+  focusWindow(mainWindow)
+}
+
+function quitFromTray() {
+  isQuittingExplicitly = true
+  app.quit()
+}
+
+function ensureTray() {
+  if (tray && !tray.isDestroyed()) return tray
+  const image = getAppIconImage() ?? nativeImage.createFromPath(getAppIconPath())
+  tray = new Tray(image.resize({ width: 16, height: 16 }))
+  tray.setToolTip('Karna')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '显示 Karna', click: showMainWindow },
+    { type: 'separator' },
+    { label: '完全退出', click: quitFromTray }
+  ]))
+  tray.on('click', showMainWindow)
+  return tray
+}
+
 function createWindow() {
   const icon = getAppIconImage() ?? getAppIconPath()
   const savedWindowState = readWindowState()
@@ -6037,7 +6132,7 @@ function createWindow() {
     ...computeWindowOptions(savedWindowState, screen.getAllDisplays()),
     minWidth: WINDOW_MIN_WIDTH,
     minHeight: WINDOW_MIN_HEIGHT,
-    title: 'Hermes',
+    title: APP_NAME,
     // Frameless title bar on every platform so the renderer can paint the
     // "hide sidebar" button (and other left-side titlebar tools) flush with
     // the top edge — matching the macOS layout where the traffic lights sit
@@ -6081,7 +6176,7 @@ function createWindow() {
   if (savedWindowState?.isMaximized) mainWindow.maximize()
 
   mainWindow.once('ready-to-show', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
+    if (mainWindow && !mainWindow.isDestroyed() && !process.argv.includes('--startup')) mainWindow.show()
   })
 
   mainWindow.on('will-enter-full-screen', () => sendWindowStateChanged(true))
@@ -6095,7 +6190,17 @@ function createWindow() {
   mainWindow.on('moved', schedulePersistWindowState)
   mainWindow.on('maximize', schedulePersistWindowState)
   mainWindow.on('unmaximize', schedulePersistWindowState)
-  mainWindow.on('close', () => schedulePersistWindowState.flush())
+  mainWindow.on('close', event => {
+    schedulePersistWindowState.flush()
+    if (!isQuittingExplicitly && !isQuittingForHandoff) {
+      event.preventDefault()
+      mainWindow.hide()
+      closePetOverlay()
+    }
+  })
+  mainWindow.on('session-end', () => {
+    isQuittingExplicitly = true
+  })
 
   // The overlay rides the main window — closing the app's primary window must
   // tear it down too (otherwise it strands as an orphan that blocks
@@ -6617,12 +6722,46 @@ function shouldRouteToKarnaAdapter(request) {
     pathname.startsWith('/api/knowledge') ||
     pathname.startsWith('/api/mcp/') ||
     pathname.startsWith('/api/soul/') ||
+    pathname.startsWith('/api/connectors/') ||
+    pathname.startsWith('/api/skills') ||
+    pathname.startsWith('/api/ingest/') ||
     pathname === '/api/prompt/enhance' ||
     pathname === '/api/artifacts' ||
     pathname === '/api/karna/update' ||
     pathname === '/api/karna/update/check'
   )
 }
+
+async function requestPrimaryHermesApi(request) {
+  await prepareProfileDeleteRequest(request)
+
+  const profile = request?.profile
+  const connection = await ensureBackend(profile)
+  const timeoutMs = resolveTimeoutMs(request?.timeoutMs, DEFAULT_FETCH_TIMEOUT_MS)
+  const requestPath = pathWithGlobalRemoteProfile(request.path, profile, {
+    globalRemote: globalRemoteActive(),
+    profileRemoteOverride: profileHasRemoteOverride(profile)
+  })
+  const url = `${connection.baseUrl}${requestPath}`
+  if (connection.authMode === 'oauth') {
+    return fetchJsonViaOauthSession(url, {
+      method: request?.method,
+      body: request?.body,
+      timeoutMs
+    })
+  }
+  return fetchJson(url, connection.token, {
+    method: request?.method,
+    body: request?.body,
+    timeoutMs
+  })
+}
+
+// Wire Token/Context OS calls made inside the Karna adapter back into the same
+// primary Hermes backend used by the renderer. This keeps workflow plans,
+// usage, cache and reuse events on one ledger instead of the optional :8710
+// compatibility backend.
+setHermesApiBridge(requestPrimaryHermesApi)
 
 ipcMain.handle('hermes:api', async (_event, request) => {
   // Karna-only desktop extensions live outside the upstream Hermes gateway API.
@@ -6642,32 +6781,7 @@ ipcMain.handle('hermes:api', async (_event, request) => {
     return rerouted
   }
 
-  await prepareProfileDeleteRequest(request)
-
-  const profile = request?.profile
-  const connection = await ensureBackend(profile)
-  const timeoutMs = resolveTimeoutMs(request?.timeoutMs, DEFAULT_FETCH_TIMEOUT_MS)
-  const requestPath = pathWithGlobalRemoteProfile(request.path, profile, {
-    globalRemote: globalRemoteActive(),
-    profileRemoteOverride: profileHasRemoteOverride(profile)
-  })
-  const url = `${connection.baseUrl}${requestPath}`
-  // OAuth gateways authenticate REST via the HttpOnly session cookie held in
-  // the OAuth partition — route through Electron's net stack bound to that
-  // session so the cookie attaches automatically. Token/local modes keep using
-  // the static session-token header.
-  if (connection.authMode === 'oauth') {
-    return fetchJsonViaOauthSession(url, {
-      method: request?.method,
-      body: request?.body,
-      timeoutMs
-    })
-  }
-  return fetchJson(url, connection.token, {
-    method: request?.method,
-    body: request?.body,
-    timeoutMs
-  })
+  return requestPrimaryHermesApi(request)
 })
 
 ipcMain.handle('hermes:notify', (_event, payload) => {
@@ -6676,7 +6790,7 @@ ipcMain.handle('hermes:notify', (_event, payload) => {
   // and the body click still works.
   const actions = Array.isArray(payload?.actions) ? payload.actions : []
   const notification = new Notification({
-    title: payload?.title || 'Hermes',
+    title: payload?.title || APP_NAME,
     body: payload?.body || '',
     silent: Boolean(payload?.silent),
     actions: actions.map(action => ({ type: 'button', text: String(action?.text || '') }))
@@ -6848,6 +6962,209 @@ ipcMain.handle('hermes:openExternal', (_event, url) => {
   }
 })
 
+const OFFICE_APPS_CONFIG_KEY = 'hermes.officeApps.preferences'
+
+function readOfficeAppsPreferences() {
+  try {
+    const data = safeStorage.getItem(OFFICE_APPS_CONFIG_KEY)
+    if (data) {
+      return JSON.parse(data)
+    }
+  } catch {
+    // ignore read errors
+  }
+  return {
+    word: { mode: 'system' },
+    spreadsheet: { mode: 'system' },
+    presentation: { mode: 'system' }
+  }
+}
+
+function writeOfficeAppsPreferences(prefs) {
+  try {
+    safeStorage.setItem(OFFICE_APPS_CONFIG_KEY, JSON.stringify(prefs))
+  } catch {
+    // ignore write errors
+  }
+}
+
+function resolveWindowsAppPath(executableName) {
+  const fromPath = findOnPath(executableName)
+  if (fromPath) return fromPath
+  const roots = ['HKCU', 'HKLM']
+  for (const root of roots) {
+    try {
+      const output = execFileSync('reg.exe', [
+        'query',
+        `${root}\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${executableName}`,
+        '/ve'
+      ], hiddenWindowsChildOptions({ encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
+      const match = String(output || '').match(/REG_(?:EXPAND_)?SZ\s+([^\r\n]+)/i)
+      const resolved = match?.[1]?.trim().replace(/^"|"$/g, '')
+      if (resolved && fs.existsSync(resolved)) return resolved
+    } catch {
+      // Continue with the next registry hive and the bounded fallback paths.
+    }
+  }
+  return null
+}
+
+function detectOfficeApps(kind) {
+  const detected = []
+  const platform = process.platform
+
+  if (platform === 'win32') {
+    const programFiles = [
+      process.env['ProgramFiles'] || 'C:\\Program Files',
+      process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
+    ]
+
+    const appDefs = {
+      word: [
+        { id: 'ms_word', name: 'Microsoft Word', executable: 'WINWORD.EXE', paths: ['Microsoft Office\\root\\Office16\\WINWORD.EXE', 'Microsoft Office\\Office16\\WINWORD.EXE', 'Microsoft Office\\Office15\\WINWORD.EXE'] },
+        { id: 'wps_writer', name: 'WPS Writer', executable: 'wps.exe', paths: ['Kingsoft\\WPS Office\\11.1.0.15121\\office6\\wps.exe', 'Kingsoft\\WPS Office\\office6\\wps.exe'] },
+        { id: 'libreoffice_writer', name: 'LibreOffice Writer', executable: 'swriter.exe', paths: ['LibreOffice\\program\\swriter.exe'] }
+      ],
+      spreadsheet: [
+        { id: 'ms_excel', name: 'Microsoft Excel', executable: 'EXCEL.EXE', paths: ['Microsoft Office\\root\\Office16\\EXCEL.EXE', 'Microsoft Office\\Office16\\EXCEL.EXE', 'Microsoft Office\\Office15\\EXCEL.EXE'] },
+        { id: 'wps_spreadsheets', name: 'WPS Spreadsheets', executable: 'et.exe', paths: ['Kingsoft\\WPS Office\\11.1.0.15121\\office6\\et.exe', 'Kingsoft\\WPS Office\\office6\\et.exe'] },
+        { id: 'libreoffice_calc', name: 'LibreOffice Calc', executable: 'scalc.exe', paths: ['LibreOffice\\program\\scalc.exe'] }
+      ],
+      presentation: [
+        { id: 'ms_powerpoint', name: 'Microsoft PowerPoint', executable: 'POWERPNT.EXE', paths: ['Microsoft Office\\root\\Office16\\POWERPNT.EXE', 'Microsoft Office\\Office16\\POWERPNT.EXE', 'Microsoft Office\\Office15\\POWERPNT.EXE'] },
+        { id: 'wps_presentation', name: 'WPS Presentation', executable: 'wpp.exe', paths: ['Kingsoft\\WPS Office\\11.1.0.15121\\office6\\wpp.exe', 'Kingsoft\\WPS Office\\office6\\wpp.exe'] },
+        { id: 'libreoffice_impress', name: 'LibreOffice Impress', executable: 'simpress.exe', paths: ['LibreOffice\\program\\simpress.exe'] }
+      ]
+    }
+
+    const candidates = appDefs[kind] || []
+
+    for (const app of candidates) {
+      const registeredPath = resolveWindowsAppPath(app.executable)
+      if (registeredPath) {
+        detected.push({ id: app.id, name: app.name, executablePath: registeredPath })
+        continue
+      }
+      let found = false
+      for (const pf of programFiles) {
+        for (const relPath of app.paths) {
+          const fullPath = path.join(pf, relPath)
+          try {
+            if (fs.existsSync(fullPath)) {
+              detected.push({
+                id: app.id,
+                name: app.name,
+                executablePath: fullPath
+              })
+              found = true
+              break
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (found) break
+      }
+    }
+  }
+
+  return detected
+}
+
+ipcMain.handle('hermes:officeApps:list', (_event, kind) => {
+  return detectOfficeApps(kind)
+})
+
+ipcMain.handle('hermes:officeApps:getPreferences', () => {
+  return readOfficeAppsPreferences()
+})
+
+ipcMain.handle('hermes:officeApps:setPreference', (_event, kind, choice) => {
+  const prefs = readOfficeAppsPreferences()
+  prefs[kind] = choice
+  writeOfficeAppsPreferences(prefs)
+  return prefs
+})
+
+ipcMain.handle('hermes:officeApps:pickCustom', async (_event, kind) => {
+  const win = BrowserWindow.getFocusedWindow()
+  if (!win) {
+    throw new Error('No focused window')
+  }
+
+  const result = await dialog.showOpenDialog(win, {
+    title: '选择外部程序',
+    filters: [{ name: '可执行文件', extensions: ['exe', 'lnk'] }],
+    properties: ['openFile']
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return {
+    mode: 'custom',
+    executablePath: result.filePaths[0]
+  }
+})
+
+ipcMain.handle('hermes:officeApps:open', async (_event, { kind, filePath, appId }) => {
+  if (!filePath || !fs.existsSync(filePath)) {
+    throw new Error('File not found')
+  }
+
+  const prefs = readOfficeAppsPreferences()
+  const choice = prefs[kind] || { mode: 'system' }
+
+  // An explicit menu choice is for this invocation and must win over the saved
+  // system association. Previously `choice.mode === system` swallowed appId,
+  // so choosing Microsoft Word still launched the OS-associated WPS.
+  if (appId === 'system' || (!appId && choice.mode === 'system')) {
+    const result = await shell.openPath(filePath)
+    if (result) {
+      throw new Error(result)
+    }
+    return { ok: true, app: 'system' }
+  }
+
+  let executablePath = null
+
+  if (appId || choice.mode === 'detected') {
+    const targetId = appId || choice.appId
+    const detected = detectOfficeApps(kind)
+    const app = detected.find(a => a.id === targetId)
+    if (app) {
+      executablePath = app.executablePath
+    }
+  } else if (choice.mode === 'custom') {
+    executablePath = choice.executablePath
+  }
+
+  if (!executablePath) {
+    const result = await shell.openPath(filePath)
+    if (result) {
+      throw new Error(result)
+    }
+    return { ok: true, app: 'system' }
+  }
+
+  if (!fs.existsSync(executablePath)) {
+    throw new Error('Executable not found: ' + executablePath)
+  }
+
+  try {
+    const child = spawn(executablePath, [filePath], {
+      shell: false,
+      detached: false,
+      stdio: 'ignore'
+    })
+    child.unref()
+    return { ok: true, app: executablePath }
+  } catch (err) {
+    throw new Error('Failed to launch: ' + err.message)
+  }
+})
+
 ipcMain.handle('hermes:openPreviewInBrowser', async (_event, url) => {
   if (!(await openPreviewInBrowser(url))) {
     throw new Error('Invalid preview URL')
@@ -6895,6 +7212,16 @@ ipcMain.handle('hermes:setting:defaultProjectDir:pick', async () => {
 
   return { canceled: false, dir: result.filePaths[0] }
 })
+
+ipcMain.handle('hermes:setting:autostart:get', async () => desktopPreferences.getAutostart())
+ipcMain.handle('hermes:setting:autostart:set', async (_event, enabled) => desktopPreferences.setAutostart(Boolean(enabled)))
+ipcMain.handle('hermes:setting:desktopShortcut:get', async () => desktopPreferences.getDesktopShortcut())
+ipcMain.handle('hermes:setting:desktopShortcut:set', async (_event, enabled) => desktopPreferences.setDesktopShortcut(Boolean(enabled)))
+ipcMain.handle('hermes:setting:installation:get', async () => ({
+  directory: path.dirname(process.execPath),
+  executable: process.execPath,
+  packaged: app.isPackaged
+}))
 
 ipcMain.handle('hermes:fetchLinkTitle', (_event, url) => fetchLinkTitle(url))
 
@@ -7170,6 +7497,22 @@ ipcMain.handle('hermes:fs:writeText', async (_event, filePath, content) => {
   return { path: resolved }
 })
 
+// Create a directory (recursive). Path is hardened; only allowed inside
+// configured workspace roots / user home. Returns the resolved absolute path.
+ipcMain.handle('hermes:fs:mkdir', async (_event, dirPath) => {
+  const raw = String(dirPath || '').trim()
+
+  if (!raw) {
+    throw new Error('Invalid path')
+  }
+
+  const resolved = resolveRequestedPathForIpc(expandUserPath(raw), { purpose: 'Create directory' })
+
+  await fs.promises.mkdir(resolved, { recursive: true })
+
+  return { path: resolved }
+})
+
 // Move a file/folder to the OS trash (recoverable) — the VS Code "Delete"
 // default. `shell.trashItem` routes to Finder/Explorer/Files trash per platform.
 ipcMain.handle('hermes:fs:trash', async (_event, targetPath) => {
@@ -7323,7 +7666,7 @@ ipcMain.handle('hermes:terminal:resize', (_event, id, size = {}) => {
 ipcMain.handle('hermes:terminal:dispose', (_event, id) => disposeTerminalSession(String(id || '')))
 
 ipcMain.handle('hermes:updates:check', async () =>
-  checkUpdates().catch(error => ({
+  (app.isPackaged && releaseUpdater ? releaseUpdater.check() : checkUpdates()).catch(error => ({
     supported: true,
     branch: readDesktopUpdateConfig().branch,
     error: 'check-failed',
@@ -7333,12 +7676,24 @@ ipcMain.handle('hermes:updates:check', async () =>
 )
 
 ipcMain.handle('hermes:updates:apply', async (_event, payload) =>
-  applyUpdates(payload || {}).catch(error => ({
+  (app.isPackaged && releaseUpdater
+    ? releaseUpdater.download().then(() => releaseUpdater.install())
+    : applyUpdates(payload || {})).catch(error => ({
     ok: false,
     error: 'apply-failed',
     message: error?.message || String(error)
   }))
 )
+
+ipcMain.handle('hermes:updates:download', async () => {
+  if (!releaseUpdater) return { ok: false, error: 'unavailable' }
+  return releaseUpdater.download()
+})
+
+ipcMain.handle('hermes:updates:install', async () => {
+  if (!releaseUpdater) return { ok: false, error: 'unavailable' }
+  return releaseUpdater.install()
+})
 
 ipcMain.handle('hermes:updates:branch:get', async () => readDesktopUpdateConfig())
 
@@ -7596,106 +7951,128 @@ ipcMain.handle('hermes:vscode-theme:fetch', async (_event, id) => fetchMarketpla
 ipcMain.handle('hermes:vscode-theme:search', async (_event, query) => searchMarketplaceThemes(String(query || ''), 20))
 
 // ---------------------------------------------------------------------------
+// Flow Studio integration
+// ---------------------------------------------------------------------------
+
+ipcMain.handle('flow-studio:start', async (_event, options = {}) => {
+  return startFlowStudio(options)
+})
+
+ipcMain.handle('flow-studio:stop', async () => {
+  return stopFlowStudio()
+})
+
+ipcMain.handle('flow-studio:status', async () => {
+  return getFlowStudioStatus()
+})
+
+ipcMain.handle('flow-studio:open', async (_event, options = {}) => {
+  const { inNewWindow = false, workspaceId = null, workflowId = null } = options
+  const status = getFlowStudioStatus()
+
+  if (!status.running) {
+    const startResult = await startFlowStudio({ workspaceId, workflowId })
+    if (!startResult.success) {
+      return startResult
+    }
+  }
+
+  const url = getFlowStudioUrl()
+  if (!url) {
+    return { success: false, error: 'Failed to get Flow Studio URL' }
+  }
+
+  if (inNewWindow && mainWindow && !mainWindow.isDestroyed()) {
+    const { width, height } = mainWindow.getBounds()
+    const newWin = new BrowserWindow({
+      width: Math.max(1200, Math.floor(width * 0.8)),
+      height: Math.max(800, Math.floor(height * 0.8)),
+      title: 'Karna Flow Studio',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    })
+    newWin.loadURL(url)
+    return { success: true, url, window: 'new' }
+  }
+
+  return { success: true, url, window: 'existing' }
+})
+
+ipcMain.handle('flow-studio:is-built', async () => {
+  return { built: isFlowStudioBuilt() }
+})
+
+// ---------------------------------------------------------------------------
 // hermes:// deep links (e.g. hermes://blueprint/morning-brief?time=08:00).
 // A docs/dashboard "Send to App" button opens this URL; we route it into the
 // running app's chat composer. Three delivery paths: macOS 'open-url',
 // Win/Linux running-app 'second-instance' (argv), Win/Linux cold-start argv.
 // ---------------------------------------------------------------------------
-const HERMES_PROTOCOL = 'hermes'
-let _pendingDeepLink = null
-let _rendererReadyForDeepLink = false
-
-function _extractDeepLink(argv) {
-  if (!Array.isArray(argv)) return null
-  return argv.find(a => typeof a === 'string' && a.startsWith(`${HERMES_PROTOCOL}://`)) || null
-}
-
-function handleDeepLink(url) {
-  if (!url || typeof url !== 'string') return
-  let parsed
-  try {
-    parsed = new URL(url)
-  } catch {
-    rememberLog(`[deeplink] ignoring malformed url: ${url}`)
-    return
-  }
-  // hermes://blueprint/<key>?slot=val  -> host="blueprint", path="/<key>"
-  const kind = parsed.hostname || ''
-  const name = decodeURIComponent((parsed.pathname || '').replace(/^\//, ''))
-  const params = {}
-  parsed.searchParams.forEach((v, k) => {
-    params[k] = v
-  })
-  const payload = { kind, name, params }
-
-  if (!_rendererReadyForDeepLink || !mainWindow || mainWindow.isDestroyed()) {
-    _pendingDeepLink = payload
-    return
-  }
-  try {
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
-    mainWindow.webContents.send('hermes:deep-link', payload)
-    rememberLog(`[deeplink] delivered ${kind}/${name}`)
-  } catch (err) {
-    rememberLog(`[deeplink] delivery failed: ${err.message}`)
-  }
-}
-
-// Renderer calls this (via IPC) once it has mounted its deep-link listener, so
-// a link that arrived during boot/install is flushed exactly once.
-ipcMain.handle('hermes:deep-link-ready', () => {
-  _rendererReadyForDeepLink = true
-  if (_pendingDeepLink) {
-    const queued = _pendingDeepLink
-    _pendingDeepLink = null
-    handleDeepLink(
-      `${HERMES_PROTOCOL}://${queued.kind}/${encodeURIComponent(queued.name)}` +
-        (Object.keys(queued.params).length ? '?' + new URLSearchParams(queued.params).toString() : '')
-    )
-  }
-  return { ok: true }
+const {
+  deliverDeepLink: handleDeepLink,
+  extractDeepLink: _extractDeepLink,
+  registerDeepLinkProtocol
+} = createDeepLinkManager({
+  app,
+  getMainWindow: () => mainWindow,
+  ipcMain,
+  rememberLog
 })
 
-function registerDeepLinkProtocol() {
-  try {
-    if (process.defaultApp && process.argv.length >= 2) {
-      // Dev: register with the electron exec path + entry script so the OS can
-      // relaunch us with the URL.
-      app.setAsDefaultProtocolClient(HERMES_PROTOCOL, process.execPath, [path.resolve(process.argv[1])])
-    } else {
-      app.setAsDefaultProtocolClient(HERMES_PROTOCOL)
-    }
-  } catch (err) {
-    rememberLog(`[deeplink] protocol registration failed: ${err.message}`)
-  }
-}
+ipcMain.handle('hermes:writerPreview:create', async (_event, params) => {
+  const filePath = String(params?.filePath || '')
+  const { resolvedPath } = await resolveReadableFileForIpc(filePath, { purpose: 'Writer IDE preview' })
+  const stat = await fs.promises.stat(resolvedPath)
+  const fileId = crypto
+    .createHash('sha256')
+    .update(`${resolvedPath}:${stat.mtimeMs}:${stat.size}`)
+    .digest('hex')
+  return writerPreviewService.createPreview({
+    fileId,
+    filename: path.basename(resolvedPath),
+    realPath: resolvedPath,
+    size: stat.size
+  }, params?.options || {})
+})
 
-// Single-instance lock: deep links on a running app (Win/Linux) arrive as a
-// second-instance argv. Without the lock a second `hermes://` launch spawns a
-// whole new app instead of routing into the running one.
-const _gotSingleInstanceLock = app.requestSingleInstanceLock()
-if (!_gotSingleInstanceLock) {
-  app.quit()
-} else {
-  app.on('second-instance', (_event, argv) => {
-    const url = _extractDeepLink(argv)
-    if (url) handleDeepLink(url)
-    else if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
-  })
-}
+ipcMain.handle('hermes:writerPreview:get', (_event, previewId) => {
+  return writerPreviewService.getPreviewManifest(String(previewId || ''))
+})
 
-// macOS delivers deep links via 'open-url' — register early (can fire before
-// whenReady; handleDeepLink queues until the renderer is ready).
-app.on('open-url', (event, url) => {
-  event.preventDefault()
-  handleDeepLink(url)
+ipcMain.handle('hermes:writerPreview:chunk', (_event, previewId, chunkIndex) => {
+  return writerPreviewService.getPreviewChunk(String(previewId || ''), Number(chunkIndex))
+})
+
+ipcMain.handle('hermes:writerPreview:release', (_event, previewId) => {
+  return writerPreviewService.releasePreview(String(previewId || ''))
 })
 
 app.whenReady().then(() => {
+  writerPreviewService.initialize()
+  try {
+    const applied = desktopPreferences.applyInstallerOptions(writeDefaultProjectDir)
+    if (applied.applied) rememberLog(`[installer] applied first-run options (workspace=${applied.workspace || 'default'})`)
+  } catch (error) {
+    rememberLog(`[installer] could not apply first-run options: ${error.message}`)
+  }
+  try {
+    const builtinResult = installBuiltinWorkflowResources({
+      appRoot: APP_ROOT,
+      dataRoot: karnaPaths.dataRoot({ app }),
+      fs,
+      isPackaged: app.isPackaged,
+      path,
+      resourcesPath: process.resourcesPath
+    })
+    rememberLog(`[karna] installed ${builtinResult.workflowCount} built-in workflow resources`)
+    fs.mkdirSync(karnaPaths.contextDir({ app }), { recursive: true })
+    fs.mkdirSync(karnaPaths.contextToolOutputsDir({ app }), { recursive: true })
+    fs.mkdirSync(karnaPaths.contextBackupsDir({ app }), { recursive: true })
+  } catch (e) {
+    rememberLog(`[context] Failed to create context directories: ${e.message}`)
+  }
   // Generate a real .ico for the taskbar / alt-tab before any window is
   // created — once Electron calls BrowserWindow({ icon }), the OS has already
   // cached the App User Model icon and a later fix won't repaint the entry
@@ -7713,6 +8090,45 @@ app.whenReady().then(() => {
   ensureWslWindowsFonts()
   configureSpellChecker()
   registerPowerResumeListeners()
+  ensureTray()
+  releaseUpdater?.startPolling()
+
+  let writerProjectsService = null
+  try {
+    const storage = createStorageUtils({ fs, path })
+    writerProjectsService = createWriterProjectsService({
+      fs,
+      path,
+      karnaPaths: typeof karnaPaths.dataRoot === 'function'
+        ? { dataRoot: karnaPaths.dataRoot({}) }
+        : karnaPaths,
+      storage
+    })
+  } catch (err) {
+    rememberLog(`[remote] Failed to initialize writer projects service: ${err.message}`)
+  }
+
+  function getGatewayPort() {
+    return Promise.resolve(KARNA_WS_BRIDGE_PORT)
+  }
+
+  try {
+    remoteGateway = createRemoteGateway({
+      safeStorage,
+      paths: karnaPaths,
+      app,
+      tlsOptions: { enabled: false },
+      writerProjectsService,
+      getGatewayPort
+    })
+    rememberLog('[remote] Remote Gateway initialized (server disabled by default)')
+    registerRemoteIpcHandlers(ipcMain, () => remoteGateway)
+    rememberLog('[remote] Remote IPC handlers registered')
+  } catch (err) {
+    rememberLog(`[remote] Remote Gateway initialization failed: ${err.message}`)
+    remoteGateway = null
+  }
+
   createWindow()
 
   // Win/Linux cold start: the launching hermes:// URL is in our own argv.
@@ -7729,6 +8145,11 @@ app.whenReady().then(() => {
       focusWindow(mainWindow)
     }
   })
+})
+
+app.on('before-quit', () => {
+  isQuittingExplicitly = true
+  writerPreviewService.shutdown()
 })
 
 // Seed Chromium's spellchecker with the system locale (falling back to en-US).
@@ -7759,6 +8180,20 @@ app.on('before-quit', () => {
     stopKarnaAdapter()
   } catch {
     void 0
+  }
+
+  try {
+    stopFlowStudio()
+  } catch {
+    void 0
+  }
+
+  if (remoteGateway) {
+    try {
+      remoteGateway.stopRemoteServer()
+    } catch {
+      void 0
+    }
   }
 
   // The always-on-top overlay isn't a "real" app window; close it so a stray
@@ -7798,5 +8233,5 @@ app.on('window-all-closed', () => {
   // the bundle and relaunch — without this the script's PID-wait spins to its
   // full timeout and the user is left with an invisible app (or an uninstall
   // that appears to do nothing).
-  if (process.platform !== 'darwin' || isQuittingForHandoff) app.quit()
+  if (isQuittingExplicitly || isQuittingForHandoff) app.quit()
 })

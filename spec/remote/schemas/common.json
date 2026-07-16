@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/common.json",
+  "title": "Karna Remote Protocol Common Types",
+  "description": "Common type definitions for Karna Remote Protocol v1",
+  "protocolMajor": 1,
+  "definitions": {
+    "ProtocolVersion": {
+      "type": "object",
+      "description": "Protocol version information",
+      "required": ["major", "minor"],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "const": 1,
+          "description": "Major protocol version - breaking changes require incrementing this"
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minor protocol version - backward compatible additions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DeviceId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{16,64}$",
+      "description": "Unique device identifier, cryptographically random"
+    },
+    "SessionId": {
+      "type": "string",
+      "pattern": "^sess_[a-zA-Z0-9]{32}$",
+      "description": "Session identifier"
+    },
+    "ProjectId": {
+      "type": "string",
+      "pattern": "^proj_[a-zA-Z0-9]{16}$",
+      "description": "Project identifier"
+    },
+    "ConversationId": {
+      "type": "string",
+      "pattern": "^conv_[a-zA-Z0-9]{16}$",
+      "description": "Conversation identifier"
+    },
+    "RunId": {
+      "type": "string",
+      "pattern": "^run_[a-zA-Z0-9]{16}$",
+      "description": "Run identifier"
+    },
+    "NodeId": {
+      "type": "string",
+      "pattern": "^node_[a-zA-Z0-9]{16}$",
+      "description": "Workflow node identifier"
+    },
+    "InteractionId": {
+      "type": "string",
+      "pattern": "^iact_[a-zA-Z0-9]{16}$",
+      "description": "Interaction/approval request identifier"
+    },
+    "FileId": {
+      "type": "string",
+      "pattern": "^file_[a-zA-Z0-9]{16}$",
+      "description": "File identifier"
+    },
+    "RequestId": {
+      "type": "string",
+      "pattern": "^req_[a-zA-Z0-9]{16}$",
+      "description": "Command request identifier for correlating responses"
+    },
+    "Timestamp": {
+      "type": "integer",
+      "format": "int64",
+      "description": "Unix timestamp in milliseconds"
+    },
+    "Error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable error code",
+          "enum": [
+            "invalid_request",
+            "unauthorized",
+            "forbidden",
+            "not_found",
+            "conflict",
+            "rate_limited",
+            "internal_error",
+            "service_unavailable",
+            "pairing_required",
+            "session_expired",
+            "invalid_signature",
+            "decryption_failed"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional error context"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PublicKey": {
+      "type": "object",
+      "required": ["kty", "crv", "x", "y"],
+      "properties": {
+        "kty": {
+          "type": "string",
+          "const": "EC",
+          "description": "Key type - Elliptic Curve"
+        },
+        "crv": {
+          "type": "string",
+          "const": "P-256",
+          "description": "Curve name - NIST P-256 (secp256r1)"
+        },
+        "x": {
+          "type": "string",
+          "format": "base64url",
+          "description": "X coordinate (base64url encoded)"
+        },
+        "y": {
+          "type": "string",
+          "format": "base64url",
+          "description": "Y coordinate (base64url encoded)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "ECDSA P-256 public key in JWK format"
+    },
+    "CipherEnvelope": {
+      "type": "object",
+      "required": ["alg", "iv", "ciphertext", "tag"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "A256GCM",
+          "description": "Algorithm - AES-256-GCM"
+        },
+        "iv": {
+          "type": "string",
+          "format": "base64",
+          "description": "12-byte initialization vector (base64 encoded)"
+        },
+        "ciphertext": {
+          "type": "string",
+          "format": "base64",
+          "description": "Encrypted data (base64 encoded)"
+        },
+        "tag": {
+          "type": "string",
+          "format": "base64",
+          "description": "16-byte GCM authentication tag (base64 encoded)"
+        },
+        "epk": {
+          "$ref": "#/definitions/PublicKey",
+          "description": "Ephemeral public key for ECDH key agreement"
+        }
+      },
+      "additionalProperties": false,
+      "description": "AES-256-GCM encrypted data envelope"
+    },
+    "Signature": {
+      "type": "object",
+      "required": ["alg", "sig", "kid"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "ES256",
+          "description": "Algorithm - ECDSA using P-256 and SHA-256"
+        },
+        "sig": {
+          "type": "string",
+          "format": "base64url",
+          "description": "Signature value (base64url encoded)"
+        },
+        "kid": {
+          "type": "string",
+          "description": "Key ID identifying the signing key"
+        }
+      },
+      "additionalProperties": false,
+      "description": "ECDSA P-256 signature over the request body"
+    },
+    "Mac": {
+      "type": "object",
+      "required": ["alg", "mac"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "HS256",
+          "description": "Algorithm - HMAC using SHA-256"
+        },
+        "mac": {
+          "type": "string",
+          "format": "base64url",
+          "description": "HMAC value (base64url encoded)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "HMAC-SHA256 message authentication code"
+    },
+    "DeviceInfo": {
+      "type": "object",
+      "required": ["deviceName", "platform", "appVersion"],
+      "properties": {
+        "deviceName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable device name"
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["ios", "android", "macos", "windows", "linux", "web"],
+          "description": "Operating system platform"
+        },
+        "platformVersion": {
+          "type": "string",
+          "description": "OS version string"
+        },
+        "appVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Karna application version"
+        },
+        "model": {
+          "type": "string",
+          "description": "Device model identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Pagination": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for pagination"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "Maximum number of items to return"
+        },
+        "hasMore": {
+          "type": "boolean",
+          "description": "Whether there are more items available"
+        },
+        "nextCursor": {
+          "type": ["string", "null"],
+          "description": "Cursor for the next page, or null if no more pages"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

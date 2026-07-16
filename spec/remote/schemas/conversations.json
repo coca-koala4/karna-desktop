@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://karna.ai/schemas/remote/v1/conversations.json",
+  "title": "Karna Remote Protocol Conversation Types",
+  "description": "Conversation and message type definitions for Karna Remote Protocol v1",
+  "definitions": {
+    "Conversation": {
+      "type": "object",
+      "required": ["conversationId", "projectId", "createdAt", "updatedAt"],
+      "properties": {
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId"
+        },
+        "projectId": {
+          "$ref": "common.json#/definitions/ProjectId"
+        },
+        "title": {
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "summary": {
+          "type": ["string", "null"]
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "messageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastMessageAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "pinned": {
+          "type": "boolean",
+          "default": false
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageRole": {
+      "type": "string",
+      "enum": ["user", "assistant", "system", "tool"],
+      "description": "Message author role"
+    },
+    "Message": {
+      "type": "object",
+      "required": ["messageId", "conversationId", "role", "createdAt"],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^msg_[a-zA-Z0-9]{16}$"
+        },
+        "conversationId": {
+          "$ref": "common.json#/definitions/ConversationId"
+        },
+        "sessionId": {
+          "$ref": "common.json#/definitions/SessionId"
+        },
+        "role": {
+          "$ref": "#/definitions/MessageRole"
+        },
+        "content": {
+          "type": ["string", "null"]
+        },
+        "reasoning": {
+          "type": ["string", "null"],
+          "description": "Chain-of-thought/reasoning content, if available and enabled"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "files.json#/definitions/File"
+          }
+        },
+        "toolCalls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolCall"
+          }
+        },
+        "parentMessageId": {
+          "type": ["string", "null"],
+          "description": "Parent message ID for threaded replies"
+        },
+        "createdAt": {
+          "$ref": "common.json#/definitions/Timestamp"
+        },
+        "usage": {
+          "$ref": "events.json#/definitions/TokenUsage"
+        },
+        "finishReason": {
+          "type": ["string", "null"],
+          "enum": ["stop", "length", "tool_calls", "error", "interrupted", null]
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolCall": {
+      "type": "object",
+      "required": ["toolCallId", "toolName", "status"],
+      "properties": {
+        "toolCallId": {
+          "type": "string",
+          "pattern": "^tool_[a-zA-Z0-9]{16}$"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "args": {
+          "type": ["object", "null"]
+        },
+        "result": {
+          "type": ["string", "object", "null"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "completed", "failed", "cancelled"]
+        },
+        "durationMs": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConversationListResponse": {
+      "type": "object",
+      "required": ["conversations"],
+      "properties": {
+        "conversations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Conversation"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageListResponse": {
+      "type": "object",
+      "required": ["messages"],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Message"
+          }
+        },
+        "pagination": {
+          "$ref": "common.json#/definitions/Pagination"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

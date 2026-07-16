@@ -1344,6 +1344,13 @@ def _build_child_agent(
     child._parent_subagent_id = parent_subagent_id
     child._subagent_goal = goal
     child._parent_turn_id = getattr(parent_agent, "_current_turn_id", "") or ""
+    child.workflow_id = (
+        getattr(parent_agent, "workflow_id", None)
+        or child._parent_turn_id
+        or f"delegate:{getattr(parent_agent, 'session_id', '')}"
+    )
+    child.node_id = f"delegate-{task_index}"
+    child.project_id = getattr(parent_agent, "project_id", None)
     # Stable sidebar marker: delegate subagent sessions must stay out of
     # session pickers even when a parent delete orphans them (parent_session_id
     # → NULL). Mirrors /branch's ``_branched_from`` pattern — see
@@ -2430,6 +2437,19 @@ def delegate_task(
 
     # Normalize to task list
     max_children = _get_max_concurrent_children()
+    try:
+        from agent.context.token_os import get_token_ledger as _get_delegate_token_ledger
+        _delegate_policy = _get_delegate_token_ledger().get_active_policy(
+            session_id=getattr(parent_agent, "session_id", None),
+            project_id=getattr(parent_agent, "project_id", None),
+            workflow_id=getattr(parent_agent, "workflow_id", None),
+        )
+        max_children = min(
+            max_children,
+            max(1, int(_delegate_policy.get("max_parallel_nodes", max_children))),
+        )
+    except Exception:
+        logger.debug("Token OS delegate parallel limit unavailable", exc_info=True)
     recovered_tasks, tasks_error = _recover_tasks_from_json_string(tasks)
     if tasks_error:
         return tool_error(tasks_error)
@@ -2662,6 +2682,60 @@ def delegate_task(
         # conversation. Full text is spilled to disk so nothing is lost.
         # Covers both the single-task and batch paths. See PR #9126.
         _apply_summary_budget(results, parent_agent)
+
+        # Persist the same compact node contract used by the desktop workflow.
+        # This keeps delegate_task from being a second, disconnected multi-agent
+        # implementation and gives Context Center one event stream to inspect.
+        try:
+            from agent.context.context_envelope import get_current_envelope
+            from agent.context.memory import NodeRunSummaryService
+            from agent.context.tool_outputs import ToolOutputStore
+
+            _env = get_current_envelope()
+            _scope_id = _env.get_scope_id() if _env else None
+            _parent_sid = str(getattr(parent_agent, "session_id", "") or "")
+            _flow_id = str(
+                getattr(parent_agent, "_current_turn_id", "")
+                or f"delegate:{_parent_sid or int(time.time())}"
+            )
+            _node_service = NodeRunSummaryService()
+            _output_store = ToolOutputStore()
+            for _entry in results:
+                _idx = int(_entry.get("task_index", 0) or 0)
+                _goal = task_list[_idx].get("goal", "") if _idx < len(task_list) else ""
+                _summary = str(_entry.get("summary", "") or "")
+                _is_ok = str(_entry.get("status", "")).lower() in {"ok", "complete", "completed"}
+                _refs = []
+                if len(_summary) > 4000:
+                    _record = _output_store.externalize(
+                        tool_name="delegate_task",
+                        tool_args=str(_goal)[:2000],
+                        content=_summary,
+                        session_id=_parent_sid,
+                        workspace_id=_scope_id,
+                        task_id=_flow_id,
+                        node_id=f"delegate-{_idx}",
+                        agent_id=str(_entry.get("child_session_id", "") or ""),
+                        source_kind="subagent_output",
+                        summary=_summary[:1200],
+                    )
+                    _refs.append(_record.to_handle())
+                    _entry["summary"] = _summary[:1200] + "\n\n" + _record.to_handle()
+                _node_service.add_node_summary(
+                    flow_run_id=_flow_id,
+                    node_id=f"delegate-{_idx}",
+                    agent_id=str(_entry.get("child_session_id", "") or ""),
+                    task=str(_goal),
+                    output_summary=_summary[:1200],
+                    evidence_refs=_refs,
+                    errors=[] if _is_ok else [_summary[:1200]],
+                    workspace_id=_scope_id,
+                    session_id=_parent_sid,
+                    summary_quality="ok" if _is_ok else "error",
+                    context_packet={"profile": "multi_agent_flow"},
+                )
+        except Exception:
+            logger.debug("Context OS delegate event persistence failed", exc_info=True)
 
         # Notify parent's memory provider of delegation outcomes
         if (

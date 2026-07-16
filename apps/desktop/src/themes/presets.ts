@@ -93,7 +93,8 @@ export const nousTheme: DesktopTheme = {
   typography: {
     fontSans: SYSTEM_SANS,
     fontMono: `"Courier Prime", ${SYSTEM_MONO}`,
-    fontUrl: 'https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap'
+    fontWordmark: `"Inter", ${SYSTEM_SANS}`,
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:wght@400;700;900&display=swap'
   }
 }
 
@@ -130,7 +131,8 @@ export const midnightTheme: DesktopTheme = {
   },
   typography: {
     fontMono: `"JetBrains Mono", ${SYSTEM_MONO}`,
-    fontUrl: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap'
+    fontWordmark: `"Playfair Display", ${SYSTEM_SANS}`,
+    fontUrl: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:wght@400;700;900&display=swap'
   }
 }
 
@@ -167,7 +169,8 @@ export const emberTheme: DesktopTheme = {
   },
   typography: {
     fontMono: `"IBM Plex Mono", ${SYSTEM_MONO}`,
-    fontUrl: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap'
+    fontWordmark: `"Cormorant Garamond", ${SYSTEM_SANS}`,
+    fontUrl: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Cormorant+Garamond:wght@400;600;700&display=swap'
   }
 }
 
@@ -201,6 +204,10 @@ export const monoTheme: DesktopTheme = {
     sidebarBorder: '#202020',
     userBubble: '#1a1a1a',
     userBubbleBorder: '#363636'
+  },
+  typography: {
+    fontWordmark: `"Roboto", ${SYSTEM_SANS}`,
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap'
   }
 }
 
@@ -237,7 +244,9 @@ export const cyberpunkTheme: DesktopTheme = {
   },
   typography: {
     fontMono: `"Courier New", Courier, monospace, ${EMOJI_FALLBACK}`,
-    fontSans: `"Courier New", Courier, monospace, ${EMOJI_FALLBACK}`
+    fontSans: `"Courier New", Courier, monospace, ${EMOJI_FALLBACK}`,
+    fontWordmark: `"Orbitron", "Courier New", Courier, monospace, ${EMOJI_FALLBACK}`,
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap'
   }
 }
 
@@ -273,7 +282,8 @@ export const slateTheme: DesktopTheme = {
     userBubbleBorder: '#2e4060'
   },
   typography: {
-    fontMono: `"JetBrains Mono", ${SYSTEM_MONO}`
+    fontMono: `"JetBrains Mono", ${SYSTEM_MONO}`,
+    fontWordmark: `"JetBrains Mono", ${SYSTEM_MONO}`
   }
 }
 

@@ -1,0 +1,50 @@
+import type { WriterDomain, WriterFamily } from './types'
+
+export const WRITER_DOMAINS: WriterDomain[] = [
+  { id: 'literature', label: '文学与叙事创作', description: '小说、散文、诗歌、非虚构等文学创作', icon: 'book', order: 1 },
+  { id: 'film-theater', label: '影视戏剧表演', description: '影视剧本、舞台戏剧、音频戏剧', icon: 'file-media', order: 2 },
+  { id: 'games-interactive', label: '游戏互动叙事', description: '游戏剧情、互动小说、跑团', icon: 'git-branch', order: 3 },
+  { id: 'marketing-brand', label: '营销品牌文案', description: '广告、品牌、电商、内容营销', icon: 'megaphone', order: 4 },
+  { id: 'news-publishing', label: '新闻媒体出版', description: '新闻报道、出版编辑、媒体策划', icon: 'file-text', order: 5 },
+  { id: 'academic-research', label: '学术科研写作', description: '论文、研究报告、基金申请', icon: 'library', order: 6 },
+  { id: 'business-enterprise', label: '企业商业管理', description: '商业计划、方案、标书、管理文档', icon: 'briefcase', order: 7 },
+  { id: 'legal-government', label: '政务法律合规', description: '法律文书、政务公文、合规文档', icon: 'shield', order: 8 },
+  { id: 'technical-docs', label: '技术开发文档', description: 'API文档、技术方案、用户手册', icon: 'code', order: 9 },
+  { id: 'knowledge-assets', label: '知识资产管理', description: 'Wiki、百科、术语表、RAG资料库', icon: 'database', order: 10 }
+] as const
+
+export const WRITER_FAMILIES: WriterFamily[] = [
+  { id: 'novel', domainId: 'literature', label: '小说', description: '长短篇小说、网络小说、类型小说', order: 1 },
+  { id: 'nonfiction', domainId: 'literature', label: '非虚构文学', description: '纪实、传记、报告文学', order: 2 },
+  { id: 'prose', domainId: 'literature', label: '散文随笔', description: '散文、随笔、杂文、游记', order: 3 },
+  { id: 'poetry', domainId: 'literature', label: '诗歌韵文', description: '诗歌、歌词、散文诗', order: 4 },
+  { id: 'childrens-lit', domainId: 'literature', label: '儿童文学', description: '童话、寓言、儿童故事', order: 5 },
+  { id: 'film-script', domainId: 'film-theater', label: '影视剧本', description: '电影、电视剧、网剧剧本', order: 1 },
+  { id: 'stage-play', domainId: 'film-theater', label: '舞台戏剧', description: '话剧、音乐剧、戏曲', order: 2 },
+  { id: 'audio-drama', domainId: 'film-theater', label: '音频戏剧', description: '广播剧、有声剧、播客叙事', order: 3 },
+  { id: 'game-story', domainId: 'games-interactive', label: '游戏剧情', description: '游戏主线、支线、任务文本', order: 1 },
+  { id: 'interactive-fiction', domainId: 'games-interactive', label: '互动叙事', description: '互动小说、视觉小说、剧本杀', order: 2 },
+  { id: 'brand-copy', domainId: 'marketing-brand', label: '品牌文案', description: '品牌故事、Slogan、品牌手册', order: 1 },
+  { id: 'ad-copy', domainId: 'marketing-brand', label: '广告文案', description: '平面、视频、信息流广告', order: 2 },
+  { id: 'ecommerce-copy', domainId: 'marketing-brand', label: '电商文案', description: '商品详情、活动页、种草', order: 3 },
+  { id: 'content-marketing', domainId: 'marketing-brand', label: '内容营销', description: 'SEO文章、白皮书、案例研究', order: 4 },
+  { id: 'social-media', domainId: 'marketing-brand', label: '社交媒体', description: '公众号、小红书、微博等', order: 5 },
+  { id: 'video-script', domainId: 'marketing-brand', label: '视频直播', description: '短视频脚本、直播话术', order: 6 },
+  { id: 'news-reporting', domainId: 'news-publishing', label: '新闻内容', description: '消息、报道、特写、评论', order: 1 },
+  { id: 'publishing', domainId: 'news-publishing', label: '出版文本', description: '图书、书稿、编辑加工', order: 2 },
+  { id: 'academic-paper', domainId: 'academic-research', label: '学术论文', description: '期刊、会议、学位论文', order: 1 },
+  { id: 'research-report', domainId: 'academic-research', label: '研究报告', description: '调研报告、技术报告、分析报告', order: 2 },
+  { id: 'grant-proposal', domainId: 'academic-research', label: '基金申请', description: '基金、项目申请书', order: 3 },
+  { id: 'business-plan', domainId: 'business-enterprise', label: '商业战略', description: '商业计划书、战略规划、可行性研究', order: 1 },
+  { id: 'proposal-bid', domainId: 'business-enterprise', label: '方案标书', description: '项目方案、投标书、合作方案', order: 2 },
+  { id: 'internal-mgmt', domainId: 'business-enterprise', label: '内部管理', description: '制度、SOP、会议纪要、总结', order: 3 },
+  { id: 'sales-copy', domainId: 'business-enterprise', label: '销售文本', description: '销售话术、提案书、客户案例', order: 4 },
+  { id: 'legal-document', domainId: 'legal-government', label: '法律文书', description: '合同、协议、律师函、诉状', order: 1 },
+  { id: 'government-doc', domainId: 'legal-government', label: '政务公文', description: '通知、报告、意见、方案', order: 2 },
+  { id: 'compliance-doc', domainId: 'legal-government', label: '合规文档', description: '隐私政策、合规报告、风险告知', order: 3 },
+  { id: 'software-doc', domainId: 'technical-docs', label: '软件文档', description: 'README、API文档、架构设计', order: 1 },
+  { id: 'product-doc', domainId: 'technical-docs', label: '产品文档', description: 'PRD、需求文档、用户手册', order: 2 },
+  { id: 'testing-doc', domainId: 'technical-docs', label: '测试文档', description: '测试计划、用例、报告', order: 3 },
+  { id: 'knowledge-base', domainId: 'knowledge-assets', label: '知识库', description: 'Wiki、百科、术语表、RAG库', order: 1 },
+  { id: 'creative-process', domainId: 'knowledge-assets', label: '创作过程', description: '大纲、设定、时间线、素材库', order: 2 }
+] as const

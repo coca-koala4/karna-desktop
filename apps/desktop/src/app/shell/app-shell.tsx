@@ -45,6 +45,7 @@ interface AppShellProps {
   statusbarItems?: readonly StatusbarItem[]
   terminalPaneOpen?: boolean
   titlebarTools?: readonly TitlebarTool[]
+  titlebarMode?: 'default' | 'writer-ide'
 }
 
 // Renderer-side fallback so layout snaps even when the main-process fullscreen event
@@ -72,7 +73,8 @@ export function AppShell({
   previewPaneOpen = false,
   statusbarItems,
   terminalPaneOpen = false,
-  titlebarTools
+  titlebarTools,
+  titlebarMode = 'default'
 }: AppShellProps) {
   const sidebarOpen = useStore($sidebarOpen)
   const fileBrowserOpen = useStore($fileBrowserOpen)
@@ -85,7 +87,10 @@ export function AppShell({
   // Every secondary window (new-session scratch, subagent watch, cmd-click
   // pop-out) is a compact side panel — none of them carry the full titlebar
   // tool cluster. Gate on isSecondaryWindow, never the narrower new-session flag.
-  const hideTitlebarControls = isSecondaryWindow()
+  // Writer IDE owns its complete header and pane controls. Keeping the normal
+  // shell controls mounted here used to mutate the chat-page layout store while
+  // the corresponding panes were not even rendered in IDE mode.
+  const hideTitlebarControls = isSecondaryWindow() || titlebarMode === 'writer-ide'
   const titlebarControls = titlebarControlsPosition(connection?.windowButtonPosition, isFullscreen)
   // Width Windows/WSLg reserve for the native min/max/close overlay (zero on
   // macOS, where window controls sit on the left and are reported via

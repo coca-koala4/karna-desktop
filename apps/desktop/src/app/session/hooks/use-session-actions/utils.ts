@@ -4,6 +4,7 @@ import { normalizePersonalityValue } from '@/lib/chat-runtime'
 import { embeddedImageUrls, textWithoutEmbeddedImages } from '@/lib/embedded-images'
 import { requestDesktopOnboarding } from '@/store/onboarding'
 import { $activeGatewayProfile, $profiles, normalizeProfileKey } from '@/store/profile'
+import { $projects } from '@/store/projects'
 import {
   $currentCwd,
   $sessions,
@@ -253,7 +254,7 @@ export async function resolveStoredSession(storedSessionId: string): Promise<Ses
 type SessionRuntimeStatePatch = Partial<
   Pick<
     ClientSessionState,
-    'branch' | 'cwd' | 'fast' | 'model' | 'personality' | 'provider' | 'reasoningEffort' | 'serviceTier' | 'yolo'
+    'branch' | 'cwd' | 'fast' | 'model' | 'personality' | 'provider' | 'reasoningEffort' | 'serviceTier' | 'yolo' | 'conversationScope' | 'workspaceId' | 'writerProjectId' | 'projectName' | 'permissionMode'
   >
 >
 
@@ -314,6 +315,75 @@ export function applyRuntimeInfo(info: SessionRuntimeInfo | undefined): SessionR
   if (typeof info.yolo === 'boolean') {
     setYoloActive(info.yolo)
     sessionState.yolo = info.yolo
+  }
+
+  if (info.conversation_scope) {
+    if (typeof info.conversation_scope === 'object') {
+      sessionState.conversationScope = info.conversation_scope.type
+      sessionState.workspaceId = info.conversation_scope.workspaceId
+      sessionState.writerProjectId = info.conversation_scope.writerProjectId
+      sessionState.projectName = info.conversation_scope.type === 'project' ? info.conversation_scope.projectName : null
+      sessionState.cwd = info.conversation_scope.cwd || sessionState.cwd || ''
+    } else if (info.conversation_scope === 'project' || info.conversation_scope === 'standalone') {
+      sessionState.conversationScope = info.conversation_scope
+      if (info.conversation_scope === 'project') {
+        sessionState.workspaceId = info.workspace_id ?? null
+        sessionState.writerProjectId = info.writer_project_id ?? null
+        if (info.writer_project_id || info.workspace_id) {
+          const projectId = info.writer_project_id || info.workspace_id
+          const projects = $projects.get()
+          const matchedProject = projects.find(p => p.id === projectId)
+          sessionState.projectName = matchedProject?.name ?? info.project_title ?? null
+        }
+      } else {
+        sessionState.projectName = null
+      }
+    }
+  } else {
+    // Legacy migration: infer scope from old fields
+    let isProject = false
+    let inferredProjectId: string | null = null
+    let inferredProjectName: string | null = null
+
+    if (info.writer_project_id) {
+      isProject = true
+      inferredProjectId = info.writer_project_id
+    } else {
+      const projects = $projects.get()
+      const cwd = info.cwd || sessionState.cwd
+      if (cwd) {
+        const matchedProject = projects.find(p => {
+          const primaryPath = p.primary_path?.replace(/\\/g, '/').replace(/\/$/, '')
+          const normalizedCwd = cwd.replace(/\\/g, '/').replace(/\/$/, '')
+          return primaryPath && (normalizedCwd === primaryPath || normalizedCwd.startsWith(primaryPath + '/'))
+        })
+        if (matchedProject) {
+          isProject = true
+          inferredProjectId = matchedProject.id
+          inferredProjectName = matchedProject.name
+        }
+      }
+    }
+
+    sessionState.conversationScope = isProject ? 'project' : 'standalone'
+    sessionState.workspaceId = info.workspace_id ?? inferredProjectId
+    sessionState.writerProjectId = info.writer_project_id ?? inferredProjectId
+    sessionState.projectName = inferredProjectName
+  }
+
+  if (info.workspace_id !== undefined) {
+    sessionState.workspaceId = info.workspace_id ?? null
+  }
+
+  if (info.writer_project_id !== undefined) {
+    sessionState.writerProjectId = info.writer_project_id ?? null
+  }
+
+  if (!info.permission_mode) {
+    // Legacy: old 'project' permission mode maps to 'restricted'
+    sessionState.permissionMode = 'restricted'
+  } else {
+    sessionState.permissionMode = info.permission_mode
   }
 
   if (info.usage) {

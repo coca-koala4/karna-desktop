@@ -1,0 +1,30 @@
+manifest_version: 2
+name: quickchart
+description: QuickChart的MCP服务器，支持图表生成和数据可视化
+source: https://www.mcp-cn.com/server/94
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@gongrzhe/quickchart-mcp-server'
+auth:
+  type: none
+post_install: 'quickchart MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: quickchart
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@gongrzhe/quickchart-mcp-server'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

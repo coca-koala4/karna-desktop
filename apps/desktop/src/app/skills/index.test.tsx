@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getSkills = vi.fn()
+const getSkillsCatalog = vi.fn()
 const getToolsets = vi.fn()
 const toggleSkill = vi.fn()
 const toggleToolset = vi.fn()
@@ -11,11 +12,15 @@ const selectToolsetProvider = vi.fn()
 
 vi.mock('@/hermes', () => ({
   getSkills: () => getSkills(),
+  getSkillsCatalog: () => getSkillsCatalog(),
   getToolsets: () => getToolsets(),
   toggleSkill: (name: string, enabled: boolean) => toggleSkill(name, enabled),
   toggleToolset: (name: string, enabled: boolean) => toggleToolset(name, enabled),
   getToolsetConfig: (name: string) => getToolsetConfig(name),
   selectToolsetProvider: (toolset: string, provider: string) => selectToolsetProvider(toolset, provider),
+  createSkill: vi.fn(),
+  installSkill: vi.fn(),
+  uninstallSkill: vi.fn(),
   deleteEnvVar: vi.fn(),
   revealEnvVar: vi.fn(),
   setEnvVar: vi.fn()
@@ -40,10 +45,10 @@ function toolset(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function renderSkills() {
+function renderSkills(initialEntry = '/skills?tab=toolsets') {
   return import('./index').then(({ SkillsView }) =>
     render(
-      <MemoryRouter initialEntries={['/skills?tab=toolsets']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <SkillsView />
       </MemoryRouter>
     )
@@ -52,6 +57,15 @@ function renderSkills() {
 
 beforeEach(() => {
   getSkills.mockResolvedValue([])
+  getSkillsCatalog.mockResolvedValue({
+    ok: true,
+    skills: [],
+    diagnostics: {
+      scannedAt: new Date().toISOString(), logicalCount: 0, sourceCount: 0, conflictCount: 0,
+      unavailableCount: 0, uninstalledCount: 0, excludedCount: 0, previousLogicalCount: 0,
+      countDelta: 0, driftDetected: false, roots: [], errors: [], excluded: []
+    }
+  })
   getToolsets.mockResolvedValue([toolset()])
   toggleToolset.mockResolvedValue({ ok: true, name: 'web', enabled: false })
   getToolsetConfig.mockResolvedValue({ has_category: false, active_provider: null, providers: [] })
@@ -97,5 +111,34 @@ describe('SkillsView toolset management', () => {
     fireEvent.click(configureBtn)
 
     await waitFor(() => expect(getToolsetConfig).toHaveBeenCalledWith('web'))
+  })
+})
+
+describe('SkillsView catalog diagnostics', () => {
+  it('shows logical/source counts and same-name source details', async () => {
+    getSkillsCatalog.mockResolvedValue({
+      ok: true,
+      skills: [{
+        id: 'local:shared', name: 'shared', description: 'Shared skill', category: 'general', enabled: true,
+        source: 'local', installed: true, available: true, conflict: true, sourceCount: 2,
+        sources: [
+          { id: 'local:shared', path: 'C:\\skills\\shared\\SKILL.md', source: 'local', selected: true, available: true },
+          { id: 'repo:shared', path: 'D:\\skills\\shared\\SKILL.md', source: 'community', selected: false, available: true }
+        ]
+      }],
+      diagnostics: {
+        scannedAt: new Date().toISOString(), logicalCount: 1, sourceCount: 2, conflictCount: 1,
+        unavailableCount: 0, uninstalledCount: 0, excludedCount: 0, previousLogicalCount: 1,
+        countDelta: 0, driftDetected: false, roots: [], errors: [], excluded: []
+      }
+    })
+
+    await renderSkills('/skills?tab=skills')
+
+    expect(await screen.findByText('技能来源')).toBeTruthy()
+    expect(screen.getByText('同名冲突')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /查看同名来源/ }))
+    expect(await screen.findByText(/shared · 2 个来源/)).toBeTruthy()
+    expect(screen.getByText(/C:\\skills\\shared/)).toBeTruthy()
   })
 })

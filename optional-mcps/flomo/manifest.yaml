@@ -1,0 +1,35 @@
+manifest_version: 2
+name: flomo
+description: 连接flomo的MCP服务器，支持卡片式笔记管理
+source: https://www.mcp-cn.com/server/66
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - mcp-server-flomo
+auth:
+  type: api_key
+  env:
+  - name: FLOMO_API_KEY
+    prompt: flomo API Key
+    required: true
+    secret: true
+post_install: 'flomo MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: flomo
+version: unresolved
+dependencies:
+  runtime: npm
+  package: mcp-server-flomo
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

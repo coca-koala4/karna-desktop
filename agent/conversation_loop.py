@@ -35,6 +35,7 @@ from agent.iteration_budget import IterationBudget
 from agent.turn_context import build_turn_context
 from agent.turn_retry_state import TurnRetryState
 from agent.memory_manager import build_memory_context_block
+from agent.context import inject_context_os
 from agent.message_sanitization import (
     close_interrupted_tool_sequence,
     _repair_tool_call_arguments,
@@ -875,13 +876,153 @@ def run_conversation(
             for idx, pfm in enumerate(agent.prefill_messages):
                 api_messages.insert(sys_offset + idx, pfm.copy())
 
+        # Inject Karna Context OS project memory & state right after the
+        # system prompt (before prefills and conversation history). Uses
+        # the orchestrator bound to the agent's context_compressor when
+        # Context OS is enabled; no-op otherwise (backward compatible).
+        try:
+            _ctx_orch = None
+            _ctx_workspace_id = None
+            _ctx_module = None
+            _cc = getattr(agent, "context_compressor", None)
+            if _cc is not None:
+                _get_orch = getattr(_cc, "get_context_orchestrator", None)
+                if _get_orch is not None:
+                    _ctx_orch = _get_orch()
+                _ctx_workspace_id = getattr(_cc, "_context_os_workspace_id", None)
+                _ctx_module = getattr(_cc, "_context_os_module", None)
+            api_messages = inject_context_os(
+                api_messages,
+                user_message=original_user_message if isinstance(original_user_message, str) else user_message,
+                session_id=getattr(agent, "session_id", None),
+                workspace_id=_ctx_workspace_id,
+                module=_ctx_module,
+                orchestrator=_ctx_orch,
+                provider=getattr(agent, "provider", "") or "",
+                model=getattr(agent, "model", "") or "",
+                tools=getattr(agent, "tools", None),
+                plan_tokens=False,
+            )
+        except Exception as _ctx_inj_exc:
+            logger.debug("Context OS injection in conversation loop skipped: %s", _ctx_inj_exc)
+
+        # Mandatory Token OS preflight.  This runs after Context OS, MoA and
+        # prefills have produced the final request messages, but before cache
+        # decoration and before any provider request can leave the process.
+        _token_preparation = None
+        _token_tools_for_call = list(getattr(agent, "tools", None) or [])
+        try:
+            from agent.context import get_current_envelope as _get_token_envelope
+            from agent.context.token_os import prepare_token_call
+
+            _token_env = _get_token_envelope()
+            _token_profile = (
+                (_token_env.get_effective_profile() if _token_env else None)
+                or _ctx_module
+                or "agent_chat"
+            )
+            _token_session_id = getattr(agent, "session_id", None) or (
+                getattr(_token_env, "session_id", None) if _token_env else None
+            )
+            _token_project_id = getattr(agent, "project_id", None) or (
+                getattr(_token_env, "project_id", None) if _token_env else None
+            )
+            _token_workspace_id = (
+                getattr(_token_env, "workspace_id", None) if _token_env else _ctx_workspace_id
+            )
+            _token_preparation = prepare_token_call(
+                provider=getattr(agent, "provider", "") or "",
+                model=getattr(agent, "model", "") or "",
+                messages=api_messages,
+                instruction=original_user_message if isinstance(original_user_message, str) else str(user_message),
+                tools=_token_tools_for_call,
+                profile_name=_token_profile,
+                session_id=_token_session_id,
+                project_id=_token_project_id,
+                workspace_id=_token_workspace_id,
+                workflow_id=getattr(agent, "workflow_id", None),
+                node_id=getattr(agent, "node_id", None),
+                requested_output_tokens=getattr(agent, "max_tokens", None),
+                artifact_text=getattr(_token_env, "selection_text", "") if _token_env else "",
+            )
+            _token_tools_for_call = _token_preparation.tools
+            agent._current_token_plan_id = _token_preparation.plan.plan_id
+            agent._current_token_plan = _token_preparation.plan
+            if _token_preparation.blocked:
+                final_response = (
+                    "Token budget blocked this model call before it was sent. "
+                    + (_token_preparation.block_reason or "The configured hard budget would be exceeded.")
+                    + " Increase the budget, switch to advisory mode, reduce non-essential agents, or reuse an existing result."
+                )
+                messages.append({"role": "assistant", "content": final_response})
+                failed = True
+                _turn_exit_reason = "token_budget_blocked"
+                agent._emit_status("⛔ Token hard budget blocked the next model call")
+                try:
+                    agent.iteration_budget.refund()
+                except Exception:
+                    pass
+                break
+        except Exception as _token_preflight_exc:
+            logger.exception("Token OS preflight failed: %s", _token_preflight_exc)
+            agent._emit_status(f"⚠️ Token planning unavailable: {_token_preflight_exc}")
+            _token_fail_closed = False
+            try:
+                from agent.context.token_os import get_token_ledger as _get_token_ledger_fail_closed
+                _fail_ledger = _get_token_ledger_fail_closed()
+                _fail_policy = _fail_ledger.get_active_policy(
+                    session_id=getattr(agent, "session_id", None),
+                    project_id=getattr(agent, "project_id", None),
+                    workspace_id=_ctx_workspace_id,
+                    workflow_id=getattr(agent, "workflow_id", None),
+                )
+                _token_fail_closed = _fail_policy.get("budget_mode") == "hard"
+            except Exception:
+                _token_fail_closed = False
+            if _token_fail_closed:
+                final_response = (
+                    "Token planning failed while hard-budget mode is active, so the model call was blocked safely: "
+                    + str(_token_preflight_exc)
+                )
+                messages.append({"role": "assistant", "content": final_response})
+                failed = True
+                _turn_exit_reason = "token_preflight_failed_closed"
+                try:
+                    agent.iteration_budget.refund()
+                except Exception:
+                    pass
+                break
+
         # Apply Anthropic prompt caching for Claude models on native
         # Anthropic, OpenRouter, and third-party Anthropic-compatible
         # gateways. Auto-detected: if ``_use_prompt_caching`` is set,
         # inject cache_control breakpoints (system + last 3 messages)
         # to reduce input token costs by ~75% on multi-turn
         # conversations.
-        if agent._use_prompt_caching:
+        if _token_preparation is not None:
+            if _token_preparation.policy.cache_policy == "auto":
+                try:
+                    from agent.context.token_os import apply_provider_cache as _apply_token_provider_cache
+                    api_messages, _token_cache_meta = _apply_token_provider_cache(
+                        api_messages,
+                        provider=getattr(agent, "provider", "") or "",
+                        model=getattr(agent, "model", "") or "",
+                        stable_prefix_parts=[effective_system] if effective_system else None,
+                        cache_policy="auto",
+                        native_anthropic=agent._use_native_cache_layout,
+                    )
+                    if _token_cache_meta.get("cache_applied"):
+                        from agent.context.token_os import get_token_ledger as _get_cache_ledger
+                        _get_cache_ledger().emit_event(
+                            "token.cache",
+                            {"configured": True, "actual_hit": None, **_token_cache_meta},
+                            session_id=getattr(agent, "session_id", None),
+                            project_id=getattr(agent, "project_id", None),
+                            plan_id=_token_preparation.plan.plan_id,
+                        )
+                except Exception as _token_cache_exc:
+                    logger.debug("Token OS provider cache decoration skipped: %s", _token_cache_exc)
+        elif agent._use_prompt_caching:
             api_messages = apply_anthropic_cache_control(
                 api_messages,
                 cache_ttl=agent._cache_ttl,
@@ -1071,7 +1212,19 @@ def run_conversation(
                 # unless the active provider needs it) so the fallback request
                 # isn't sent with stale, primary-shaped reasoning fields.
                 agent._reapply_reasoning_echo_for_provider(api_messages)
-                api_kwargs = agent._build_api_kwargs(api_messages)
+                _token_original_tools = getattr(agent, "tools", None)
+                try:
+                    agent.tools = _token_tools_for_call
+                    api_kwargs = agent._build_api_kwargs(api_messages)
+                finally:
+                    agent.tools = _token_original_tools
+                if (
+                    _token_preparation is not None
+                    and _token_preparation.policy.cache_policy == "auto"
+                    and _token_preparation.plan.cache_key
+                    and agent.api_mode == "codex_responses"
+                ):
+                    api_kwargs.setdefault("prompt_cache_key", _token_preparation.plan.cache_key)
                 if agent._force_ascii_payload:
                     _sanitize_structure_non_ascii(api_kwargs)
                 if agent.api_mode == "codex_responses":
@@ -1946,6 +2099,139 @@ def run_conversation(
                         provider=agent.provider,
                         api_mode=agent.api_mode,
                     )
+                    try:
+                        from agent.context.token_os import get_token_ledger
+                        _ledger = get_token_ledger()
+                        _env = None
+                        try:
+                            from agent.context import get_current_envelope
+                            _env = get_current_envelope()
+                        except Exception:
+                            _env = None
+                        _sid = getattr(agent, 'session_id', None) or (_env.session_id if _env else None)
+                        _wid = None
+                        _pid = getattr(agent, 'project_id', None) or (_env.project_id if _env else None)
+                        _wfid = None
+                        _nid = None
+                        _aid = getattr(agent, 'agent_id', None) or getattr(agent, 'name', None)
+                        _source_kind = (_env.module if _env else None) or "agent_chat"
+                        _plan_id = getattr(agent, '_current_token_plan_id', None)
+                        _cache_hit = canonical_usage.cache_read_tokens > 0
+                        _est_cost = None
+                        try:
+                            from agent.usage_pricing import estimate_usage_cost
+                            _cr = estimate_usage_cost(
+                                getattr(agent, 'model', '') or '',
+                                canonical_usage,
+                                provider=getattr(agent, 'provider', ''),
+                                base_url=getattr(agent, 'base_url', None),
+                            )
+                            if _cr.amount_usd is not None:
+                                _est_cost = float(_cr.amount_usd)
+                        except Exception:
+                            pass
+                        _usage_policy = getattr(_token_preparation, 'policy', None)
+                        if _usage_policy is not None and (
+                            _usage_policy.input_price_per_million is not None
+                            or _usage_policy.cached_input_price_per_million is not None
+                            or _usage_policy.output_price_per_million is not None
+                            or _usage_policy.reasoning_price_per_million is not None
+                        ):
+                            _est_cost = (
+                                canonical_usage.input_tokens * float(_usage_policy.input_price_per_million or 0.0)
+                                + canonical_usage.cache_read_tokens * float(_usage_policy.cached_input_price_per_million or 0.0)
+                                + canonical_usage.output_tokens * float(_usage_policy.output_price_per_million or 0.0)
+                                + canonical_usage.reasoning_tokens * float(_usage_policy.reasoning_price_per_million or 0.0)
+                            ) / 1_000_000.0
+                        _plan_breakdown = {}
+                        _active_plan = getattr(agent, '_current_token_plan', None)
+                        if _active_plan is not None:
+                            _plan_breakdown = {
+                                item.category: int(item.used_tokens or 0)
+                                for item in getattr(_active_plan, 'budget_items', [])
+                            }
+                        _ledger.record_usage(
+                            provider=getattr(agent, 'provider', '') or '',
+                            model=getattr(agent, 'model', '') or '',
+                            session_id=_sid, project_id=_pid, workspace_id=_wid,
+                            workflow_id=_wfid, node_id=_nid, agent_id=_aid,
+                            source_kind=_source_kind,
+                            input_tokens=canonical_usage.input_tokens,
+                            cached_input_tokens=canonical_usage.cache_read_tokens,
+                            output_tokens=canonical_usage.output_tokens,
+                            reasoning_tokens=canonical_usage.reasoning_tokens,
+                            cache_write_tokens=canonical_usage.cache_write_tokens,
+                            tool_schema_tokens=(
+                                __import__('agent.context.token_os', fromlist=['estimate_tool_schema_tokens'])
+                                .estimate_tool_schema_tokens(_token_tools_for_call)
+                                if _token_tools_for_call else 0
+                            ),
+                            system_prompt_tokens=_plan_breakdown.get('system', 0),
+                            memory_tokens=_plan_breakdown.get('pinned', 0) + _plan_breakdown.get('summary', 0),
+                            rag_tokens=_plan_breakdown.get('retrieval', 0),
+                            upstream_tokens=_plan_breakdown.get('upstream', 0),
+                            artifact_tokens=_plan_breakdown.get('active_artifact', 0),
+                            summary_tokens=_plan_breakdown.get('summary', 0),
+                            estimated_input_tokens=(
+                                int(getattr(_active_plan, 'estimated_input_tokens', 0) or 0)
+                                if _active_plan is not None else 0
+                            ),
+                            estimated_output_tokens=(
+                                int(getattr(_active_plan, 'estimated_output_tokens', 0) or 0)
+                                if _active_plan is not None else 0
+                            ),
+                            estimated_cost=_est_cost,
+                            usage_source="provider",
+                            api_mode=getattr(agent, 'api_mode', None),
+                            plan_id=_plan_id,
+                            cache_hit=_cache_hit,
+                        )
+                        _ledger.emit_event(
+                            "token.usage",
+                            {
+                                "provider": getattr(agent, 'provider', '') or '',
+                                "model": getattr(agent, 'model', '') or '',
+                                "input_tokens": canonical_usage.input_tokens,
+                                "cached_input_tokens": canonical_usage.cache_read_tokens,
+                                "output_tokens": canonical_usage.output_tokens,
+                                "reasoning_tokens": canonical_usage.reasoning_tokens,
+                                "estimated_cost": _est_cost,
+                            },
+                            session_id=_sid, project_id=_pid, workflow_id=_wfid,
+                            node_id=_nid, plan_id=_plan_id,
+                        )
+                        if _cache_hit or canonical_usage.cache_write_tokens > 0:
+                            _ledger.emit_event(
+                                "token.cache",
+                                {
+                                    "hit": _cache_hit,
+                                    "read_tokens": canonical_usage.cache_read_tokens,
+                                    "write_tokens": canonical_usage.cache_write_tokens,
+                                },
+                                session_id=_sid, project_id=_pid, workflow_id=_wfid,
+                                node_id=_nid, plan_id=_plan_id,
+                            )
+                    except Exception as _te:
+                        logger.debug("Token ledger record failed: %s", _te)
+                    # Token budget enforcement: check soft warnings and hard budget
+                    try:
+                        from agent.context.token_os import TokenPolicy as _TP, BALANCED_POLICY
+                        from agent.context.token_os.budget_enforcer import BudgetEnforcer
+                        _policy_dict = _ledger.get_active_policy(session_id=_sid, project_id=_pid, workspace_id=_wid) if _ledger else None
+                        _active_policy = _TP.from_dict(_policy_dict) if _policy_dict else BALANCED_POLICY
+                        if _active_policy.total_token_budget or _active_policy.input_budget or _active_policy.currency_budget:
+                            _summary = _ledger.get_usage_summary(session_id=_sid, project_id=_pid) if _ledger else None
+                            if _summary is not None:
+                                _used_total = _summary.get("total_tokens", 0)
+                                _budget = _active_policy.total_token_budget
+                                if _budget and _used_total > 0:
+                                    _ratio = _used_total / _budget
+                                    if _ratio >= 0.9:
+                                        logger.warning("Token budget at %.0f%% (%d/%d tokens used)", _ratio * 100, _used_total, _budget)
+                                    elif _ratio >= 0.75:
+                                        logger.info("Token budget at %.0f%% (%d/%d tokens used)", _ratio * 100, _used_total, _budget)
+                    except Exception as _be:
+                        logger.debug("Budget enforcement check failed: %s", _be)
                     # Aggregator-only usage is retained for cost pricing: MoA
                     # advisor tokens must be priced at each advisor's OWN model
                     # rate, not the aggregator's, so they are added as dollars

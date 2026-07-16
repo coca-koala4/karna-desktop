@@ -238,14 +238,39 @@ const brandMark = path.join(REPO, 'apps', 'desktop', 'src', 'components', 'brand
 if (fs.existsSync(brandMark)) {
   const src = fs.readFileSync(brandMark, 'utf8');
   const usesKarna = /assetPath\(['"]Karna\.png['"]\)/.test(src);
-  const usesNousGirl = /assetPath\(['"]nous-girl\.jpg['"]\)/.test(src);
-  if (usesKarna && !usesNousGirl) {
-    console.log('OK    brand-mark.tsx uses Karna.png (no upstream nous-girl.jpg)');
+  const usesNousGirl = /nous-girl\.jpg/.test(src);
+  const hasVariantProp = /variant\?:\s*BrandMarkVariant/.test(src) && /size\?:\s*number/.test(src);
+  if (usesKarna && !usesNousGirl && hasVariantProp) {
+    console.log('OK    brand-mark.tsx uses Karna.png with size/variant props (no upstream nous-girl.jpg)');
   } else {
-    console.error(`FAIL  brand-mark.tsx — usesKarna=${usesKarna}, usesNousGirl=${usesNousGirl}`);
+    console.error(`FAIL  brand-mark.tsx — usesKarna=${usesKarna}, usesNousGirl=${usesNousGirl}, hasVariantProp=${hasVariantProp}`);
     failures += 1;
   }
 }
+
+// 5b-additional: Scan all src UI files for nous-girl.jpg references
+function scanDirForNousGirl(dir) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules' && entry.name !== 'dist' && entry.name !== '.git') {
+        scanDirForNousGirl(fullPath);
+      }
+    } else if (/\.(tsx?|jsx?|html?|css)$/.test(entry.name)) {
+      const content = fs.readFileSync(fullPath, 'utf8');
+      if (/nous-girl\.jpg/.test(content)) {
+        const relPath = path.relative(REPO, fullPath);
+        console.error(`FAIL  ${relPath} contains reference to nous-girl.jpg`);
+        failures += 1;
+      }
+    }
+  }
+}
+const srcDir = path.join(REPO, 'apps', 'desktop', 'src');
+scanDirForNousGirl(srcDir);
+console.log('OK    scanned src/ directory for nous-girl.jpg references');
 
 // 5c. onboarding/providers.tsx must use Karna.png in its featured-provider row.
 const onboardingProviders = path.join(REPO, 'apps', 'desktop', 'src', 'components', 'onboarding', 'providers.tsx');

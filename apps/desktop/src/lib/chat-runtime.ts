@@ -54,7 +54,12 @@ export function createClientSessionState(
     pendingBranchGroup: null,
     interrupted: false,
     needsInput: false,
-    turnStartedAt: null
+    turnStartedAt: null,
+    conversationScope: 'standalone',
+    workspaceId: null,
+    writerProjectId: null,
+    projectName: null,
+    permissionMode: 'restricted'
   }
 }
 

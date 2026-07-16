@@ -1,0 +1,35 @@
+manifest_version: 2
+name: meigen
+description: 让AI助手具备设计能力，支持本地ComfyUI、MeiGen云端、OpenAI兼容API三种后端
+source: https://www.mcp-cn.com/server/136
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - meigen
+auth:
+  type: api_key
+  env:
+  - name: MEIGEN_API_KEY
+    prompt: meigen API Key
+    required: true
+    secret: true
+post_install: 'meigen MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: meigen
+version: unresolved
+dependencies:
+  runtime: npm
+  package: meigen
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

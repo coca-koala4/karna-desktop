@@ -11,6 +11,17 @@ import { GlyphSpinner } from '@/components/ui/glyph-spinner'
 import { KbdGroup } from '@/components/ui/kbd'
 import { SearchField } from '@/components/ui/search-field'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -19,6 +30,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar'
+import type {
+  DocumentObjectType,
+  ProjectCatalog
+} from '@/types/writer-project-catalog'
+import {
+  DOCUMENT_TYPE_LABELS
+} from '@/types/writer-project-catalog'
+import {
+  WRITER_PROJECT_CATALOG
+} from '@/lib/writer-project-catalog-data'
 import { searchSessions, type SessionInfo, type SessionSearchResult } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { comboTokens } from '@/lib/keybinds/combo'
@@ -41,19 +62,17 @@ import {
   $sidebarProjectsOpen,
   $sidebarRecentsOpen,
   $sidebarSessionOrderIds,
-  $sidebarSessionsOpen,
   $sidebarSessionOrderManual,
+  $sidebarSessionsOpen,
   $sidebarWorkspaceOrderIds,
   $sidebarWorkspaceParentOrderIds,
   pinSession,
   SESSION_SEARCH_FOCUS_EVENT,
   setPinnedSessionOrder,
-  setSidebarAgentsGrouped,
   setSidebarCronOpen,
   setSidebarPinsOpen,
   setSidebarProjectOrderIds,
   setSidebarProjectsOpen,
-  setSidebarRecentsOpen,
   setSidebarSessionOrderIds,
   setSidebarSessionOrderManual,
   setSidebarSessionsOpen,
@@ -76,7 +95,6 @@ import {
   enterProject,
   exitProjectScope,
   fetchProjectSessions,
-  openProjectCreate,
   refreshProjects,
   refreshProjectTree,
   refreshWorktrees,
@@ -99,11 +117,13 @@ import {
   setCurrentCwd
 } from '@/store/session'
 
+import { ProjectWizardOverlay } from '../../projects/project-wizard-overlay'
+import { NewProjectWizard } from '../../projects/new-project-wizard'
 import {
   type AppView,
-  ARTIFACTS_ROUTE,
-  KARNA_AGENTS_ROUTE,
+  KARNA_FLOW_ROUTE,
   KARNA_MCP_ROUTE,
+  KARNA_PLUGINS_ROUTE,
   KARNA_SOUL_ROUTE,
   KARNA_WRITER_ROUTE,
   SETTINGS_ROUTE,
@@ -115,9 +135,7 @@ import { countLabel } from './chrome'
 import { SidebarCronJobsSection } from './cron-jobs-section'
 import { SidebarLoadMoreRow } from './load-more-row'
 import { orderByIds, reconcileOrderIds, resolveManualSessionOrderIds, sameIds } from './order'
-import { ProfileRail } from './profile-switcher'
 import { ProjectDialog } from './project-dialog'
-import { ProjectWizardOverlay } from '../../projects/project-wizard-overlay'
 import {
   liveSessionProjectId,
   overlayLiveLanes,
@@ -153,18 +171,6 @@ const SIDEBAR_NAV: SidebarNavItem[] = [
     action: 'new-session'
   },
   {
-    id: 'skills',
-    label: '技能与工具',
-    icon: props => <Codicon name="symbol-misc" {...props} />,
-    route: SKILLS_ROUTE
-  },
-  {
-    id: 'karna-agents',
-    label: '多 Agent 工坊',
-    icon: props => <Codicon name="type-hierarchy-sub" {...props} />,
-    route: KARNA_AGENTS_ROUTE
-  },
-  {
     id: 'karna-writer',
     label: '作品工坊',
     icon: props => <Codicon name="notebook" {...props} />,
@@ -172,9 +178,21 @@ const SIDEBAR_NAV: SidebarNavItem[] = [
   },
   {
     id: 'karna-soul',
-    label: '灵魂工坊',
+    label: 'Soul 工坊',
     icon: props => <Codicon name="sparkle" {...props} />,
     route: KARNA_SOUL_ROUTE
+  },
+  {
+    id: 'karna-flow',
+    label: '多智能体工坊',
+    icon: props => <Codicon name="type-hierarchy-sub" {...props} />,
+    route: KARNA_FLOW_ROUTE
+  },
+  {
+    id: 'skills',
+    label: '技能与工具工坊',
+    icon: props => <Codicon name="symbol-misc" {...props} />,
+    route: SKILLS_ROUTE
   },
   {
     id: 'karna-mcp',
@@ -182,9 +200,14 @@ const SIDEBAR_NAV: SidebarNavItem[] = [
     icon: props => <Codicon name="plug" {...props} />,
     route: KARNA_MCP_ROUTE
   },
-  { id: 'artifacts', label: '产物', icon: props => <Codicon name="files" {...props} />, route: ARTIFACTS_ROUTE },
-  { id: 'settings', label: '设置', icon: props => <Codicon name="gear" {...props} />, route: SETTINGS_ROUTE }
+  {
+    id: 'karna-plugins',
+    label: '插件平台',
+    icon: props => <Codicon name="extensions" {...props} />,
+    route: KARNA_PLUGINS_ROUTE
+  }
 ]
+
 // Two modes via the `compact` height variant (styles.css):
 //   tall    → each section is shrink-0, capped, its own scroller; Sessions is flex-1.
 //   compact → COMPACT_FLAT drops the caps so the whole stack scrolls as one.
@@ -246,7 +269,7 @@ interface ChatSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onDeleteSession: (sessionId: string) => void
   onArchiveSession: (sessionId: string) => void
   onBranchSession: (sessionId: string) => void
-  onNewSessionInWorkspace: (path: null | string) => void
+  onNewSessionInWorkspace: (path: null | string, opts?: { follow?: boolean }) => void
   onManageCronJob: (jobId: string) => void
   onTriggerCronJob: (jobId: string) => void
 }
@@ -269,6 +292,7 @@ export function ChatSidebar({
   const s = t.sidebar
   const sidebarOpen = useStore($sidebarOpen)
   const [karnaProjectWizardOpen, setKarnaProjectWizardOpen] = useState(false)
+  const [newProjectWizardOpen, setNewProjectWizardOpen] = useState(false)
   // Collapsed-but-overlay-mounted → render the full sidebar, not just the nav rail.
   const overlayMounted = useStore($sidebarOverlayMounted)
   const contentVisible = sidebarOpen || overlayMounted
@@ -328,6 +352,71 @@ export function ChatSidebar({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const trimmedQuery = searchQuery.trim()
 
+  type ProjectFilterType = 'all' | 'domain' | 'docType' | 'legacy'
+  interface ProjectFilter {
+    type: ProjectFilterType
+    value?: string
+  }
+  const [projectFilter, setProjectFilter] = useState<ProjectFilter>({ type: 'all' })
+  const [projectCatalog, setProjectCatalog] = useState<ProjectCatalog | null>(null)
+  const [writerProjectsInfo, setWriterProjectsInfo] = useState<Map<string, any>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadCatalog = async () => {
+      try {
+        const response = await (window as any).karnaDesktop.api({
+          path: '/api/writer/project-catalog',
+          method: 'GET'
+        })
+        if (!cancelled && response?.ok && response.catalog) {
+          setProjectCatalog(response.catalog)
+        }
+      } catch {
+        if (!cancelled) {
+          setProjectCatalog(WRITER_PROJECT_CATALOG)
+        }
+      }
+    }
+
+    void loadCatalog()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadWriterProjects = async () => {
+      try {
+        const response = await (window as any).karnaDesktop.api({
+          path: '/api/writer/projects?includeArchived=1',
+          method: 'GET'
+        })
+        if (!cancelled && response?.projects) {
+          const infoMap = new Map<string, any>()
+          for (const p of response.projects) {
+            infoMap.set(p.id, p)
+            if (p.slug) {
+              infoMap.set(p.slug, p)
+            }
+          }
+          setWriterProjectsInfo(infoMap)
+        }
+      } catch {
+      }
+    }
+
+    void loadWriterProjects()
+
+    return () => {
+      cancelled = true
+    }
+  }, [projectTree])
+
   // Hotkey (session.focusSearch) → focus the field once it's mounted.
   useEffect(() => {
     const onFocus = () => searchInputRef.current?.focus({ preventScroll: true })
@@ -367,10 +456,15 @@ export function ChatSidebar({
   // that profile's sessions (clean rows, no per-row tags); ALL fans every
   // profile in, grouped by profile below. Single-profile users land here with
   // scope === their only profile, so nothing is filtered out.
-  const visibleSessions = useMemo(
-    () => (showAllProfiles ? sessions : sessions.filter(s => normalizeProfileKey(s.profile) === profileScope)),
-    [sessions, showAllProfiles, profileScope]
-  )
+  // Also filter out tombstoned (optimistically deleted) sessions so they don't
+  // reappear in the flat recents/pinned lists after a project delete.
+  const visibleSessions = useMemo(() => {
+    const scoped = showAllProfiles ? sessions : sessions.filter(s => normalizeProfileKey(s.profile) === profileScope)
+
+    if (!removedSessionIds.size) {return scoped}
+
+    return scoped.filter(s => !removedSessionIds.has(s.id) && !(s._lineage_root_id && removedSessionIds.has(s._lineage_root_id)))
+  }, [sessions, showAllProfiles, profileScope, removedSessionIds])
 
   // Agent session order is pinned to creation time (started_at), NOT activity —
   // a new message must never float a session to the top. Position only changes
@@ -613,6 +707,112 @@ export function ChatSidebar({
     return orderByIds(sorted, project => project.id, projectOrderIds)
   }, [showAllProfiles, projectTree, dismissedAutoProjects, orderRepos, activeProjectId, projectOrderIds])
 
+  const getWriterProjectInfo = useCallback((projectId: string): any => {
+    return writerProjectsInfo.get(projectId) || null
+  }, [writerProjectsInfo])
+
+  const isLegacyProject = useCallback((project: SidebarProjectTree): boolean => {
+    const info = getWriterProjectInfo(project.id)
+    if (!info) {return false}
+    return !info.taxonomy || info.taxonomy?.schemaVersion !== 2
+  }, [getWriterProjectInfo])
+
+  const getProjectDomainId = useCallback((project: SidebarProjectTree): string | null => {
+    const info = getWriterProjectInfo(project.id)
+    if (!info?.taxonomy || info.taxonomy.schemaVersion !== 2) {return null}
+    return info.taxonomy.domainId || null
+  }, [getWriterProjectInfo])
+
+  const getProjectDocType = useCallback((project: SidebarProjectTree): DocumentObjectType | null => {
+    const info = getWriterProjectInfo(project.id)
+    if (!info) {return null}
+    if (info.taxonomy?.schemaVersion === 2) {
+      return info.taxonomy.primaryDocumentType || null
+    }
+    const legacyType = info.type
+    const legacyMap: Record<string, DocumentObjectType> = {
+      novel: 'narrative_prose',
+      'web-novel': 'narrative_prose',
+      poetry: 'narrative_prose',
+      screenplay: 'script_dialogue',
+      paper: 'argumentative_document',
+      copywriting: 'marketing_copy',
+      editorial: 'informational_article'
+    }
+    return legacyMap[legacyType] || null
+  }, [getWriterProjectInfo])
+
+  const filteredProjectModel = useMemo<SidebarProjectTree[]>(() => {
+    if (projectFilter.type === 'all') {
+      return projectModel
+    }
+
+    return projectModel.filter(project => {
+      const info = getWriterProjectInfo(project.id)
+      if (!info) {return false}
+
+      if (projectFilter.type === 'legacy') {
+        return isLegacyProject(project)
+      }
+
+      if (projectFilter.type === 'domain') {
+        const domainId = getProjectDomainId(project)
+        return domainId === projectFilter.value
+      }
+
+      if (projectFilter.type === 'docType') {
+        const docType = getProjectDocType(project)
+        return docType === projectFilter.value
+      }
+
+      return true
+    })
+  }, [projectModel, projectFilter, getWriterProjectInfo, isLegacyProject, getProjectDomainId, getProjectDocType])
+
+  const projectCategoryMap = useMemo<Map<string, { categoryLabel?: string; categorySubLabel?: string; isLegacy?: boolean }>>(() => {
+    const map = new Map<string, { categoryLabel?: string; categorySubLabel?: string; isLegacy?: boolean }>()
+
+    for (const project of projectModel) {
+      const info = getWriterProjectInfo(project.id)
+      if (!info) {continue}
+
+      const legacy = isLegacyProject(project)
+
+      if (legacy) {
+        const legacyTypeLabels: Record<string, string> = {
+          novel: '长篇小说',
+          'web-novel': '网络小说',
+          poetry: '诗歌',
+          screenplay: '剧本',
+          paper: '论文',
+          copywriting: '文案',
+          editorial: '编辑'
+        }
+        map.set(project.id, {
+          categoryLabel: legacyTypeLabels[info.type] || info.type || '未分类',
+          isLegacy: true
+        })
+      } else {
+        const formId = info.taxonomy?.formId
+        const docType = getProjectDocType(project)
+        let formLabel = formId
+        if (projectCatalog) {
+          const form = projectCatalog.forms.find(f => f.id === formId)
+          if (form) {
+            formLabel = form.label
+          }
+        }
+        map.set(project.id, {
+          categoryLabel: formLabel,
+          categorySubLabel: docType ? DOCUMENT_TYPE_LABELS[docType] : undefined,
+          isLegacy: false
+        })
+      }
+    }
+
+    return map
+  }, [projectModel, getWriterProjectInfo, isLegacyProject, getProjectDocType, projectCatalog])
+
   // The overview only renders in grouped mode; the model stays live regardless
   // so scoping is consistent across views.
   const agentProjectTree = worktreeGroupingActive ? projectModel : undefined
@@ -767,6 +967,13 @@ export function ChatSidebar({
 
   // The project overview (drill-in list) vs. the entered project's content.
   const projectOverview = projectsActive && !inProject ? agentProjectTree : undefined
+
+  // Filtered project overview for display
+  const filteredProjectOverview = useMemo(() => {
+    if (!projectOverview) {return undefined}
+    if (projectFilter.type === 'all') {return projectOverview}
+    return filteredProjectModel
+  }, [projectOverview, projectFilter.type, filteredProjectModel])
 
   // Preview rows come from the backend tree (each project carries its
   // most-recent sessions), overlaid with live $sessions so a just-created
@@ -966,7 +1173,7 @@ export function ChatSidebar({
 
   const hasMoreSessions = knownSessionTotal > loadedSessionCount
 
-  const recentsMeta = countLabel(standaloneAgentSessions.length, knownSessionTotal)
+  const recentsMeta = standaloneAgentSessions.length > 0 ? String(standaloneAgentSessions.length) : null
   const displayRecentsCountRef = useRef(0)
   const loadedRecentsCountRef = useRef(0)
   displayRecentsCountRef.current = standaloneAgentSessions.length
@@ -1105,11 +1312,11 @@ export function ChatSidebar({
 
                 const active =
                   (item.id === 'skills' && currentView === 'skills') ||
-                  (item.id === 'karna-agents' && currentView === 'karna-agents') ||
+                  (item.id === 'karna-flow' && currentView === 'karna-flow') ||
                   (item.id === 'karna-writer' && currentView === 'karna-writer') ||
                   (item.id === 'karna-soul' && currentView === 'karna-soul') ||
                   (item.id === 'karna-mcp' && currentView === 'karna-mcp') ||
-                  (item.id === 'artifacts' && currentView === 'artifacts') ||
+                  (item.id === 'karna-plugins' && currentView === 'karna-plugins') ||
                   (item.id === 'settings' && currentView === 'settings')
 
                 const isNewSession = item.id === 'new-session'
@@ -1142,7 +1349,7 @@ export function ChatSidebar({
                         }
 
                         if (item.action === 'new-project') {
-                          setKarnaProjectWizardOpen(true)
+                          setNewProjectWizardOpen(true)
                         } else {
                           onNavigate(item)
                         }
@@ -1369,12 +1576,106 @@ export function ChatSidebar({
                     </div>
                   ) : !showAllProfiles ? (
                     <div className="flex shrink-0 items-center gap-0.5">
+                      {projectOverview && projectOverview.length > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              aria-label="筛选项目"
+                              className={HEADER_ACTION_BTN}
+                              size="icon-xs"
+                              variant="ghost"
+                            >
+                              <Codicon name="filter" size="0.75rem" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>筛选项目</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() => setProjectFilter({ type: 'all' })}
+                            >
+                              <Codicon name="list-unordered" size="0.875rem" />
+                              <span>全部项目</span>
+                              {projectFilter.type === 'all' && <Codicon name="check" size="0.875rem" className="ml-auto" />}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <Codicon name="tag" size="0.875rem" />
+                                <span>按领域筛选</span>
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="w-52">
+                                {projectCatalog?.domains.map(domain => (
+                                  <DropdownMenuItem
+                                    key={domain.id}
+                                    onSelect={() => setProjectFilter({ type: 'domain', value: domain.id })}
+                                  >
+                                    <span>{domain.label}</span>
+                                    {projectFilter.type === 'domain' && projectFilter.value === domain.id && (
+                                      <Codicon name="check" size="0.875rem" className="ml-auto" />
+                                    )}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <Codicon name="file-code" size="0.875rem" />
+                                <span>按底层类型筛选</span>
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="w-52">
+                                <div className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.08em] text-muted-foreground/70">
+                                  交付型
+                                </div>
+                                {(['narrative_prose', 'script_dialogue', 'interactive_narrative', 'marketing_copy', 'informational_article', 'argumentative_document', 'structured_business_doc', 'regulated_document', 'technical_document', 'knowledge_asset'] as const).map(docType => (
+                                  <DropdownMenuItem
+                                    key={docType}
+                                    onSelect={() => setProjectFilter({ type: 'docType', value: docType })}
+                                  >
+                                    <span>{DOCUMENT_TYPE_LABELS[docType]}</span>
+                                    {projectFilter.type === 'docType' && projectFilter.value === docType && (
+                                      <Codicon name="check" size="0.875rem" className="ml-auto" />
+                                    )}
+                                  </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <div className="px-2 py-1.5 text-[0.65rem] font-medium uppercase tracking-[0.08em] text-muted-foreground/70">
+                                  过程型
+                                </div>
+                                {(['outline', 'research_material', 'review_feedback', 'revision_artifact'] as const).map(docType => (
+                                  <DropdownMenuItem
+                                    key={docType}
+                                    onSelect={() => setProjectFilter({ type: 'docType', value: docType })}
+                                  >
+                                    <span>{DOCUMENT_TYPE_LABELS[docType]}</span>
+                                    {projectFilter.type === 'docType' && projectFilter.value === docType && (
+                                      <Codicon name="check" size="0.875rem" className="ml-auto" />
+                                    )}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() => setProjectFilter({ type: 'legacy' })}
+                            >
+                              <Codicon name="history" size="0.875rem" />
+                              <span>仅显示旧版项目</span>
+                              {projectFilter.type === 'legacy' && <Codicon name="check" size="0.875rem" className="ml-auto" />}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                       <Button
                         aria-label={s.projects.newButton}
                         className={HEADER_ACTION_BTN}
                         onClick={event => {
                           event.stopPropagation()
-                          openProjectCreate()
+                          if (event.shiftKey) {
+                            setKarnaProjectWizardOpen(true)
+                          } else {
+                            setNewProjectWizardOpen(true)
+                          }
                         }}
                         size="icon-xs"
                         variant="ghost"
@@ -1406,19 +1707,14 @@ export function ChatSidebar({
                   inProject ? <ProjectBackRow label={s.projects.back} onClick={exitProjectScope} /> : undefined
                 }
                 projectContent={inProject ? enteredProjectContent : undefined}
-                projectOverview={projectOverview}
+                projectOverview={filteredProjectOverview}
                 projectOverviewPreviews={overviewPreviews}
+                projectCategoryMap={projectCategoryMap}
                 projectRepoWorktrees={inProject ? scopedRepoWorktrees : undefined}
                 projectsLoading={worktreeGroupingActive ? projectTreeLoading : false}
                 removedSessionIds={inProject ? removedSessionIds : undefined}
                 rootClassName="min-h-32 flex-1 overflow-hidden p-0"
-                sortable={!showAllProfiles && agentSessions.length > 1}
-                workingSessionIdSet={workingSessionIdSet}
-              />
-            )}
-                  !recentsVirtualizes && 'compact:min-h-0 compact:flex-none compact:overflow-visible'
-                )}
-                sessions={displayAgentSessions}
+                sessions={[]}
                 sortable={!showAllProfiles && agentSessions.length > 1}
                 workingSessionIdSet={workingSessionIdSet}
               />
@@ -1485,13 +1781,8 @@ export function ChatSidebar({
           </div>
         )}
 
-        {contentVisible && !showSessionSections && <SidebarBlankState onNewProject={openProjectCreate} />}
+        {contentVisible && !showSessionSections && <SidebarBlankState onNewProject={() => setNewProjectWizardOpen(true)} />}
 
-        {contentVisible && (
-          <div className="shrink-0 px-0.5 pb-1 pt-0.5">
-            <ProfileRail />
-          </div>
-        )}
       </SidebarContent>
       <ProjectDialog />
       <ProjectWizardOverlay
@@ -1501,6 +1792,14 @@ export function ChatSidebar({
           void refreshProjects()
         }}
         open={karnaProjectWizardOpen}
+      />
+      <NewProjectWizard
+        onClose={() => setNewProjectWizardOpen(false)}
+        onCreated={() => {
+          setNewProjectWizardOpen(false)
+          void refreshProjects()
+        }}
+        open={newProjectWizardOpen}
       />
     </Sidebar>
   )

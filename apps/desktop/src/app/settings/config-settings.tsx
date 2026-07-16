@@ -2,6 +2,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -14,6 +15,7 @@ import {
   saveHermesConfig
 } from '@/hermes'
 import { useI18n } from '@/i18n'
+import { FolderOpen } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { notify, notifyError } from '@/store/notifications'
 import type { ConfigFieldSchema, HermesConfigRecord } from '@/types/hermes'
@@ -23,6 +25,7 @@ import { fieldCopyForSchemaKey } from './field-copy'
 import { enumOptionsFor, getNested, prettyName, setNested } from './helpers'
 import { MemoryConnect } from './memory/connect'
 import { ModelSettings } from './model-settings'
+import { DesktopSettings } from './desktop-settings'
 import { EmptyState, ListRow, LoadingState, SettingsContent } from './primitives'
 import { ProviderConfigPanel } from './provider-config-panel'
 
@@ -53,7 +56,8 @@ function ConfigField({
   enumOptions,
   optionLabels,
   onChange,
-  descriptionExtra
+  descriptionExtra,
+  actionExtra
 }: {
   schemaKey: string
   schema: ConfigFieldSchema
@@ -62,6 +66,7 @@ function ConfigField({
   optionLabels?: Record<string, string>
   onChange: (value: unknown) => void
   descriptionExtra?: ReactNode
+  actionExtra?: ReactNode
 }) {
   const { t } = useI18n()
   const c = t.settings.config
@@ -97,7 +102,12 @@ function ConfigField({
   )
 
   const row = (action: ReactNode, wide = false) => (
-    <ListRow action={action} description={descriptionNode} title={label} wide={wide} />
+    <ListRow
+      action={actionExtra ? <div className="flex items-center justify-end gap-2">{action}{actionExtra}</div> : action}
+      description={descriptionNode}
+      title={label}
+      wide={wide}
+    />
   )
 
   if (schema.type === 'boolean') {
@@ -124,9 +134,7 @@ function ConfigField({
             <SelectItem key={option || EMPTY_SELECT_VALUE} value={option || EMPTY_SELECT_VALUE}>
               {option
                 ? (optionLabels?.[option] ?? prettyName(option))
-                : schemaKey === 'display.personality'
-                  ? c.none
-                  : c.noneParen}
+                : (optionLabels?.[''] ?? (schemaKey === 'display.personality' ? c.none : c.noneParen))}
             </SelectItem>
           ))}
         </SelectContent>
@@ -379,9 +387,65 @@ export function ConfigSettings({
   }
 
   const visibleFields = activeSectionId === 'voice' ? fields.filter(([key]) => voiceFieldVisible(key, config)) : fields
+  const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai'
+  const isChinese = t.settings.nav.about === '关于'
+  const timezoneOptions = [...new Set(['', detectedTimezone, 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Tokyo', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'UTC'])]
+  const chineseOptionLabels: Record<string, Record<string, string>> = {
+    timezone: {
+      '': `跟随系统（当前 ${detectedTimezone}）`,
+      'Asia/Shanghai': '中国大陆（北京时间）',
+      'Asia/Hong_Kong': '中国香港',
+      'Asia/Tokyo': '日本东京',
+      'Europe/London': '英国伦敦',
+      'America/New_York': '美国纽约',
+      'America/Los_Angeles': '美国洛杉矶',
+      UTC: 'UTC 协调世界时'
+    },
+    'approvals.mode': {
+      manual: '每次询问（推荐）',
+      smart: '低风险自动允许',
+      off: '不询问（高风险）'
+    },
+    'agent.image_input_mode': { auto: '自动判断', native: '原图发送', text: '仅发送提取文本' },
+    'code_execution.mode': { project: '仅当前项目', strict: '严格沙箱' },
+    'context.engine': { compressor: '自动压缩', default: '默认策略', custom: '自定义策略' },
+    'terminal.backend': { local: '本机', docker: 'Docker', singularity: 'Singularity', modal: 'Modal 云端', daytona: 'Daytona', ssh: 'SSH 远程' }
+  }
+  const sectionGuidance: Record<string, string> = {
+    model: '通常只需要在上方选择主模型。上下文窗口保持 0 即可自动匹配模型；只有模型平台报告错误时才手动填写。',
+    workspace: '工作目录决定独立对话和终端默认从哪里开始，不会搬动已有项目。时区建议跟随系统。',
+    safety: '推荐保留“每次询问”、隐去密钥和文件检查点。只有明确了解风险时才降低审批或开放内网访问。',
+    chat: '这里控制对话显示、图片发送和代码执行范围。拿不准时保留“自动判断”和“仅当前项目”。',
+    advanced: '高级配置会影响运行时、压缩、记忆、语音和子智能体。不了解某项含义时请保持默认值。'
+  }
+  const englishSectionGuidance: Record<string, string> = {
+    model: 'Normally you only need to choose the main model above. Keep Context Window at 0 for automatic detection.',
+    workspace: 'The working directory is the default for standalone chats and terminals; it does not move existing projects. Following the system timezone is recommended.',
+    safety: 'Keep manual approval, secret redaction, and file checkpoints enabled unless you understand the risks.',
+    chat: 'Controls conversation display, image handling, and code-execution scope. The automatic and project-only defaults are recommended.',
+    advanced: 'Advanced values affect runtime, compression, memory, voice, and child agents. Keep defaults when unsure.'
+  }
+  const activeGuidance = (isChinese ? sectionGuidance : englishSectionGuidance)[activeSectionId]
+
+  const chooseWorkingDirectory = async () => {
+    const settings = window.hermesDesktop?.settings
+    if (!settings) return
+    try {
+      const result = await settings.pickDefaultProjectDir()
+      if (!result.canceled && result.dir) updateConfig(setNested(config, 'terminal.cwd', result.dir))
+    } catch (error) {
+      notifyError(error, isChinese ? '无法选择工作目录' : 'Could not choose the working directory')
+    }
+  }
 
   return (
     <SettingsContent>
+      {activeGuidance ? (
+        <div className="mb-4 rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-bg-tertiary) px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {activeGuidance}
+        </div>
+      ) : null}
+      {activeSectionId === 'workspace' ? <DesktopSettings chinese={isChinese} /> : null}
       {activeSectionId === 'model' && (
         <div className="mb-6">
           <ModelSettings onMainModelChanged={onMainModelChanged} />
@@ -394,18 +458,25 @@ export function ConfigSettings({
           {visibleFields.map(([key, field]) => (
             <div className="scroll-mt-6 rounded-lg" id={`setting-field-${key}`} key={key}>
               <ConfigField
+                actionExtra={key === 'terminal.cwd' ? (
+                  <Button onClick={() => void chooseWorkingDirectory()} size="sm" type="button" variant="outline">
+                    <FolderOpen className="size-3.5" />{isChinese ? '选择文件夹' : 'Choose folder'}
+                  </Button>
+                ) : undefined}
                 descriptionExtra={
                   key === 'memory.provider' && Boolean(getNested(config, key)) ? (
                     <MemoryConnect provider={String(getNested(config, key))} />
                   ) : undefined
                 }
                 enumOptions={
-                  key === 'tts.elevenlabs.voice_id'
+                  key === 'timezone'
+                    ? timezoneOptions
+                    : key === 'tts.elevenlabs.voice_id'
                     ? enumOptionsFor(key, getNested(config, key), config, elevenLabsVoiceOptions ?? undefined)
                     : enumOptionsFor(key, getNested(config, key), config)
                 }
                 onChange={value => updateConfig(setNested(config, key, value))}
-                optionLabels={key === 'tts.elevenlabs.voice_id' ? elevenLabsVoiceLabels : undefined}
+                optionLabels={key === 'tts.elevenlabs.voice_id' ? elevenLabsVoiceLabels : (isChinese ? chineseOptionLabels[key] : undefined)}
                 schema={field}
                 schemaKey={key}
                 value={getNested(config, key)}

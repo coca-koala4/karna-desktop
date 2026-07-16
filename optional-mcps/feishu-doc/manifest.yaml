@@ -1,0 +1,35 @@
+manifest_version: 2
+name: feishu-doc
+description: 飞书的MCP服务器，支持文档管理等功能
+source: https://www.mcp-cn.com/server/106
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - feishu-mcp
+auth:
+  type: api_key
+  env:
+  - name: FEISHU_DOC_API_KEY
+    prompt: feishu-doc API Key
+    required: true
+    secret: true
+post_install: 'feishu-doc MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: feishu-doc
+version: unresolved
+dependencies:
+  runtime: npm
+  package: feishu-mcp
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

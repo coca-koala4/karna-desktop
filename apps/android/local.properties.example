@@ -1,0 +1,12 @@
+# Android SDK Location
+# sdk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk
+
+# Release Keystore Configuration (Optional)
+# 可以通过环境变量或此文件配置 release 签名
+# 请勿将真实的 keystore 密码提交到代码库！
+# 环境变量优先：KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+
+# KEYSTORE_FILE=C:\\path\\to\\your\\release.keystore
+# KEYSTORE_PASSWORD=your_keystore_password
+# KEY_ALIAS=your_key_alias
+# KEY_PASSWORD=your_key_password

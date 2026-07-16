@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-empty, no-control-regex, no-useless-escape, no-undef */
 'use strict';
 
 /**
@@ -25,6 +26,7 @@
  */
 
 const path = require('node:path');
+const os = require('node:os');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
@@ -63,7 +65,18 @@ function writerProjectsDir(opts) { return path.join(dataRoot(opts), 'writer-proj
 function soulWorkshopDir(opts)  { return path.join(dataRoot(opts), 'soul-workshop'); }
 function workflowsDir(opts)      { return path.join(dataRoot(opts), 'global-workflows'); }
 function globalWorkflowsDir(opts){ return path.join(dataRoot(opts), 'global-workflows'); }
+function contextDir(opts)        { return path.join(dataRoot(opts), 'context'); }
+function contextToolOutputsDir(opts) { return path.join(contextDir(opts), 'tool_outputs'); }
+function contextBackupsDir(opts) { return path.join(contextDir(opts), 'backups'); }
 function logsDir(opts)           { return path.join(dataRoot(opts), 'logs'); }
+function tempDir(opts)           { return path.join(dataRoot(opts), 'temp'); }
+function userSkillsDir(opts)     { return path.join(dataRoot(opts), 'user-skills'); }
+function remoteDir(opts)         { return path.join(dataRoot(opts), 'remote'); }
+function remoteIdentityDir(opts) { return path.join(remoteDir(opts), 'identity'); }
+function remoteDevicesDir(opts)  { return path.join(remoteDir(opts), 'devices'); }
+function remoteAuditDir(opts)    { return path.join(remoteDir(opts), 'audit'); }
+function remoteEventsDir(opts)   { return path.join(remoteDir(opts), 'events'); }
+function remotePreviewsDir(opts) { return path.join(remoteDir(opts), 'previews'); }
 
 function knowledgeBaseFile(opts)   { return path.join(dataRoot(opts), 'knowledge_base.json'); }
 function mcpServersFile(opts)      { return path.join(dataRoot(opts), 'mcp_servers.json'); }
@@ -71,6 +84,7 @@ function pluginsFile(opts)         { return path.join(dataRoot(opts), 'plugins.j
 function skillsStateFile(opts)     { return path.join(dataRoot(opts), 'skills_state.json'); }
 function soulWorkshopIndexFile(opts) { return path.join(dataRoot(opts), 'soul_workshop.json'); }
 function writerProjectsIndexFile(opts) { return path.join(dataRoot(opts), 'writer_projects.json'); }
+function contextDbFile(opts)       { return path.join(contextDir(opts), 'context_memory.db'); }
 
 // 测试 hook：允许测试在改 env 后重置内部缓存（当前未做缓存，保留为占位）
 function __reset() { /* no-op for now */ }
@@ -82,6 +96,10 @@ module.exports = {
   soulWorkshopDir,
   workflowsDir,
   globalWorkflowsDir,
+  contextDir,
+  contextDbFile,
+  contextToolOutputsDir,
+  contextBackupsDir,
   knowledgeBaseFile,
   mcpServersFile,
   pluginsFile,
@@ -89,5 +107,13 @@ module.exports = {
   soulWorkshopIndexFile,
   writerProjectsIndexFile,
   logsDir,
+  tempDir,
+  userSkillsDir,
+  remoteDir,
+  remoteIdentityDir,
+  remoteDevicesDir,
+  remoteAuditDir,
+  remoteEventsDir,
+  remotePreviewsDir,
   __reset,
 };

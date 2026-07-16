@@ -22,8 +22,10 @@
 const path = require('node:path')
 
 const { stampExeIdentity } = require('./set-exe-identity.cjs')
+const { verifyUnpacked } = require('./verify-release-contents.cjs')
 
 exports.default = async function afterPack(context) {
+  verifyUnpacked(context.appOutDir)
   if (context.electronPlatformName !== 'win32') {
     return
   }

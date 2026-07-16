@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "karna.chrome",
+  "name": "Chrome",
+  "version": "1.0.0",
+  "publisher": {
+    "id": "karna",
+    "name": "Karna"
+  },
+  "description": "Browse the web with isolated Playwright mode or connect to real Chrome with login sessions",
+  "license": {
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "interface": {
+    "category": "browser-automation",
+    "icon": "assets/icon.png",
+    "capabilities": ["read", "interactive"]
+  },
+  "compatibility": {
+    "karna": ">=0.18.0",
+    "platforms": ["win32-x64"]
+  },
+  "entrypoints": {
+    "skills": ["skills/"],
+    "mcp": []
+  },
+  "permissions": [
+    "browser:isolated",
+    "browser:login-session",
+    "network:request"
+  ],
+  "dependencies": {},
+  "health_check": {
+    "type": "browser",
+    "command": "browser-doctor"
+  }
+}

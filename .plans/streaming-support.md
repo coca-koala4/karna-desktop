@@ -1,3 +1,7 @@
+# Historical upstream plan - not the current Karna implementation
+
+> **Status (2026-07-11): historical / partially superseded.** This document describes the former Hermes Agent proposal and may use obsolete routes, configuration names, and architecture assumptions. For the current desktop implementation, use `docs/architecture/desktop-runtime.md` and the Electron adapter contracts. Retain this file only as upstream design context; do not implement it verbatim without a Karna-specific review.
+
 # Streaming LLM Response Support for Hermes Agent
 
 ## Overview

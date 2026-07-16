@@ -1,75 +1,531 @@
-﻿{"personality":"helpful","headline":"Ready when you are","body":"Ask me to open a repo, run tests, fix a bug, or draft a PR. I'll walk through the steps with you."}
-{"personality":"helpful","headline":"How can I help today?","body":"Point me at a file, paste an error, or describe what you're building. I'll take it from there."}
-{"personality":"helpful","headline":"Let's get started","body":"Try: review my diff, run the test suite, or explain this function. Ask anything about your code."}
-{"personality":"helpful","headline":"Tell me what you need","body":"I can edit files, run commands, search the web, and walk you through tricky bugs. Just describe the task."}
-{"personality":"helpful","headline":"Hi, Hermes here","body":"Share a repo path or a question to start. I keep replies clear and link back to the files I touch."}
-{"personality":"concise","headline":"Ready.","body":"Describe the task. I'll do it."}
-{"personality":"concise","headline":"Waiting for input","body":"Paste code, errors, or a goal. Short answers, fast edits."}
-{"personality":"concise","headline":"Go.","body":"Ask. I'll read files, run tests, ship patches. No filler."}
-{"personality":"concise","headline":"Standing by","body":"One line is enough. I'll expand only when it matters."}
-{"personality":"concise","headline":"Your move","body":"Command, question, or file path. I handle the rest."}
-{"personality":"technical","headline":"Shell mounted. Awaiting input.","body":"Provide repo path, failing test, or stack trace. Tools: fs, git, exec, search, patch, http."}
-{"personality":"technical","headline":"Agent loop idle","body":"Send a prompt to trigger tool calls. Supports multi-file edits, test runs, git ops, and web fetches."}
-{"personality":"technical","headline":"Ready for dispatch","body":"Enter task. I will plan, call tools, verify output. Logs stream inline; diffs returned pre-apply."}
-{"personality":"technical","headline":"Stdin open","body":"Accepts natural language or structured commands. Typical flow: read -> plan -> patch -> test -> report."}
-{"personality":"technical","headline":"Tools initialized","body":"filesystem, terminal, git, browser, search. Describe the change; I return diffs and test output."}
-{"personality":"creative","headline":"A blank repo, a waiting cursor","body":"What shall we build? Paste an idea, a half-broken function, or a dream. I'll sketch it into shape."}
-{"personality":"creative","headline":"Fresh canvas, warm compiler","body":"Give me a spark - a feature, a refactor, a wild prototype - and I'll turn it into code you can run."}
-{"personality":"creative","headline":"Let's make something","body":"Describe the thing that doesn't exist yet. I'll pull tests, files, and APIs into a working draft."}
-{"personality":"creative","headline":"New file, new possibilities","body":"Bring an intent, not a spec. We can prototype fast, refine later, and rewrite the world in the margins."}
-{"personality":"creative","headline":"Karna is patched in","body":"Tell me what you're chasing. I'll remix examples, adapt snippets, and leave a tidy commit behind."}
-{"personality":"teacher","headline":"Class is in session","body":"Ask about any file, concept, or error. I'll explain the why, not just the fix, and show a worked example."}
-{"personality":"teacher","headline":"What shall we learn today?","body":"Paste code to review, a bug to debug, or a concept to unpack. I'll guide you step by step."}
-{"personality":"teacher","headline":"Ready to walk you through it","body":"Share the problem. I'll break it into parts, explain each, and leave you able to solve the next one alone."}
-{"personality":"teacher","headline":"Bring me a question","body":"We'll read the code together, find the root cause, and build a mental model you can reuse next time."}
-{"personality":"teacher","headline":"Let's start with the basics","body":"Name the topic or paste the snippet. Expect explanations, diagrams in prose, and practice prompts."}
-{"personality":"kawaii","headline":"hiii! ready to help! (^_^)","body":"paste a bug or a file path and i'll fix it super gently. tests, diffs, PRs - all with extra care! *sparkle*"}
-{"personality":"kawaii","headline":"hermes-chan is here! <3","body":"tell me what you're making! i love refactors, tiny helpers, and big scary repos alike (>w<)"}
-{"personality":"kawaii","headline":"let's code together!! :3","body":"drop an error, a goal, or a whole folder. i'll tidy it up with lots of love and a clean commit message!"}
-{"personality":"kawaii","headline":"awaiting your wish~","body":"one task at a time, done neatly! i can run tests, patch files, and make your repo feel cozy again <3"}
-{"personality":"kawaii","headline":"ready and happy! (>.<)","body":"say hi or paste a stack trace! no task too small, no repo too tangled. we'll untangle it together!"}
-{"personality":"catgirl","headline":"nya~ what are we hacking on?","body":"paste a file, paw at a bug, or toss me a repo. i'll pounce on failing tests and leave clean diffs, nyan~"}
-{"personality":"catgirl","headline":"*stretches* ready to code, nya","body":"describe the task. i'll patch, test, and purr over your PR. careful - i nip at unused imports!"}
-{"personality":"catgirl","headline":"mrrp! new session opened","body":"give me a goal and i'll chase it through the codebase. reads, edits, runs - all with a twitchy tail."}
-{"personality":"catgirl","headline":"tail up, claws sheathed","body":"paste an error or a plan. i debug like i hunt: quietly, thoroughly, with the occasional zoomie."}
-{"personality":"catgirl","headline":"nyaaa~ hermes reporting","body":"say the word and i'll read your files, run your tests, and curl up in your branch with a tidy commit."}
-{"personality":"pirate","headline":"Ahoy! Ready to sail the repo","body":"Name yer quarry - a bug, a feature, a cursed test - and I'll chase it down, matey. Diffs for plunder."}
-{"personality":"pirate","headline":"Hermes at the helm, arrr","body":"Point me at the charts (the code) and I'll patch the hull, fire the cannons (tests), hoist a clean PR."}
-{"personality":"pirate","headline":"What be the task, cap'n?","body":"Paste an error or a plan, ye scurvy dog. I'll navigate the stack trace and bring back treasure: green tests."}
-{"personality":"pirate","headline":"Anchors aweigh, keyboard ready","body":"Tell me where X marks the spot. I read, edit, and commit with the discipline of a proper crew, arrr."}
-{"personality":"pirate","headline":"Yo ho! Awaitin' orders","body":"Throw me a bug, a repo path, or a wild idea. I'll plunder the docs and return with workin' code."}
-{"personality":"shakespeare","headline":"Pray, what task dost thou bring?","body":"Speak thy bug, thy file, thy weary test, and I shall mend it with a scholar's hand and honest diff."}
-{"personality":"shakespeare","headline":"Hark! Hermes standeth ready","body":"Name the code that vexeth thee. I shall read, revise, and render a patch most fair and clean."}
-{"personality":"shakespeare","headline":"What news from thy repository?","body":"Present thy stack trace or thy dream. I'll traverse files, run tests, and report in plainest verse."}
-{"personality":"shakespeare","headline":"The stage is set, the cursor blinks","body":"Describe thy aim, good sir or madam. Thy branches shall be trimmed, thy bugs cast from the realm."}
-{"personality":"shakespeare","headline":"Speak, and I shall act","body":"A line of intent sufficeth. I read, I edit, I commit - and leave thy history unblemished."}
-{"personality":"surfer","headline":"Yo dude, what's the task?","body":"Drop a file, a bug, a gnarly stack trace - I'll ride it out. Clean diffs, green tests, no wipeouts."}
-{"personality":"surfer","headline":"Waves lookin' clean, ready to code","body":"Paste your repo path or the bug that's bumming you out. We'll paddle in, fix it, paddle out. Easy."}
-{"personality":"surfer","headline":"Hangin' ten at the prompt","body":"Tell me the vibe: feature, refactor, hotfix. I'll run tests, ship the patch, and keep it mellow, brah."}
-{"personality":"surfer","headline":"Stoked to help, bro","body":"Big bug? Little typo? Whole rewrite? Just point. I handle the code; you chill with the rad commits."}
-{"personality":"surfer","headline":"Tide's up, cursor's blinking","body":"Name the task and we're off. I read, edit, test, and leave a commit smoother than a dawn patrol."}
-{"personality":"noir","headline":"Another repo, another rainy night","body":"Tell me what's broken. I'll read the files, dust for prints, and leave a diff on the desk by morning."}
-{"personality":"noir","headline":"The cursor blinks. So do I.","body":"You've got a bug. I've got patience and a terminal. Name the case and I'll work it till it talks."}
-{"personality":"noir","headline":"Hermes. Code investigator.","body":"Paste the stack trace, the suspect file, the alibi. I read between the lines and return with the truth."}
-{"personality":"noir","headline":"Quiet night, open prompt","body":"Every bug leaves a trail. Give me the repo and a lead - I'll follow it, patch it, and close the file."}
-{"personality":"noir","headline":"No case too small","body":"A typo, a segfault, a whole rotten architecture - hand me the keys. I'll bring back clean tests."}
-{"personality":"uwu","headline":"uwu ready to hewp!","body":"paste a buggy fiwe or a goaw~ i'll wead, patch, and test, aww with tiny pawprints on the diff owo"}
-{"personality":"uwu","headline":"hermes-san is wistening","body":"teww me the task, no matter how smoww~ i pwomise cwean commits and gentwe refactors, nyuu~"}
-{"personality":"uwu","headline":"*tiny keyboard sounds*","body":"dwop yur ewwor message hewe! i'll find the cuwpwit, fix it, and weave a happy test suite behind me owo"}
-{"personality":"uwu","headline":"wet's fix things togedda!","body":"give me a wepo path ow a buggo and i'll take cawe of it uwu. gwr at bad code, kind to yu~"}
-{"personality":"uwu","headline":"awaiting yur command!","body":"i can wun tests, edit fiwes, and open pwease-wook PRs. just say da wowd, fwend uwu"}
-{"personality":"philosopher","headline":"To code is to inquire. Ask.","body":"What problem sits before you? Describe it, and we shall examine its form, its cause, and its solution."}
-{"personality":"philosopher","headline":"A blinking cursor, an open mind","body":"Every bug is a question in disguise. Share yours; I'll read, reason, and return an answer - and a patch."}
-{"personality":"philosopher","headline":"Begin with a single question","body":"What do you wish to build, or to understand? I'll reason from first principles, edit, and verify with tests."}
-{"personality":"philosopher","headline":"Consider the code, then speak","body":"Describe the end you seek. I pursue it through files, tests, and docs, and report what I found on the way."}
-{"personality":"philosopher","headline":"The unexamined repo is not worth running","body":"Share a path, a puzzle, or a principle. I'll trace the logic, propose a change, and justify each edit."}
-{"personality":"hype","headline":"LET'S GOOOO! READY TO SHIP!","body":"Paste that bug, that repo, that wild feature idea - I AM LOCKED IN. Clean diffs. Green tests. RIGHT NOW."}
-{"personality":"hype","headline":"HERMES ONLINE. LFG.","body":"Drop your task and watch me cook. Files read, tests run, PRs opened - we are NOT losing today, friend."}
-{"personality":"hype","headline":"New session, infinite W's","body":"Bring the gnarliest bug you've got. I'll read, patch, test, commit like my life depends on it. LET'S GO."}
-{"personality":"hype","headline":"ABSOLUTELY DIALED IN","body":"Describe the task. I'll blitz through files, crush failing tests, and leave a commit that SLAPS. Go go go."}
-{"personality":"hype","headline":"Ready. So ready. Too ready.","body":"Tiny typo or huge refactor - doesn't matter. I'm shipping clean code today. Name the task and let's WORK."}
-{"personality":"none","headline":"Hermes Agent is ready.","body":"Ask a question, paste an error, or point me at a repo. I can read code, run tools, and help you ship."}
-{"personality":"none","headline":"What are we building today?","body":"Describe the task in your own words. I'll pick the right tools, explain my plan, and check in before risky steps."}
-{"personality":"none","headline":"Start anywhere.","body":"Drop a file path, a traceback, or a rough idea. I'll investigate, suggest next steps, and keep things reversible."}
-{"personality":"none","headline":"Your workspace, one prompt away.","body":"Search the repo, edit files, run tests, open PRs. Tell me the goal and I'll handle the mechanical parts."}
-{"personality":"none","headline":"Ready when you are.","body":"Type a task, question, or snippet. I remember the session, cite my sources, and stop to ask when I'm unsure."}
+{"personality":"none","headline":"欢迎来到Karna","body":"这里是专为写作者打造的AI工作站，从灵感到成稿全程陪伴，让你的文字更有力量。"}
+{"personality":"none","headline":"开始你的创作","body":"新建一个项目，选择你熟悉的写作类型，Karna会为你准备好合适的工具和工作流。"}
+{"personality":"none","headline":"本地优先写作","body":"你的原稿默认存在本地，不会自动上传云端，写得安心，存得放心。"}
+{"personality":"none","headline":"离线也能写","body":"本地哈希向量加本地降级草稿，断网也不影响创作灵感，随时都能写。"}
+{"personality":"none","headline":"认识Karna","body":"Soul工坊蒸馏叙事方法，作品工坊管理全流程，多智能体画布编排你的AI流水线。"}
+{"personality":"none","headline":"选对写作类型","body":"Karna覆盖十大写作领域、三十三种写作形式、五十二种文档预设，总有适合你的。"}
+{"personality":"none","headline":"你的数据你做主","body":"项目之间数据隔离，项目A读不到项目B的内容，原稿永不自动覆盖。"}
+{"personality":"none","headline":"先试试Soul工坊","body":"上传你喜欢的作品，蒸馏出叙事方法、意象和节奏，迁移结构感而不复制句式。"}
+{"personality":"none","headline":"安全护盾守护","body":"Soul安全护盾内置DO_NOT_COPY清单，学习方法论，绝不抄袭原句。"}
+{"personality":"none","headline":"打开作品工坊","body":"在这里创建你的作品，章节、设定、稿件都能井井有条地管理起来。"}
+{"personality":"none","headline":"连接器连万物","body":"小红书、知乎、微信读书、百度网盘、飞书、Obsidian、Zotero都能一键接入。"}
+{"personality":"none","headline":"试试多智能体画布","body":"可视化编排大纲师、写作者、润色师、逻辑审核员，搭出你的专属AI流水线。"}
+{"personality":"none","headline":"Writer IDE等你","body":"Markdown、文本、代码、CSV、PDF、Office、图片多编辑器，还有专注模式帮你沉浸。"}
+{"personality":"none","headline":"看看作品Bible","body":"章节摘要、人物卡、世界观、伏笔线索、时间线，都会自动抽取整理好。"}
+{"personality":"none","headline":"批评委员会审稿","body":"编辑、逻辑、人物、世界观、伏笔、安全六个视角同时审稿，问题一目了然。"}
+{"personality":"none","headline":"试试双层RAG","body":"词法匹配加本地哈希向量双重检索，引用还会标注[C1][C2]，来源清晰可查。"}
+{"personality":"none","headline":"Diff预览改写","body":"节奏优化、对白增强、去啰嗦、加强悬念、逻辑检查，改完还能看差异对比。"}
+{"personality":"none","headline":"活维基自动更新","body":"随写作自动更新人物地点设定，AI提出的变更需要你审核后才会入知识库。"}
+{"personality":"none","headline":"指挥中心看健康","body":"九大模块红黄绿灯健康度一目了然，发现问题还有一键修复建议。"}
+{"personality":"none","headline":"MCP开放生态","body":"支持stdio、SSE、HTTP三种接入方式，你可以自定义工具接入Karna。"}
+{"personality":"none","headline":"草稿守卫站岗","body":"违反设定、逻辑矛盾、风格漂移的内容会被拦截，帮你守住作品一致性。"}
+{"personality":"none","headline":"调度器锁防污染","body":"子智能体之间不会互相聊天，避免信息污染，每个环节都专注自己的任务。"}
+{"personality":"none","headline":"五种画布主题","body":"Karna星瀑、星轨夜航、稿纸暖光、墨蓝专业、落日剧场，选你喜欢的写作氛围。"}
+{"personality":"none","headline":"版本审计可追溯","body":"所有操作都记录版本日志，导出时包含完整Bible和稿件，历史清清楚楚。"}
+{"personality":"none","headline":"风险分级提示","body":"连接器会标注低中高风险，高风险操作需要二次确认，连接外部资源更安心。"}
+{"personality":"none","headline":"Soul蒸馏心法","body":"上传三到五部你最喜欢的作品，Karna会帮你提炼出叙事节奏和意象偏好。"}
+{"personality":"none","headline":"蒸馏不抄袭","body":"Soul工坊只迁移结构感和方法论，不会复制原句，安全护盾全程守护原创性。"}
+{"personality":"none","headline":"融合多种风格","body":"可以同时蒸馏多位作家的作品，融合出你自己独特的叙事味道。"}
+{"personality":"none","headline":"样本选择建议","body":"选择同一类型或相近调性的作品效果更好，避免风格差异过大导致融合混乱。"}
+{"personality":"none","headline":"蒸馏叙事节奏","body":"好故事的节奏有规律，Soul工坊能帮你捕捉张弛有度的叙事呼吸感。"}
+{"personality":"none","headline":"意象系统提取","body":"作家都有自己偏爱的意象群，Soul工坊帮你发现并建立属于你的意象库。"}
+{"personality":"none","headline":"结构感迁移","body":"学习经典作品的起承转合结构，不是抄句子，而是学骨架怎么搭。"}
+{"personality":"none","headline":"视角转换技巧","body":"通过Soul蒸馏体会不同作家的视角处理方式，找到适合你的叙事视角。"}
+{"personality":"none","headline":"对话节奏学习","body":"好的对话有潜台词有停顿，Soul工坊帮你分析优秀对话的内在节奏。"}
+{"personality":"none","headline":"场景转场方法","body":"怎么从一个场景自然过渡到下一个，经典作品里都有答案，让Soul帮你找。"}
+{"personality":"none","headline":"开篇钩子分析","body":"好的开篇能抓住读者，Soul工坊帮你拆解经典开篇的设计巧思。"}
+{"personality":"none","headline":"情绪曲线把握","body":"读者的情绪怎么调动怎么收，Soul蒸馏帮你感知故事的情绪起伏规律。"}
+{"personality":"none","headline":"留白艺术学习","body":"不说透比说透更有力量，Soul工坊帮你体会经典作品里的留白手法。"}
+{"personality":"none","headline":"结尾余韵提炼","body":"好结尾让人回味良久，蒸馏经典结尾的设计，学会怎么让故事有余音。"}
+{"personality":"none","headline":"定期更新样本库","body":"随着你的审美变化，可以随时更新Soul样本，让AI更懂你当下的偏好。"}
+{"personality":"none","headline":"新建作品项目","body":"在作品工坊点新建，选好写作领域和形式，就能开始你的创作之旅了。"}
+{"personality":"none","headline":"十大写作领域","body":"小说、编剧、文案、学术、商业、法律、技术……十大领域全覆盖。"}
+{"personality":"none","headline":"三十三种形式","body":"从网文到严肃文学，从广告到学术论文，三十三种写作形式总有你的菜。"}
+{"personality":"none","headline":"五十二种预设","body":"五十二种文档预设开箱即用，不用从零开始搭框架，选好就能写。"}
+{"personality":"none","headline":"导入现有作品","body":"支持导入Markdown、Word、TXT等格式，旧稿也能在Karna里继续管理。"}
+{"personality":"none","headline":"导出完整项目","body":"导出时包含稿件、设定、人物卡、时间线，所有资料一个包带走。"}
+{"personality":"none","headline":"项目模板复用","body":"写同类型作品可以存为模板，下次新建直接用，省去重复配置的时间。"}
+{"personality":"none","headline":"文件夹管理","body":"可以创建文件夹给作品分类，系列作、不同题材都能整理得井井有条。"}
+{"personality":"none","headline":"标签归类","body":"给项目打上标签，按状态、题材、进度都能快速筛选找到你要的作品。"}
+{"personality":"none","headline":"回收站保护","body":"误删的项目在回收站里能找回，不用担心手滑删掉辛苦写的稿子。"}
+{"personality":"none","headline":"项目迁移","body":"项目可以导出为压缩包，换电脑或者备份都方便，数据始终在你手里。"}
+{"personality":"none","headline":"多项目切换","body":"同时写几本小说几个方案没问题，项目切换秒开，互不干扰。"}
+{"personality":"none","headline":"最近项目置顶","body":"常用项目可以置顶到首页，打开就能直接进入创作，不用翻找。"}
+{"personality":"none","headline":"作品状态标记","body":"构思中、连载中、完稿、搁置，给作品标上状态，进度一目了然。"}
+{"personality":"none","headline":"连接器授权","body":"接入外部平台时会明确告知需要哪些权限，你可以单独启用或关闭每个工具。"}
+{"personality":"none","headline":"小红书接入","body":"连入小红书可以直接同步选题和灵感，发布前还能检查平台调性匹配度。"}
+{"personality":"none","headline":"知乎接入","body":"连入知乎可以收集问题和高赞回答作为素材，写干货文更有方向。"}
+{"personality":"none","headline":"微信读书接入","body":"连入微信读书，你的划线笔记和书摘自动同步到Karna素材库。"}
+{"personality":"none","headline":"百度网盘接入","body":"百度网盘里的资料文档可以直接检索引用，不用下载到本地再上传。"}
+{"personality":"none","headline":"飞书接入","body":"连入飞书可以和团队协同写作，文档评论同步，团队创作更顺畅。"}
+{"personality":"none","headline":"Obsidian接入","body":"Obsidian笔记双向链接同步过来，你的知识库和创作工具打通。"}
+{"personality":"none","headline":"Zotero接入","body":"Zotero里的文献自动同步，写论文写报告引用文献更方便。"}
+{"personality":"none","headline":"低风险连接器","body":"只读类连接器属于低风险，比如读取笔记和文献，连接后不会修改你的数据。"}
+{"personality":"none","headline":"高风险确认","body":"需要写入或发布的连接器是高风险，执行前会二次确认，避免误操作。"}
+{"personality":"none","headline":"单独开关工具","body":"每个连接器都有独立开关，不用的可以关掉，保持工具面板清爽安全。"}
+{"personality":"none","headline":"连接日志可查","body":"连接器什么时候访问了什么都有日志，外部工具的行为清清楚楚。"}
+{"personality":"none","headline":"认识画布节点","body":"每个节点是一个AI角色，大纲师搭框架，写作者填内容，润色师磨文字。"}
+{"personality":"none","headline":"连线定流程","body":"用线把节点连起来，确定谁先谁后，数据怎么流动，工作流就搭好了。"}
+{"personality":"none","headline":"画布模板库","body":"内置网文日更、论文写作、广告文案等多种工作流模板，拿来就能用。"}
+{"personality":"none","headline":"默认三并行","body":"并行任务默认最多三个，既快又不会让系统过载，速度和稳定兼顾。"}
+{"personality":"none","headline":"禁止递归委派","body":"子智能体不能再委派子任务，避免工作流无限嵌套失控，流程清晰可控。"}
+{"personality":"none","headline":"重复Agent合并","body":"相同的智能体节点会自动合并，不会重复调用浪费Token。"}
+{"personality":"none","headline":"Critic最多两轮","body":"批评循环默认最多两轮，连续两轮提升不足会提前停止，不做无用功。"}
+{"personality":"none","headline":"运行前看预算","body":"工作流运行前会展示预计调用次数、Token消耗、最昂贵节点，花多少心里有数。"}
+{"personality":"none","headline":"人工确认节点","body":"关键步骤可以加人工确认节点，跑到这里会暂停等你拍板，重要决策你来定。"}
+{"personality":"none","headline":"单节点重跑","body":"某个节点结果不满意不用全流程重跑，只重跑这一个节点就行，省时间省Token。"}
+{"personality":"none","headline":"上游摘要传递","body":"节点之间默认只传运行摘要和引用，不广播全部内容，上下文更干净。"}
+{"personality":"none","headline":"Evidence Pack共享","body":"检索到的研究结果跨节点共享，不会重复搜索浪费时间和Token。"}
+{"personality":"none","headline":"确定性节点复用","body":"检索、解析、摘要、术语表这些确定性节点按Hash复用，相同输入直接拿结果。"}
+{"personality":"none","headline":"上下文覆盖检查","body":"Expected Coverage 85% Gate验证关键上下文覆盖度，没覆盖到会提醒你。"}
+{"personality":"none","headline":"MoA多模型协作","body":"Mixture of Agents让不同模型混合协作，各取所长，写出更好的内容。"}
+{"personality":"none","headline":"delegate_task委派","body":"子任务可以委派给专门的智能体，Token隔离互不影响，任务拆分更清晰。"}
+{"personality":"none","headline":"Context Envelope封装","body":"turn-bound上下文封装机制，每个回合的上下文边界清晰，不会混乱。"}
+{"personality":"none","headline":"十一种压缩配置","body":"11种Compression Profile对应不同场景，上下文压缩更智能，不丢关键信息。"}
+{"personality":"none","headline":"Project Memory记忆","body":"项目有独立的记忆系统，Pin固定内容、Decision Log记录决策，AI不会忘事。"}
+{"personality":"none","headline":"Intent Router路由","body":"工具和技能按需加载，Intent Router筛选当前需要的工具，不加载无关Schema。"}
+{"personality":"none","headline":"八种编辑器","body":"多编辑器注册表支持八种编辑器，按文档类型自动切换，打开什么都顺手。"}
+{"personality":"none","headline":"Markdown编辑器","body":"最常用的写作编辑器，支持实时预览，快捷键齐全，写起来流畅顺手。"}
+{"personality":"none","headline":"专注模式","body":"打开专注模式，侧边栏都收起来，屏幕只剩文字，帮你进入心流状态。"}
+{"personality":"none","headline":"大纲模式","body":"大纲模式下可以看整体结构，拖拽调整章节顺序，梳理逻辑特别方便。"}
+{"personality":"none","headline":"分屏模式","body":"分屏模式可以一边看参考资料一边写，或者对照前文继续，不用切来切去。"}
+{"personality":"none","headline":"评审模式","body":"评审模式下修订痕迹清晰可见，接受拒绝改稿一目了然，审稿改稿效率高。"}
+{"personality":"none","headline":"Agent Dock面板","body":"Writer IDE底部的AI面板，对话、命令、历史都在这里，拖拽就能用。"}
+{"personality":"none","headline":"Story Bible面板","body":"人物、世界观、设定总览在侧边面板随时能看，写的时候不用翻找设定。"}
+{"personality":"none","headline":"知识图谱面板","body":"人物关系、事件脉络可视化成图谱，谁和谁什么关系一眼就看明白。"}
+{"personality":"none","headline":"评论家面板","body":"AI多视角评审反馈都在这个面板里，问题分类清晰，改稿优先级一目了然。"}
+{"personality":"none","headline":"基准检测面板","body":"质量基准测试和评分在这里，从多个维度给你的稿件打分，知道哪里需要改。"}
+{"personality":"none","headline":"字数统计实时","body":"实时显示当前字数、章节字数、总字数，写了多少心里有数。"}
+{"personality":"none","headline":"进度追踪","body":"可以设置每日目标和总目标，进度条显示完成度，督促自己坚持写。"}
+{"personality":"none","headline":"写作计时器","body":"内置番茄钟和写作计时器，记录你真正在写的时间，培养写作习惯。"}
+{"personality":"none","headline":"风格检测","body":"实时检测你的文字风格，有没有漂移，前后文风是否统一都能看到。"}
+{"personality":"none","headline":"人物卡自动建","body":"新人物出场时Karna会自动抽取信息建人物卡，外貌性格关系都帮你记着。"}
+{"personality":"none","headline":"世界观设定","body":"世界规则、地理、历史、势力这些世界观设定会自动整理成结构化文档。"}
+{"personality":"none","headline":"时间线梳理","body":"事件发生的先后顺序自动整理成时间线，写长篇不会出现时间线混乱。"}
+{"personality":"none","headline":"伏笔线索追踪","body":"埋下的伏笔自动记录，该回收的时候会提醒你，不会忘了填坑。"}
+{"personality":"none","headline":"章节摘要自动","body":"每写完一章自动生成摘要，写后面的时候回看摘要就能快速回忆内容。"}
+{"personality":"none","headline":"Living Wiki更新","body":"写作时提到的新人物新地点，活维基会自动识别并建议更新到知识库。"}
+{"personality":"none","headline":"设定审核队列","body":"AI发现可能需要新增或修改设定时，会放进审核队列等你确认，不会乱改设定。"}
+{"personality":"none","headline":"人物关系图谱","body":"谁是谁的师父谁是谁的仇人，人物关系自动生成图谱，复杂关系也理得清。"}
+{"personality":"none","headline":"设定一致性检查","body":"写的时候检查有没有和之前设定矛盾的地方，避免吃书打脸。"}
+{"personality":"none","headline":"地点设定库","body":"重要地点自动记录，地理位置、特色、发生过的事都帮你存着。"}
+{"personality":"none","headline":"物品道具管理","body":"重要的武器、法宝、关键物品都有记录，谁拿着在哪里不会写错。"}
+{"personality":"none","headline":"组织势力档案","body":"帮派、公司、门派这些组织的结构、成员、立场都整理得清清楚楚。"}
+{"personality":"none","headline":"六视角审稿","body":"编辑视角看整体，逻辑视角查漏洞，人物视角看OOC，六重把关更放心。"}
+{"personality":"none","headline":"编辑视角点评","body":"从编辑的角度看故事好不好看，节奏有没有问题，开头抓不抓人。"}
+{"personality":"none","headline":"逻辑视角审核","body":"检查情节逻辑有没有bug，因果关系是否成立，有没有前后矛盾的地方。"}
+{"personality":"none","headline":"人物视角检查","body":"人物行为是否符合性格设定，会不会OOC，动机是否合理都帮你看。"}
+{"personality":"none","headline":"世界观视角校验","body":"检查有没有违反世界观设定的内容，魔法世界不能突然出现高科技。"}
+{"personality":"none","headline":"伏笔视角检查","body":"看伏笔埋得是否自然，有没有忘了回收的坑，伏笔数量是否合适。"}
+{"personality":"none","headline":"安全视角审核","body":"检查有没有敏感内容、合规风险，帮你避开出版和发布的雷区。"}
+{"personality":"none","headline":"Diff对比改写","body":"修改前后版本并排对比，改了哪里一目了然，不满意可以一键还原。"}
+{"personality":"none","headline":"节奏优化建议","body":"哪里太慢哪里太赶，节奏问题AI会指出并给出优化建议。"}
+{"personality":"none","headline":"对白增强润色","body":"对话太干太啰嗦？AI帮你增强对白的潜台词和张力，让人物说话更像真人。"}
+{"personality":"none","headline":"去啰嗦精简","body":"冗余的描写和重复的表达帮你删掉，文字更干净利落。"}
+{"personality":"none","headline":"悬念感加强","body":"该吊胃口的地方帮你加强悬念感，让读者更想追下去。"}
+{"personality":"none","headline":"基准评分报告","body":"多个维度给稿件打分，和同类优秀作品对比，知道自己的水平在哪里。"}
+{"personality":"none","headline":"双层RAG检索","body":"词法匹配精确找关键词，本地哈希向量找语义相关，两种方式结合更准确。"}
+{"personality":"none","headline":"引用标注清晰","body":"检索到的内容引用时会标[C1][C2]这样的标记，点开就能看来源，不用担心抄袭。"}
+{"personality":"none","headline":"知识库管理","body":"你的笔记、素材、设定都在知识库里，需要的时候随时能检索到。"}
+{"personality":"none","headline":"Wiki百科构建","body":"可以给作品建专属Wiki，人物地点设定都有条目，像百科全书一样方便查阅。"}
+{"personality":"none","headline":"术语表自动维护","body":"专业术语、专有名词自动收录到术语表，统一翻译和用法不会前后不一致。"}
+{"personality":"none","headline":"本地向量搜索","body":"向量存在本地，不用传到云端，隐私安全的同时语义搜索照样好用。"}
+{"personality":"none","headline":"检索结果排序","body":"相关度高的结果排在前面，还能按时间、类型筛选，找资料更快。"}
+{"personality":"none","headline":"跨文档检索","body":"不只是当前文档，整个项目甚至整个知识库都能搜，信息一搜就到。"}
+{"personality":"none","headline":"RAG资料库","body":"专门为RAG优化的资料库，上传资料后自动切片索引，检索准确率更高。"}
+{"personality":"none","headline":"直接写入工件","body":"长文分段直接写入工件，不用重复携带已写正文，上下文清爽省Token。"}
+{"personality":"none","headline":"滚动创作状态","body":"当前章节目标、人物状态、已埋伏笔、时间线进展都实时追踪，不会忘。"}
+{"personality":"none","headline":"四层上下文窗口","body":"选区→局部窗口→章节摘要→全书结构四层分层，上下文再多也不乱。"}
+{"personality":"none","headline":"Token Policy三种模式","body":"balanced平衡模式、saving省Token模式、quality质量优先模式，随你选。"}
+{"personality":"none","headline":"Token软提醒","body":"Token用到50%、75%、90%的时候会软提醒，让你知道消耗进度。"}
+{"personality":"none","headline":"硬预算拦截","body":"设置了硬预算到点就拦截，不会超支失控，Token花多少完全在你掌控。"}
+{"personality":"none","headline":"Prompt缓存优化","body":"支持Anthropic cache_control和OpenAI prompt_cache_key，稳定前缀自动缓存。"}
+{"personality":"none","headline":"统一去重引擎","body":"系统提示、Pin内容、记忆、RAG、文件差量、错误堆栈统一去重，不重复。"}
+{"personality":"none","headline":"长文不会缩短","body":"写长篇Karna不会为了省Token故意写短，该写多长写多长，内容不缩水。"}
+{"personality":"none","headline":"断点续写","body":"长文分段创作，下次打开直接从上次停下的位置继续，不用找写到哪了。"}
+{"personality":"none","headline":"Budget Center预算中心","body":"Token消耗、费用统计都在这里，每个项目花了多少一目了然。"}
+{"personality":"none","headline":"Context Center可视化","body":"Memory、Pin、Decision、Token、Cost都在这里可视化展示，上下文状态清楚。"}
+{"personality":"none","headline":"价格透明展示","body":"已知模型显示价格快照，未知模型只显示Token不虚构金额，消费明明白白。"}
+{"personality":"none","headline":"已写内容不重复","body":"直写工件模式下，已经写过的正文不会反复出现在上下文里，节省大量Token。"}
+{"personality":"none","headline":"网文日更神器","body":"每天要更新？Karna帮你卡节奏，追爽点，稳定输出，日更不再是噩梦。"}
+{"personality":"none","headline":"黄金三章钩子","body":"开篇前三章怎么抓读者，AI帮你设计钩子，留悬念，让读者忍不住追下去。"}
+{"personality":"none","headline":"爽点排布设计","body":"多久一个小爽点，多久一个大高潮，节奏排布好了读者才舍不得走。"}
+{"personality":"none","headline":"人物立体不扁平","body":"主角配角都要有弧光，不能只是工具人，AI帮你设计人物成长线。"}
+{"personality":"none","headline":"追读率优化","body":"每章结尾留钩子，让读者看完想看下一章，追读率自然就上去了。"}
+{"personality":"none","headline":"卡文救援","body":"写不下去了？把前文喂给Karna，帮你梳理情节，找突破口，卡文不存在的。"}
+{"personality":"none","headline":"长篇不崩设定","body":"几百万字写下来，人物设定世界观容易崩，草稿守卫和设定库帮你守着。"}
+{"personality":"none","headline":"灌水鉴别提醒","body":"一不小心就写水了？AI会提醒你哪些段落太水，可以精简或增加信息量。"}
+{"personality":"none","headline":"大纲调整方便","body":"写着写着想改大纲？拖拽调整就行，后续情节自动帮你梳理影响。"}
+{"personality":"none","headline":"章纲自动生成","body":"每章写之前先出章纲，本章目标、冲突、爽点都列清楚，写起来不跑题。"}
+{"personality":"none","headline":"存稿箱管理","body":"多写的存稿可以放在存稿箱，需要发稿的时候直接取，更新更从容。"}
+{"personality":"none","headline":"连载状态追踪","body":"写了多少字，更新到哪章，存稿多少，订阅数据相关的灵感都能记录。"}
+{"personality":"none","headline":"文学质感打磨","body":"写严肃文学讲究语言质感，Karna帮你推敲字句，让文字更有味道。"}
+{"personality":"none","headline":"人物深度挖掘","body":"人物不能只停留在表面，潜意识、矛盾、复杂性才是严肃文学的魅力。"}
+{"personality":"none","headline":"主题思想深化","body":"故事要说什么，主题怎么自然呈现不生硬，AI帮你一起思考打磨。"}
+{"personality":"none","headline":"长篇结构艺术","body":"长篇小说的结构是建筑，怎么布局怎么伏线千里，Karna帮你搭骨架。"}
+{"personality":"none","headline":"短篇技巧精炼","body":"短篇小说讲究留白和一击即中，有限篇幅里见功力，AI陪你磨细节。"}
+{"personality":"none","headline":"语言节奏把握","body":"长句短句怎么搭配，段落呼吸感怎么控制，语言的音乐性很重要。"}
+{"personality":"none","headline":"视角限制妙用","body":"全知视角还是有限视角，视角越界是大忌，帮你守住视角一致性。"}
+{"personality":"none","headline":"象征意象运用","body":"好的文学作品有贯穿的意象，帮你设计象征系统，让作品更有层次。"}
+{"personality":"none","headline":"结尾余味悠长","body":"结尾怎么收才有余韵，是戛然而止还是缓缓落幕，我们一起找最好的方式。"}
+{"personality":"none","headline":"非虚构真实第一","body":"写非虚构，真实性是生命线，Karna帮你标注哪些地方需要核实来源。"}
+{"personality":"none","headline":"传记资料考据","body":"写传记要查大量资料，RAG检索帮你整理时间线，核对事实细节。"}
+{"personality":"none","headline":"采访记录整理","body":"采访录音转写的文字可以上传，AI帮你梳理关键信息和精彩引语。"}
+{"personality":"none","headline":"叙事角度选择","body":"第一人称亲历者还是第三人称观察者？不同角度效果完全不同。"}
+{"personality":"none","headline":"纪实文学叙事","body":"真实事件怎么写得有故事性又不违背事实，平衡真实和好看是门艺术。"}
+{"personality":"none","headline":"报告文学结构","body":"深度调查怎么组织材料，怎么层层递进揭示问题，结构很重要。"}
+{"personality":"none","headline":"诚实写作原则","body":"哪些是事实哪些是推测哪些是合理想象，帮你区分清楚，不误导读者。"}
+{"personality":"none","headline":"回忆录情感真实","body":"回忆录不只是记流水账，要写出情感和记忆的质感，找到情感核心。"}
+{"personality":"none","headline":"细节还原技巧","body":"通过感官细节还原当时的场景氛围，让读者身临其境。"}
+{"personality":"none","headline":"散文形散神不散","body":"散文看起来随便写，其实有一根主线牵着，帮你找到那根不散的神。"}
+{"personality":"none","headline":"随笔专栏风格","body":"写专栏要有自己的风格和腔调，不管是犀利还是温暖，辨识度很重要。"}
+{"personality":"none","headline":"诗歌意象营造","body":"诗歌靠意象说话，帮你寻找新鲜的意象组合，避开陈词滥调。"}
+{"personality":"none","headline":"诗歌节奏韵律","body":"现代诗也有节奏和内在韵律，帮你读出来改出来，让诗有音乐感。"}
+{"personality":"none","headline":"歌词押韵技巧","body":"歌词要押韵但不能为了押韵硬凑，语义和旋律兼顾才是好歌词。"}
+{"personality":"none","headline":"歌词副歌记忆点","body":"副歌要有记忆点，让人听一遍就能哼，帮你打造抓耳的hook。"}
+{"personality":"none","headline":"散文细节描写","body":"好散文在细节里，一个传神的细节胜过千言万语，帮你捕捉那个细节。"}
+{"personality":"none","headline":"情感节制表达","body":"散文最忌滥情，情感要收着写，克制反而更有力量。"}
+{"personality":"none","headline":"日常诗意发现","body":"普通人的日常也有诗意，帮你发现平凡生活里的闪光时刻。"}
+{"personality":"none","headline":"专栏选题角度","body":"同一个话题找新的切入角度，老生常谈也能写出新意。"}
+{"personality":"none","headline":"童话要有童心","body":"写儿童文学要有真正的童心，不是蹲下来跟孩子说话，而是站在他们中间。"}
+{"personality":"none","headline":"寓言道理藏好","body":"寓言要讲道理但不能说教，道理要藏在故事里，让孩子自己悟。"}
+{"personality":"none","headline":"睡前故事温度","body":"睡前故事要温暖安全，有个好结局，陪孩子安心进入梦乡。"}
+{"personality":"none","headline":"儿童视角叙事","body":"用孩子的眼睛看世界，他们的逻辑他们的好奇，不要用成人想当然。"}
+{"personality":"none","headline":"正面价值观","body":"给孩子看的东西要有正向引导，但不是喊口号，是通过故事自然传递。"}
+{"personality":"none","headline":"想象力放飞","body":"童话最不缺的就是想象力，会说话的动物，会飞的房子，大胆想。"}
+{"personality":"none","headline":"语言简单易懂","body":"词汇句式要符合目标年龄段，但不要幼稚化，孩子能感受到真诚。"}
+{"personality":"none","headline":"故事要有善念","body":"不管写什么，底层是善意和温暖，让孩子相信世界的美好。"}
+{"personality":"none","headline":"三幕结构基础","body":"电影剧本经典三幕结构：建置、对抗、解决，扎实的基础不会错。"}
+{"personality":"none","headline":"分场大纲写法","body":"一场戏写什么，冲突是什么，转场怎么转，分场清晰拍摄才不乱。"}
+{"personality":"none","headline":"对白电影感","body":"电影对白要口语化有潜台词，不能太文学，说出来要像真人说的话。"}
+{"personality":"none","headline":"场景描写视觉化","body":"写剧本要考虑镜头怎么拍，描写要有画面感，导演摄影一看就懂。"}
+{"personality":"none","headline":"节拍表运用","body":"救猫咪节拍表帮你卡好每个关键节拍点，剧本节奏不会乱。"}
+{"personality":"none","headline":"剧集圣经搭建","body":"写长篇剧集要有完整圣经，人物世界观分集大纲，团队写作不跑偏。"}
+{"personality":"none","headline":"短剧节奏更快","body":"短剧每集几分钟，开场就要抓眼球，每集结尾留钩子，节奏要快。"}
+{"personality":"none","headline":"动画剧本特点","body":"动画要考虑视觉表现和动作设计，夸张和想象力比真人剧空间更大。"}
+{"personality":"none","headline":"纪录片真实性","body":"纪录片剧本虽然有编排，但不能虚构事实，真实是纪录片的底线。"}
+{"personality":"none","headline":"话剧舞台感","body":"话剧受舞台限制，场景集中，对话张力要强，适合写强冲突的戏。"}
+{"personality":"none","headline":"音乐剧唱词设计","body":"音乐剧唱词要押韵适合演唱，还要推进剧情，不能为了唱而唱。"}
+{"personality":"none","headline":"戏曲程式化","body":"戏曲有自己的程式和美学，写的时候要尊重剧种特点，唱念做打安排好。"}
+{"personality":"none","headline":"人物弧光设计","body":"不管什么剧本，主角从头到尾要有变化和成长，人物弧光是戏剧核心。"}
+{"personality":"none","headline":"冲突层级推进","body":"冲突不能一个级别从头到尾，要层层升级，越来越紧张才好看。"}
+{"personality":"none","headline":"广播剧声音叙事","body":"广播剧全靠声音，音效、音乐、对话要能构建出整个世界，画面感在耳朵里。"}
+{"personality":"none","headline":"音效提示标注","body":"哪里需要什么音效要标注清楚，脚步声、开门声、环境音，帮助后期制作。"}
+{"personality":"none","headline":"播客脚本结构","body":"播客要有提纲有话题点，开场结尾有设计，中间可以松弛但不能跑题。"}
+{"personality":"none","headline":"有声剧旁白运用","body":"有声剧旁白怎么用不生硬，既补充信息又不打断剧情，是门学问。"}
+{"personality":"none","headline":"多人对话区分","body":"全靠声音的戏，每个人物说话要有辨识度，不用报名字观众也知道是谁。"}
+{"personality":"none","headline":"情绪靠声音传递","body":"广播剧演员看不到表情，情绪全在语气和气息里，剧本要给足情绪提示。"}
+{"personality":"none","headline":"播客口播自然","body":"播客说话要像聊天，不能像念稿子，提纲挈领让自己说起来自然。"}
+{"personality":"none","headline":"声音转场设计","body":"场景转换用声音衔接，从雨声到车声，不用旁白观众也知道换场景了。"}
+{"personality":"none","headline":"游戏主线剧情","body":"主线是游戏的骨架，要清晰有驱动力，让玩家想跟着走下去。"}
+{"personality":"none","headline":"支线丰富世界","body":"支线让世界更鲜活，但不能偏离主线太远，还要给玩家选择自由。"}
+{"personality":"none","headline":"NPC对话鲜活","body":"NPC不能都是木桩，每个NPC要有自己的性格和故事，对话符合身份。"}
+{"personality":"none","headline":"任务文本设计","body":"任务描述要说清楚做什么，为什么做，给玩家动机，不能只是杀怪送信。"}
+{"personality":"none","headline":"分支剧情选择","body":"玩家的选择要有意义，不同选择真的会导向不同结果，不是假选择。"}
+{"personality":"none","headline":"视觉小说节奏","body":"视觉小说节奏慢一点没关系，重点是氛围营造和情感代入，文笔要好。"}
+{"personality":"none","headline":"剧本杀推理严谨","body":"推理本逻辑要闭环，线索链完整，凶手不能有开挂式的不在场证明漏洞。"}
+{"personality":"none","headline":"剧本杀人物平衡","body":"每个玩家角色都要有戏份，不能有边缘OB位，每个人都有秘密和任务。"}
+{"personality":"none","headline":"情感本沉浸感","body":"情感本要让玩家代入人物，故事要戳人，铺垫够了情绪才能到位。"}
+{"personality":"none","headline":"世界观自洽","body":"不管是奇幻还是科幻游戏，世界观要自洽，规则一旦定了就不能随便打破。"}
+{"personality":"none","headline":"玩家动机设计","body":"为什么要做这个任务，为什么要打这个BOSS，给玩家足够的动机和情感连接。"}
+{"personality":"none","headline":"互动叙事自由度","body":"给玩家选择的自由，但也要在可控范围内，平衡自由和叙事完整性。"}
+{"personality":"none","headline":"品牌故事动人","body":"好的品牌故事能打动人，不是吹牛逼，是讲清楚品牌为什么存在，相信什么。"}
+{"personality":"none","headline":"Slogan简短有力","body":"Slogan要短要好记，还要传递品牌核心价值，一个好slogan能省很多广告费。"}
+{"personality":"none","headline":"用户痛点抓准","body":"文案不是自嗨，要精准打中用户痛点，他才会觉得这东西是为他做的。"}
+{"personality":"none","headline":"创意不重复","body":"广告创意最怕雷同，Karna帮你发散思维，跳出固有套路找新角度。"}
+{"personality":"none","headline":"信息流文案钩子","body":"刷信息流只有三秒钟抓住注意力，开头第一句就要让人停下来看。"}
+{"personality":"none","headline":"品牌调性一致","body":"不同渠道的文案风格可以变，但底层品牌调性要统一，不能今天这样明天那样。"}
+{"personality":"none","headline":"卖点转化语言","body":"技术参数要翻译成用户能懂的好处，不要说1080P，要说看得清每根睫毛。"}
+{"personality":"none","headline":"Call To Action清晰","body":"文案最后要告诉用户做什么，立即购买还是了解更多，指令要清晰。"}
+{"personality":"none","headline":"情感共鸣营销","body":"现在的用户不喜欢硬广，讲个能共鸣的故事，品牌自然就走进心里了。"}
+{"personality":"none","headline":"产品文案场景化","body":"不要干巴巴说产品好，放在具体使用场景里，用户自己能感受到好。"}
+{"personality":"none","headline":"白皮书专业严谨","body":"行业白皮书要专业有数据支撑，逻辑严谨，建立品牌的专业权威形象。"}
+{"personality":"none","headline":"SEO文案自然","body":"关键词要埋得自然，不能为了SEO堆砌，文章首先要好看有用，其次才是搜索。"}
+{"personality":"none","headline":"电商详情页转化","body":"详情页不是产品说明书，是一步步说服用户下单的销售话术，逻辑要顺。"}
+{"personality":"none","headline":"种草文案真实感","body":"小红书种草要像闺蜜分享，不能太像广告，真实体验感才有人信。"}
+{"personality":"none","headline":"短视频开头钩子","body":"短视频前三秒决定划不划走，开头要么有冲突要么有悬念要么有好处。"}
+{"personality":"none","headline":"直播话术流程","body":"直播话术有流程：开场留人、产品介绍、促单、逼单、感谢，节奏要卡好。"}
+{"personality":"none","headline":"口播稿口语化","body":"对着镜头说话不能像念课文，要像跟朋友聊天，多写口语少写书面语。"}
+{"personality":"none","headline":"带货信任感","body":"直播带货首先是信任，不夸大不忽悠，真诚推荐比什么都强。"}
+{"personality":"none","headline":"痛点场景开头","body":"不管是短视频还是详情页，开头先讲用户熟悉的痛点场景，他才会继续看。"}
+{"personality":"none","headline":"对比显优势","body":"和使用前对比，和竞品对比，优势不怕比，越比越明显。"}
+{"personality":"none","headline":"赠品福利设计","body":"福利怎么说让人觉得超值，不是白送，是让用户觉得占到便宜了。"}
+{"personality":"none","headline":"逼单紧迫感","body":"限时、限量、限价，合理的紧迫感能促进转化，但不能虚假宣传。"}
+{"personality":"none","headline":"评论区互动话术","body":"评论区怎么回复怎么引导互动，甚至怎么引导好评，都有技巧。"}
+{"personality":"none","headline":"短视频完播率","body":"视频时长控制好，节奏快一点，结尾留个小互动或者反转，完播率就上去了。"}
+{"personality":"none","headline":"小红书标题技巧","body":"小红书标题要带关键词，要有情绪价值，最好带数字，让人想点进来。"}
+{"personality":"none","headline":"公众号选题策划","body":"公众号要做内容规划，不能想到啥写啥，内容日历排起来，稳定输出。"}
+{"personality":"none","headline":"爆款文结构","body":"爆款文开头戳痛点，中间给方法，结尾给共鸣，结构对了流量不会差。"}
+{"personality":"none","headline":"平台调性匹配","body":"小红书重图片和种草感，知乎重干货和逻辑，微博重短平快和热点，要适配平台。"}
+{"personality":"none","headline":"微博热点借势","body":"追热点要快还要贴合品牌，不能硬蹭，找到热点和品牌的自然结合点。"}
+{"personality":"none","headline":"开头留住人","body":"公众号打开率靠标题，读完率靠开头，开头前几段就要勾住人。"}
+{"personality":"none","headline":"内容价值第一","body":"不管什么平台，内容本身有价值才是根本，套路只是锦上添花。"}
+{"personality":"none","headline":"人设一致性","body":"账号要有统一人设，不管是毒舌还是暖心，说出来的话要符合人设。"}
+{"personality":"none","headline":"互动引导设计","body":"文章结尾抛个问题，引导评论互动，互动高了平台才会给更多流量。"}
+{"personality":"none","headline":"系列内容规划","body":"做系列内容比单篇更容易涨粉，用户会为了看下一篇关注你。"}
+{"personality":"none","headline":"新闻五要素","body":"写新闻要记得五个W：何时何地何人何事为何，要素齐全才是合格的新闻。"}
+{"personality":"none","headline":"深度报道挖深度","body":"深度报道不只是告知事实，还要挖背后的原因、影响、趋势，多问几个为什么。"}
+{"personality":"none","headline":"公关通稿严谨","body":"新闻通稿要客观准确，措辞严谨，不能有夸大和不实信息，代表公司形象。"}
+{"personality":"none","headline":"危机公关文案","body":"危机公关回应要快、要真诚、要负责任，不能甩锅不能傲慢，态度很重要。"}
+{"personality":"none","headline":"出版选题策划","body":"做出版选题要考虑市场定位、读者群体、同类书对比、卖点在哪里。"}
+{"personality":"none","headline":"编辑加工润色","body":"编辑改稿不是改作者的风格，是把不通顺的理顺，把冗余的删掉，保留原味。"}
+{"personality":"none","headline":"书稿三审三校","body":"书稿要经过多次审校，错字、逻辑、常识错误都要挑出来，对读者负责。"}
+{"personality":"none","headline":"书评客观中肯","body":"写书评不要一味吹捧也不要为了骂而骂，好在哪里不好在哪里说清楚。"}
+{"personality":"none","headline":"作者序怎么写","body":"序言不是自夸，是和读者聊聊天，说说这本书为什么写，写给谁看。"}
+{"personality":"none","headline":"导语提炼精华","body":"新闻导语要把最核心的信息放在最前面，让人一眼知道发生了什么。"}
+{"personality":"none","headline":"客观中立原则","body":"新闻报道要客观中立，不要夹带个人情绪和偏见，用事实说话。"}
+{"personality":"none","headline":"采访提纲准备","body":"采访前列好提纲，开放式问题和封闭式问题结合，还要准备追问的问题。"}
+{"personality":"none","headline":"学术论文IMRaD","body":"论文经典结构：引言、方法、结果、讨论，这个框架写下来逻辑不会乱。"}
+{"personality":"none","headline":"文献综述梳理","body":"文献综述不是罗列文献，是梳理研究脉络，指出已有研究的不足和你的位置。"}
+{"personality":"none","headline":"引用格式规范","body":"APA、MLA、GB/T 7714，不同期刊不同要求格式要统一，引用要标注清楚。"}
+{"personality":"none","headline":"学术规范严谨","body":"不能抄袭不能篡改数据，学术诚信是底线，引用别人的观点一定要注明。"}
+{"personality":"none","headline":"开题报告怎么写","body":"开题报告要说清楚研究什么、为什么研究、怎么研究、有什么创新点。"}
+{"personality":"none","headline":"摘要关键词提炼","body":"摘要要概括全文核心，关键词要准确方便检索，这两个是论文的门面。"}
+{"personality":"none","headline":"逻辑论证严密","body":"论点要有论据支撑，论证过程逻辑要严密，不能跳步不能循环论证。"}
+{"personality":"none","headline":"毕业论文规划","body":"毕业论文是个大工程，提前拆分成小节点：选题、开题、初稿、修改、答辩，一步步来。"}
+{"personality":"none","headline":"数据呈现规范","body":"图表要清晰，数据来源要标注，统计方法要说明，让别人能重复你的研究。"}
+{"personality":"none","headline":"讨论部分升华","body":"讨论不是重复结果，是解释结果意味着什么，和已有研究对比，有什么局限。"}
+{"personality":"none","headline":"参考文献管理","body":"用Zotero连接器同步文献，写的时候自动插入引用，不用手动排版折腾。"}
+{"personality":"none","headline":"基金申请创新点","body":"国自然社科基金最重要的是创新点，你和别人的研究不一样在哪里，要讲清楚。"}
+{"personality":"none","headline":"研究方案可行","body":"方案不能天马行空，要在现有条件下能完成，技术路线清晰，可行性要论证。"}
+{"personality":"none","headline":"技术路线图绘制","body":"技术路线清晰画出来，一步一步怎么做，评审一眼就能看明白你的思路。"}
+{"personality":"none","headline":"研究基础扎实","body":"你之前做过什么相关研究，有什么前期成果，基础好评审才相信你能做成。"}
+{"personality":"none","headline":"研究意义讲透","body":"为什么要做这个研究，理论意义是什么，现实价值是什么，要说服评审这钱花得值。"}
+{"personality":"none","headline":"数据分析报告结构","body":"数据分析报告：背景、数据来源、分析方法、结论、建议，结构清晰结论明确。"}
+{"personality":"none","headline":"数据可视化建议","body":"什么数据用什么图表展示最合适，柱状图、折线图、饼图、热力图，选对图很重要。"}
+{"personality":"none","headline":"结论建议落地","body":"报告最终要给建议，建议不能空泛，要具体可落地，最好有优先级。"}
+{"personality":"none","headline":"可行性分析维度","body":"从技术、经济、时间、资源几个维度分析可行性，不能只看好的一面。"}
+{"personality":"none","headline":"研究问题明确","body":"研究问题不能太宽太大，要聚焦具体，一个项目解决一两个核心问题就够了。"}
+{"personality":"none","headline":"商业计划书逻辑","body":"BP的逻辑：我们发现了什么问题，我们怎么解决，为什么是我们，要多少钱怎么赚。"}
+{"personality":"none","headline":"融资BP简洁","body":"给投资人看的BP要简洁，十几页讲清楚核心，太多了没人看，重点突出。"}
+{"personality":"none","headline":"竞品分析到位","body":"竞品分析不是踩别人抬自己，客观分析优劣势，找到你的差异化定位。"}
+{"personality":"none","headline":"商业模式清晰","body":"怎么赚钱，客单价多少，获客成本多少，回本周期多久，账要算得过来。"}
+{"personality":"none","headline":"团队亮点突出","body":"早期项目投人很重要，团队为什么厉害，有什么相关经验，要重点讲。"}
+{"personality":"none","headline":"投标书响应要求","body":"投标书要逐条响应招标要求，不能漏项，资质文件要齐全，格式要符合要求。"}
+{"personality":"none","headline":"解决方案针对性","body":"解决方案不能是通用模板，要针对客户的具体问题定制，让客户觉得这是为我做的。"}
+{"personality":"none","headline":"项目方案可执行","body":"方案写得再好看执行不了也没用，时间节点、责任人、交付物都要明确。"}
+{"personality":"none","headline":"风险预案准备","body":"项目可能有什么风险，应对预案是什么，提前想到了出事才不慌。"}
+{"personality":"none","headline":"预算明细合理","body":"预算拆分要合理，不能狮子大开口，每一笔钱花在哪里要有依据。"}
+{"personality":"none","headline":"执行摘要抓重点","body":"方案前面的执行摘要最重要，决策者可能只看这部分，核心内容都要在这里。"}
+{"personality":"none","headline":"成功案例佐证","body":"有没有做过类似的成功案例，案例是最好的证明，比说什么都有说服力。"}
+{"personality":"none","headline":"SOP流程清晰","body":"标准作业程序要一步一步写清楚，新人照着做也不会错，降低对人的依赖。"}
+{"personality":"none","headline":"会议纪要高效","body":"会议纪要不是记流水账，要记结论、行动项、责任人、截止时间，开完就能落地。"}
+{"personality":"none","headline":"周报总结重点","body":"周报不要记流水账，这周做了什么，成果是什么，遇到什么问题，下周计划写清楚。"}
+{"personality":"none","headline":"企业制度规范","body":"制度要严谨合法，同时要考虑可执行性，太苛刻的制度执行不下去等于白写。"}
+{"personality":"none","headline":"销售提案书","body":"销售提案要站在客户角度写，不是说我们产品多牛，是说能帮你解决什么问题。"}
+{"personality":"none","headline":"客户案例故事","body":"客户案例要写清楚背景、挑战、解决方案、成果，用数据说话，真实可信。"}
+{"personality":"none","headline":"销售话术设计","body":"销售话术不是骗人，是把产品价值准确传递给客户，应对异议提前准备好。"}
+{"personality":"none","headline":"邮件商务礼仪","body":"商务邮件主题明确，称呼得体，正文简洁，附件提醒，落款规范，细节体现专业。"}
+{"personality":"none","headline":"工作总结框架","body":"工作总结：成果、问题、原因、改进计划，既报喜也报忧，重点是改进。"}
+{"personality":"none","headline":"合同审查要点","body":"审合同要看主体资格、权利义务是否对等、违约责任是否明确、争议解决方式。"}
+{"personality":"none","headline":"公文格式规范","body":"政务公文有严格的格式要求，字体字号、行文结构、落款盖章，都要符合规范。"}
+{"personality":"none","headline":"通知清晰明了","body":"发通知要讲清楚什么事、谁来做、什么时候做、怎么做、不做有什么后果。"}
+{"personality":"none","headline":"合规文档严谨","body":"隐私政策、用户协议这类合规文档要严谨，符合法律法规要求，不能有霸王条款。"}
+{"personality":"none","headline":"法律意见书专业","body":"法律意见书要基于事实和法律出具，结论明确，有法律依据，用词严谨无歧义。"}
+{"personality":"none","headline":"请示一文一事","body":"写请示要一文一事，不能多个事情放在一个请示里，理由要充分，诉求要明确。"}
+{"personality":"none","headline":"报告客观真实","body":"工作报告要实事求是，成绩不夸大，问题不隐瞒，数据真实准确。"}
+{"personality":"none","headline":"风险提示到位","body":"法律文书要把可能的风险充分提示给当事人，不能只说好的不说风险。"}
+{"personality":"none","headline":"隐私政策易懂","body":"虽然是法律文件，但尽量写得让普通用户能看懂，不要全是晦涩的法言法语。"}
+{"personality":"none","headline":"合同条款明确","body":"合同条款不能模棱两可，履行时间、地点、标准、违约责任都要写得清清楚楚。"}
+{"personality":"none","headline":"上行文规则","body":"给上级的公文要尊重但不谄媚，请示问题要给出自己的建议方案，不要只抛问题。"}
+{"personality":"none","headline":"下行文清晰","body":"给下级的文件要明确具体，要求清晰，让下级知道要做什么怎么做。"}
+{"personality":"none","headline":"README友好","body":"开源项目README要讲清楚项目是什么、怎么安装、怎么用、怎么贡献，新手一看就懂。"}
+{"personality":"none","headline":"API文档准确","body":"API文档要和代码保持同步，参数、返回值、错误码、示例都要写清楚，少让开发者猜。"}
+{"personality":"none","headline":"架构设计文档","body":"架构文档要讲清楚设计决策、为什么这么做、 trade-off是什么，后来的人能理解。"}
+{"personality":"none","headline":"PRD需求清晰","body":"产品需求文档要讲清楚背景、目标用户、用户故事、功能详情、交互逻辑，开发看得懂。"}
+{"personality":"none","headline":"用户手册通俗","body":"用户手册不要用技术术语，用用户能懂的话，一步一步带着操作，配截图最好。"}
+{"personality":"none","headline":"测试用例全面","body":"测试用例要覆盖正常场景、异常场景、边界条件，考虑各种可能的情况。"}
+{"personality":"none","headline":"测试报告客观","body":"测试报告要如实记录bug，严重程度、复现步骤写清楚，上线风险评估客观。"}
+{"personality":"none","headline":"技术博客干货","body":"写技术博客要有干货，最好是踩过的坑、实际的经验，不要写官话套话。"}
+{"personality":"none","headline":"更新日志规范","body":"CHANGELOG要按版本记录新增、修复、变更、废弃，语义化版本号规范使用。"}
+{"personality":"none","headline":"注释必要适度","body":"代码注释解释为什么这么做，而不是做了什么，过时注释要及时更新。"}
+{"personality":"none","headline":"需求评审记录","body":"需求评审的结论、变更点、待确认项都要记录下来，避免后面不认账。"}
+{"personality":"none","headline":"Show Don't Tell","body":"写作第一原则：展示不要告诉。不要写他很生气，要写他攥紧拳头指节发白。"}
+{"personality":"none","headline":"五感描写","body":"视觉听觉嗅觉触觉味觉，调动五感描写场景，读者才能身临其境。"}
+{"personality":"none","headline":"开头抓人","body":"开头要么有冲突，要么有悬念，要么有独特的声音，总之第一句就要让人想读下去。"}
+{"personality":"none","headline":"结尾有力","body":"结尾要么升华要么反转要么留白余韵，不要草草收场也不要拖泥带水。"}
+{"personality":"none","headline":"对话要有潜台词","body":"好的对话不只是信息传递，话里有话，言外有意，人物的真实想法藏在表面下。"}
+{"personality":"none","headline":"冲突是故事引擎","body":"没有冲突就没有故事，人物想要什么和什么阻碍他，这就是最根本的冲突。"}
+{"personality":"none","headline":"视角选择重要","body":"选谁做视角人物决定了读者能知道什么，不同视角讲同一个故事效果天差地别。"}
+{"personality":"none","headline":"冷处理修改法","body":"写完放几天再改，你会发现很多当时觉得好的地方其实有问题，距离产生美也产生清醒。"}
+{"personality":"none","headline":"朗读找节奏","body":"写完大声读出来，拗口的地方、节奏不对的地方、太长的句子，一读就听出来了。"}
+{"personality":"none","headline":"每天写一点","body":"不用每天写很多，但最好每天写一点，保持手感，写作是个手艺活，停久了会生。"}
+{"personality":"none","headline":"不要等灵感","body":"专业作家不靠灵感写作，坐在椅子上开始写，灵感会在写的过程中来找你。"}
+{"personality":"none","headline":"先写完再改","body":"第一稿先把故事写完，不管多烂都写完，不要写了开头改一百遍永远写不完。"}
+{"personality":"none","headline":"删掉多余的字","body":"修改的时候把所有没用的字都删掉，副词、形容词、冗余的对话，能删都删。"}
+{"personality":"none","headline":"人物要有欲望","body":"人物必须想要什么东西，哪怕只是想要一杯水，有欲望故事才能往前走。"}
+{"personality":"none","headline":"挫折让人成长","body":"人物不能一帆风顺，要给他挫折和打击，在困境中他的选择才定义他是谁。"}
+{"personality":"none","headline":"具体胜过抽象","body":"不要写他很难过，要写他坐在阳台上把她留下的半瓶香水喷完了。具体才有力量。"}
+{"personality":"none","headline":"悬念让读者翻页","body":"每个场景结尾都留一点悬念或者未解决的问题，让读者忍不住翻到下一页。"}
+{"personality":"none","headline":"转场自然流畅","body":"不要生硬跳场景，用一个动作、一个声音、一个相似物自然过渡。"}
+{"personality":"none","headline":"相信你的读者","body":"不要什么都解释得清清楚楚，相信读者能看懂，留一点空间给他们自己品。"}
+{"personality":"none","headline":"海明威站着写","body":"海明威喜欢站着写，而且是用一只脚站着，让自己保持紧张，不写废话。"}
+{"personality":"none","headline":"福楼拜的窗户","body":"福楼拜写作时书房的窗户是塞纳河畔的灯塔，船夫们甚至把它当航标灯，因为他通宵写。"}
+{"personality":"none","headline":"巴尔扎克喝咖啡","body":"巴尔扎克写作时要喝大量浓咖啡，一生喝了五万多杯，他说咖啡是他写作的黑油。"}
+{"personality":"none","headline":"村上春树跑步","body":"村上春树每天早起写作四小时，然后跑十公里，他说体力是写作的基础。"}
+{"personality":"none","headline":"马尔克斯读卡夫卡","body":"马尔克斯读卡夫卡变形记，读到第一句就从床上蹦下来，原来小说可以这么写。"}
+{"personality":"none","headline":"卡夫卡保险公司","body":"卡夫卡白天在保险公司上班，晚上才写作，他说工作是为了写作，写作是为了活着。"}
+{"personality":"none","headline":"陀思妥耶夫斯基还债","body":"陀思妥耶夫斯基为了还债疯狂写作，赌徒只用了二十六天就写完，还口述给速记员。"}
+{"personality":"none","headline":"简奥斯汀写小纸片","body":"简奥斯汀在小纸片上写小说，有人来就赶紧藏起来，她的小说都是在客厅的角落里写的。"}
+{"personality":"none","headline":"普鲁斯特软木房间","body":"普鲁斯特写作的房间墙壁贴了软木隔音，因为他怕吵，就这样追忆似水年华写了十几年。"}
+{"personality":"none","headline":"托尔斯泰改安娜开头","body":"安娜卡列尼娜的开头托尔斯泰改了十几遍，幸福的家庭都是相似的那个开头来之不易。"}
+{"personality":"none","headline":"鲁迅喝咖啡陪客人","body":"鲁迅说哪里有天才，我是把别人喝咖啡的工夫都用在工作上了，但他其实经常陪客人喝咖啡。"}
+{"personality":"none","headline":"老舍改话剧","body":"老舍写话剧会反复念给演员听，不顺口就改，他说语言是活的，放在嘴里嚼过才知道。"}
+{"personality":"none","headline":"汪曾祺逛菜市场","body":"汪曾祺喜欢逛菜市场，看看生鸡活鸭鲜鱼水菜，热热闹闹挨挨挤挤，让人感到生之乐趣。"}
+{"personality":"none","headline":"沈从文写情书","body":"沈从文追张兆和写了几百封情书，说我走过许多地方的路行过许多地方的桥，情话一流。"}
+{"personality":"none","headline":"金庸办报写社论","body":"金庸白天写社论晚上写武侠小说，明报的社论和他的武侠一样精彩，双手互搏。"}
+{"personality":"none","headline":"张爱玲的金句","body":"张爱玲二十多岁就写出倾城之恋，她说生命是一袭华美的袍爬满了蚤子，天才早慧。"}
+{"personality":"none","headline":"余华弃医从文","body":"余华本来是牙医，拔了五年牙觉得不想一辈子看人嘴，就开始写小说，成了文学大家。"}
+{"personality":"none","headline":"莫言听故事长大","body":"莫言小时候在集市上听人说书，回家就讲给母亲听，讲故事的能力就是那时候练出来的。"}
+{"personality":"none","headline":"斜杠命令快速调用","body":"输入/就能调出命令菜单，快速插入大纲、人物卡、伏笔标记等，不用去菜单点。"}
+{"personality":"none","headline":"@文件引用","body":"输入@就能引用项目里的其他文件、人物卡、章节，引用内容会自动关联跳转。"}
+{"personality":"none","headline":"Ctrl+Enter发送","body":"在对话框按Ctrl+Enter直接发送请求，不用点按钮，对话效率高很多。"}
+{"personality":"none","headline":"Shift+Enter换行","body":"对话框里Shift+Enter是换行，想打多行提示词的时候用，不会不小心发出去。"}
+{"personality":"none","headline":"Esc中断生成","body":"AI生成到一半觉得不对，按Esc立刻中断，不用等它说完，省时间省Token。"}
+{"personality":"none","headline":"选中即问","body":"在编辑器里选中一段文字，直接问AI问题，不用复制粘贴，就选中内容提问。"}
+{"personality":"none","headline":"旁注对话","body":"在文字旁边加批注和AI对话，针对某一段内容讨论，上下文精准，不会答非所问。"}
+{"personality":"none","headline":"MCP工具调用","body":"自己接了MCP工具可以直接在对话里调用，查数据、跑脚本、连外部服务都行。"}
+{"personality":"none","headline":"Skill技能调用","body":"常用的操作存成Skill，下次一句话就能调用，不用重复说相同的指令。"}
+{"personality":"none","headline":"版本快照","body":"重要节点打个快照，改坏了随时能还原回来，大胆改不怕错。"}
+{"personality":"none","headline":"快捷键速查","body":"按Ctrl+/调出快捷键面板，所有快捷键一目了然，用熟了效率翻倍。"}
+{"personality":"none","headline":"大纲快速跳转","body":"大纲模式点击章节标题直接跳转到对应位置，长文档里找内容超方便。"}
+{"personality":"none","headline":"拖拽添加节点","body":"多智能体画布上直接从侧边栏拖拽节点到画布，连线就能用，搭工作流像搭积木。"}
+{"personality":"none","headline":"双击快速编辑","body":"画布上双击节点直接编辑提示词和参数，不用右键找菜单，操作行云流水。"}
+{"personality":"none","headline":"Diff视图切换","body":"改稿时切换Diff视图，修改痕迹一目了然，接受拒绝点一下就行。"}
+{"personality":"none","headline":"Budget Center看账","body":"不确定Token花了多少就去Budget Center看看，消耗明细清清楚楚，心里有数。"}
+{"personality":"none","headline":"开saving模式","body":"只是想打个草稿或者试试想法，切换到saving省Token模式，消耗降一半。"}
+{"personality":"none","headline":"设硬预算","body":"跑大工作流之前设个硬预算，到点自动停，不用担心失控跑掉几百块。"}
+{"personality":"none","headline":"缓存命中省Token","body":"系统前缀和固定内容会自动缓存，缓存命中的部分不算钱，长对话更省。"}
+{"personality":"none","headline":"按需加载工具","body":"不用的工具和MCP会被Intent Router过滤掉，不加载无关Schema，上下文更省。"}
+{"personality":"none","headline":"直写工件模式","body":"写长文一定要开直写工件模式，已写内容不重复带入上下文，省巨多Token。"}
+{"personality":"none","headline":"固定常用内容","body":"常用的设定、Prompt、说明用Pin固定，不用每次重复输入，稳定还省Token。"}
+{"personality":"none","headline":"避免重复检索","body":"Evidence Pack会共享检索结果，同一个资料不会搜两次，省搜索的Token。"}
+{"personality":"none","headline":"节点复用省算力","body":"确定性节点相同输入直接复用结果，不用重新跑，快还不浪费资源。"}
+{"personality":"none","headline":"及时截断对话","body":"聊到一个段落结束可以开新对话，旧的对话不需要一直带着，减少上下文负担。"}
+{"personality":"none","headline":"本地存储放心","body":"你的稿件、设定、知识库默认都存在本地磁盘，不联网也能用，隐私有保障。"}
+{"personality":"none","headline":"离线可用不慌","body":"断网了也能继续写，本地向量检索能用，草稿自动保存，不会因为断网丢稿。"}
+{"personality":"none","headline":"项目隔离安全","body":"项目和项目之间是隔离的，多项目并行不会串数据，写这个项目不会看到那个项目的内容。"}
+{"personality":"none","headline":"原稿不被覆盖","body":"不管AI怎么改，你的原稿永远不会被自动覆盖，所有修改都有版本，可以随时回去。"}
+{"personality":"none","headline":"本地加密可选","body":"敏感项目可以开启本地加密，没有密码打不开，就算电脑丢了稿子也不会泄露。"}
+{"personality":"none","headline":"数据导出自由","body":"你的数据随时可以导出，Markdown、Word、压缩包都支持，不锁定在Karna里。"}
+{"personality":"none","headline":"不上传云端","body":"默认不会把你的稿子上传到云端，除非你主动选择云同步，数据主权在你手里。"}
+{"personality":"none","headline":"自动保存","body":"本地自动保存每几秒钟一次，就算突然断电关机，写的内容也不会丢。"}
+{"personality":"none","headline":"翻译文稿","body":"做翻译Karna也能帮你，对照原文逐句翻，还能保持术语统一，风格一致。"}
+{"personality":"none","headline":"同人文创作","body":"写同人文Karna懂原作设定，帮你不OOC，还能在原作基础上玩出新意。"}
+{"personality":"none","headline":"跑团模组编写","body":"COC、DND跑团模组要设计NPC、谜题、战斗、线索，Karna帮你平衡难度设计剧情。"}
+{"personality":"none","headline":"课程脚本设计","body":"网课脚本要生动有趣，重点突出，不能照本宣科，还要考虑和画面的配合。"}
+{"personality":"none","headline":"演讲稿撰写","body":"演讲稿要口语化有感染力，有金句有停顿有互动，写出来要适合说不适合看。"}
+{"personality":"none","headline":"情书真心话","body":"写情书最重要是真诚，不要堆砌辞藻，说真心话比什么都动人，Karna帮你组织语言但真心是你的。"}
+{"personality":"none","headline":"日记随笔","body":"写日记不用有压力，随便记记心情和想法，这是你和自己对话的时间。"}
+{"personality":"none","headline":"DM主持人手册","body":"剧本杀DM要准备主持人手册，流程、线索发放、扶车技巧、真相解析都要写清楚。"}
+{"personality":"none","headline":"贺卡祝福词","body":"节日贺卡、婚礼祝福、生日祝词，不用写太长，真诚贴心最重要。"}
+{"personality":"none","headline":"检讨书反思","body":"犯了错写检讨要真诚，不要找借口，认识到问题在哪里，怎么改，态度要端正。"}
+{"personality":"none","headline":"游记攻略","body":"旅行攻略要实用，交通住宿美食景点坑点都写清楚，给后来人参考。"}
+{"personality":"none","headline":"读后感观后感","body":"读完书看完电影有感想就写下来，不用刻意深刻，真实的感受最重要。"}
+{"personality":"none","headline":"文案策划方案","body":"活动策划、传播方案要有创意还要可落地，预算、流程、KPI都要考虑到。"}
+{"personality":"none","headline":"简历优化","body":"简历要针对岗位定制，用数据说话，成果量化，不要写空话套话，一页纸最好。"}
+{"personality":"none","headline":"求职信真诚","body":"求职信不要重复简历内容，说说你为什么想来，为什么你适合，真诚比模板重要。"}
+{"personality":"none","headline":"灵感随时记","body":"脑子里冒出好想法随时记下来，灵感跑的比什么都快，不记下来转头就忘。"}
+{"personality":"none","headline":"素材分类整理","body":"看到好的句子、故事、图片及时存到素材库，分好类，写的时候一搜就有。"}
+{"personality":"none","headline":"大纲师先搭框架","body":"写长文先让大纲师搭框架，章节结构、核心冲突、人物关系先理清楚再动笔。"}
+{"personality":"none","headline":"写作者填充内容","body":"大纲搭好让写作者填内容，按章节分段写，每段聚焦一个小目标。"}
+{"personality":"none","headline":"润色师打磨文字","body":"初稿写完交给润色师，磨字句、调节奏、删冗余，文字更精致。"}
+{"personality":"none","headline":"逻辑审核员把关","body":"逻辑审核员专门挑漏洞，情节矛盾、因果不通的地方都逃不过。"}
+{"personality":"none","headline":"自定义工作流","body":"不喜欢内置模板可以自己搭工作流，想加什么节点怎么连全看你。"}
+{"personality":"none","headline":"工作流保存复用","body":"搭好的工作流可以保存，下次写同类作品直接用，不用重新搭。"}
+{"personality":"none","headline":"智能续写接上下文","body":"写了一半卡壳，点智能续写，Karna会接上下文继续往下写，保持风格一致。"}
+{"personality":"none","headline":"风格迁移技巧","body":"喜欢某个作家的风格，可以用风格迁移，用他的调子写你的故事。"}
+{"personality":"none","headline":"一键生成大纲","body":"只要一句话说清楚你想写什么，Karna能一键帮你生成完整大纲。"}
+{"personality":"none","headline":"版本历史可回退","body":"所有修改都有版本历史，想回退到哪个版本点一下就行，改坏了不怕。"}
+{"personality":"none","headline":"修订痕迹保留","body":"修订模式下所有改动都有痕迹，谁改了什么什么时候改的，清清楚楚。"}
+{"personality":"none","headline":"接受拒绝修改","body":"AI改的内容，满意的点接受，不满意的点拒绝，改稿控制权在你手里。"}
+{"personality":"none","headline":"快照备份安心","body":"大改之前先打个快照，改坏了一键还原，放心大胆改不担心丢稿。"}
+{"personality":"none","headline":"一致性检查实时","body":"写的时候实时检查有没有和之前设定矛盾的地方，人物发色眼睛颜色不会错。"}
+{"personality":"none","headline":"伏笔回收提醒","body":"伏笔埋了太久没回收，Karna会提醒你，别让读者等太久忘了前面的坑。"}
+{"personality":"none","headline":"人物状态追踪","body":"谁受伤了谁学会了新技能谁和谁闹矛盾了，人物状态实时追踪不会错。"}
+{"personality":"none","headline":"时间线不会错乱","body":"几月几号发生了什么，时间线自动整理，不会出现昨天还在今天回到前天的bug。"}
+{"personality":"none","headline":"设定变更审批","body":"AI想新增或修改设定，必须你审批通过才行，你的世界你说了算。"}
+{"personality":"none","headline":"活维基持续更新","body":"写的越多活维基越丰富，人物地点组织自动更新，你的世界自己生长。"}
+{"personality":"none","headline":"审稿意见优先级","body":"批评委员会提的意见会按严重程度排序，先改致命问题再改小瑕疵。"}
+{"personality":"none","headline":"批量改写建议","body":"同一类问题可以批量应用改写建议，不用一条一条改，省时间。"}
+{"personality":"none","headline":"草稿守卫拦截","body":"写着写着违反设定了，草稿守卫会立刻拦截提醒你，不会让错误越写越多。"}
+{"personality":"none","headline":"风格漂移预警","body":"写着写着文风变了，和前面不统一了，风格检测会预警提醒你。"}
+{"personality":"none","headline":"引用来源可追溯","body":"所有引用都标了来源，点标记就能跳回原文，核对资料超方便。"}
+{"personality":"none","headline":"知识库自动索引","body":"资料上传到知识库自动切片索引，不用你手动打标签分类，传完就能搜。"}
+{"personality":"none","headline":"术语统一管理","body":"专业术语和专有名词统一管理，同一个东西不会出现多种叫法。"}
+{"personality":"none","headline":"跨项目知识库","body":"通用素材可以放在全局知识库，所有项目都能用，不用每个项目重复传。"}
+{"personality":"none","headline":"轻小说萌点设计","body":"写轻小说要懂萌点，傲娇、三无、病娇，属性拿捏到位读者才喜欢。"}
+{"personality":"none","headline":"网文节奏要快","body":"网文节奏要快，每三章一个小高潮，读者才会追更停不下来。"}
+{"personality":"none","headline":"连载互动感","body":"写连载可以根据读者反馈微调后续剧情，但不要被读者牵着走，核心剧情要稳住。"}
+{"personality":"none","headline":"长篇体力分配","body":"几百万字的长篇是马拉松，前期不要冲太猛，合理分配体力和剧情节奏。"}
+{"personality":"none","headline":"金手指设计合理","body":"网文金手指要平衡，太强了没张力，太弱了不爽，度要把握好。"}
+{"personality":"none","headline":"反派不能太蠢","body":"反派也要有智商有动机，不能只是为了给主角送经验，不然读者看得没劲。"}
+{"personality":"none","headline":"女频情感细腻","body":"女频文情感要细腻，人物心理活动要到位，CP感要强，糖要自然不要工业糖精。"}
+{"personality":"none","headline":"男频爽点密集","body":"男频文爽点要够密集，打脸要及时，主角不能憋屈太久，读者就爱看扬眉吐气。"}
+{"personality":"none","headline":"对话推动剧情","body":"不要让对话只说废话，好的对话要么推动剧情要么展现人物，最好两者都有。"}
+{"personality":"none","headline":"环境描写烘托","body":"环境描写不是为了凑字数，是为了烘托氛围、衬托人物心情，一切景语皆情语。"}
+{"personality":"none","headline":"第一人称代入","body":"第一人称写代入感强，但要注意视角限制，你写的人物不知道的不能写。"}
+{"personality":"none","headline":"多视角切换","body":"多视角叙事要切换自然，每个视角人物的声音要不一样，读者分得清是谁在看。"}
+{"personality":"none","headline":"回忆杀插叙技巧","body":"回忆杀不能太长打断主线节奏，插叙要自然，最好和当前情节有关联。"}
+{"personality":"none","headline":"伏笔明暗线","body":"伏笔有明有暗，明的读者能猜到，暗的揭晓时恍然大悟，层次更丰富。"}
+{"personality":"none","headline":"散文神不散","body":"散文材料散但中心思想不能散，所有内容都要围绕那个核心，形散神聚。"}
+{"personality":"none","headline":"诗歌断句呼吸","body":"现代诗的断句就是呼吸，在哪里断行决定了诗的节奏和气息，多朗读体会。"}
+{"personality":"none","headline":"歌词适配旋律","body":"写歌词要考虑旋律，字的声调最好和旋律走向贴合，唱起来不拗口。"}
+{"personality":"none","headline":"主歌副歌对比","body":"主歌叙事铺垫，副歌抒情爆发，有对比才有张力，副歌才更打动人。"}
+{"personality":"none","headline":"儿童故事对话多","body":"给孩子看的故事对话多一点，描写少一点，孩子更容易跟着读进去。"}
+{"personality":"none","headline":"童话重复结构","body":"童话很多三段式重复，三顾茅庐三打白骨精，重复中见变化，孩子好理解。"}
+{"personality":"none","headline":"电影蒙太奇","body":"剧本可以用蒙太奇手法，平行剪辑不同线索，最后汇聚在一起，张力拉满。"}
+{"personality":"none","headline":"场景目的明确","body":"每一场戏都要有存在的目的，要么推进剧情要么展现人物，没用的戏删掉。"}
+{"personality":"none","headline":"对白潜台词","body":"好的电影对白，人物说的不是他真正想说的，潜台词才是戏肉。"}
+{"personality":"none","headline":"纪录片叙事线","body":"纪录片也要有叙事线，不是素材堆砌，找一个核心线索串起所有素材。"}
+{"personality":"none","headline":"话剧冲突集中","body":"话剧场景少时间集中，冲突要足够强烈，在有限的时空里爆发最大张力。"}
+{"personality":"none","headline":"播客开场留客","body":"播客开头几分钟最重要，先抛个有意思的话题或者问题，留住听众。"}
+{"personality":"none","headline":"有声剧情绪标注","body":"给CV的剧本要标清楚情绪语气，哭腔、冷笑、哽咽，CV才能配到位。"}
+{"personality":"none","headline":"游戏对话选择","body":"玩家选不同对话要有不同反应，不能选什么都一样，那选择就没意义了。"}
+{"personality":"none","headline":"剧本杀线索发放","body":"线索怎么发什么时候发很关键，发早了剧透发晚了玩家推不出来，节奏要卡好。"}
+{"personality":"none","headline":"硬核本逻辑闭环","body":"硬核推理本逻辑必须严丝合缝，每个线索都有用，排除所有不可能剩下的就是真相。"}
+{"personality":"none","headline":"品牌 slogan口语化","body":"好slogan要口语化，口口相传不拗口，就像平时说话一样自然。"}
+{"personality":"none","headline":"详情页逻辑递进","body":"详情页逻辑要一步步递进：吸引注意→痛点共鸣→产品介绍→信任背书→促单成交。"}
+{"personality":"none","headline":"直播留人三十秒","body":"直播开场三十秒最关键，福利预告还是痛点问题，先把人留住再说别的。"}
+{"personality":"none","headline":"小红书emoji使用","body":"小红书文案适当加emoji更活泼，但不要加太多，不然显得乱，重点位置加就行。"}
+{"personality":"none","headline":"公众号排版舒适","body":"公众号排版不要太密，行间距字间距调好，重点内容标色，看着舒服才读得下去。"}
+{"personality":"none","headline":"新闻倒金字塔","body":"新闻写作倒金字塔结构，最重要的信息放最前面，越往后越不重要，方便编辑删稿。"}
+{"personality":"none","headline":"论文引言漏斗","body":"引言像漏斗：大领域→小方向→已有研究缺口→你的研究问题，一步步收窄。"}
+{"personality":"none","headline":"基金摘要写好","body":"基金摘要是评审第一眼看到的，写得好不好直接影响第一印象，要反复打磨。"}
+{"personality":"none","headline":"BP一页摘要","body":"BP最好有一页最前面的Executive Summary，把所有核心信息浓缩进去。"}
+{"personality":"none","headline":"合同歧义排查","body":"审合同要找歧义点，这个词有没有两种解释，会不会被对方钻空子，都要想到。"}
+{"personality":"none","headline":"公文语言庄重","body":"政务公文语言要庄重准确，不要用网络词汇，不要口语化，表述严谨无歧义。"}
+{"personality":"none","headline":"README先放截图","body":"README开头最好放项目截图或者demo链接，别人一眼就知道这个项目是干嘛的。"}
+{"personality":"none","headline":"PRD用户故事","body":"PRD用用户故事来描述需求：作为一个用户，我想要什么功能，以便于达到什么目的。"}
+{"personality":"none","headline":"测试用例边界值","body":"写测试用例别忘了边界值，最大值最小值空值零值，边界最容易出bug。"}
+{"personality":"none","headline":"写完读一遍","body":"不管写什么，写完都自己读一遍，很多问题读的时候自然就发现了。"}
+{"personality":"none","headline":"接受不完美初稿","body":"第一稿肯定是烂的，接受这一点，先写完再改，不要追求一开始就完美。"}
+{"personality":"none","headline":"写完放一放","body":"刚写完的东西你看不出问题，放几天冷处理一下，再回来改眼光会毒很多。"}
+{"personality":"none","headline":"好文章是改出来的","body":"不要指望一稿写好，好文章都是改出来的，改个十遍八遍很正常。"}
+{"personality":"none","headline":"删掉你最喜欢的句子","body":"修改时如果有一句你特别喜欢但对故事没用，狠心删掉，不要舍不得。"}
+{"personality":"none","headline":"读者意识","body":"写的时候心里要有读者，他看到这里会怎么想，会不会走神，会不会看不懂。"}
+{"personality":"none","headline":"不要说教","body":"不要借人物之口讲大道理，读者不喜欢被说教，道理要藏在故事里让他们自己悟。"}
+{"personality":"none","headline":"契诃夫之枪","body":"如果第一幕墙上挂了枪，第三幕一定要开枪，前面提过的细节后面要有呼应。"}
+{"personality":"none","headline":"去掉副词","body":"写作时尽量去掉非常、很、十分这些副词，用具体的描写代替，文字更有力。"}
+{"personality":"none","headline":"被动句改主动","body":"中文多用主动句更有力，被字句太多读起来软绵绵的，能改主动就改主动。"}
+{"personality":"none","headline":"长短句搭配","body":"全是长句读着累，全是短句太碎，长短搭配才有节奏，像音乐一样有快有慢。"}
+{"personality":"none","headline":"毛姆定时写作","body":"毛姆每天早上九点准时坐在书桌前，不管有没有灵感，到点就写，职业作家不挑状态。"}
+{"personality":"none","headline":"大仲马换色写作","body":"大仲马写小说用不同颜色的纸，小说蓝色诗歌黄色，他说颜色帮助他进入状态。"}
+{"personality":"none","headline":"雨果剃头写作","body":"雨果写巴黎圣母院时剃了一半头发胡子，把衣服都锁起来，逼自己在家写完不能出门。"}
+{"personality":"none","headline":"DC 截止日期","body":"deadline是第一生产力，给自己设个截止日期，你会发现效率出奇的高。"}
+{"personality":"none","headline":"先从最难的写","body":"一天中状态最好的时候先写最难的部分，简单的收尾，效率最高。"}
+{"personality":"none","headline":"写累了散步","body":"写不出来不要硬坐着，出去走一走，很多灵感是走路的时候冒出来的。"}
+{"personality":"none","headline":"直接开口求助","body":"不知道怎么写就直接告诉Karna：帮我写一段这个场景，看看AI的思路找找灵感。"}
+{"personality":"none","headline":"一键精简文字","body":"觉得这段太啰嗦，选中后直接说改得更简洁，一键去掉冗余保留干货。"}
+{"personality":"none","headline":"对话优化技巧","body":"对话写得不满意，选中后说帮我优化这段对话，让它更自然有潜台词。"}
+{"personality":"none","headline":"AI帮你挑bug","body":"写完一章让Karna帮你检查逻辑漏洞，AI挑矛盾点有时候比人眼更准。"}
+{"personality":"none","headline":"一键生成小传","body":"新建人物时直接说帮我生成这个人物的详细小传，背景性格动机自动补全。"}
+{"personality":"none","headline":"Token花在哪了","body":"想知道Token都花在哪了，去Context Center看，每个部分占多少Token清清楚楚。"}
+{"personality":"none","headline":"压缩长上下文","body":"对话太长了可以手动压缩旧内容，只留摘要，省Token也不影响连贯性。"}
+{"personality":"none","headline":"不要重复提示","body":"同样的要求不用每次说一遍，Pin到记忆里，AI一直记着不用重复输入。"}
+{"personality":"none","headline":"数据本地加密","body":"重要项目开启本地加密，就算电脑被人拿走，没有密码也打不开你的稿子。"}
+{"personality":"none","headline":"定期备份项目","body":"虽然Karna自动保存，定期导出备份还是好习惯，不怕一万就怕万一。"}
+{"personality":"none","headline":"翻译信达雅","body":"文学翻译讲究信达雅，准确是基础，通顺是要求，典雅是追求。"}
+{"personality":"none","headline":"演讲稿金句","body":"好的演讲稿要有一两句让人记住的金句，传播开了就是你的标签。"}
+{"personality":"none","headline":"日记记录生活","body":"写日记不用讲究文笔，记录生活和心情就好，回头看都是珍贵的回忆。"}
+

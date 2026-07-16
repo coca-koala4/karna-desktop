@@ -1,0 +1,35 @@
+manifest_version: 2
+name: gitee
+description: Gitee的MCP服务器，支持代码仓库管理、问题跟踪等功能
+source: https://www.mcp-cn.com/server/105
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@gitee/mcp-gitee'
+auth:
+  type: api_key
+  env:
+  - name: GITEE_API_KEY
+    prompt: gitee API Key
+    required: true
+    secret: true
+post_install: 'gitee MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: gitee
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@gitee/mcp-gitee'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

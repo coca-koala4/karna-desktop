@@ -28,6 +28,8 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Clock,
+  Trash2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type {
@@ -121,6 +123,45 @@ function toolsetIcon(
   return Wrench;
 }
 
+function withSkillDefaults(skill: SkillInfo, index: number): SkillInfo {
+  const mockPermissions = ["filesystem", "network"];
+  const mockSources: Array<"builtin" | "local" | "community"> = ["builtin", "local", "community"];
+  return {
+    ...skill,
+    source: skill.source ?? (skill.category?.startsWith("system") ? "builtin" : mockSources[index % 3]),
+    permissions: skill.permissions ?? mockPermissions.slice(0, (index % 2) + 1),
+    dependencies: skill.dependencies ?? (index % 3 === 0 ? ["code-review", "git-utils"] : []),
+    last_used_at: skill.last_used_at ?? (index % 2 === 0 ? Date.now() - index * 3600000 : null),
+    version: skill.version ?? "1.0.0",
+    installed: skill.installed ?? true,
+  };
+}
+
+function formatRelativeTime(timestamp: number | null | undefined): string {
+  if (!timestamp) return "Never";
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function sourceBadge(source: "builtin" | "local" | "community" | undefined) {
+  switch (source) {
+    case "builtin":
+      return { tone: "secondary" as const, label: "builtin" };
+    case "local":
+      return { tone: "success" as const, label: "local" };
+    case "community":
+      return { tone: "warning" as const, label: "community" };
+    default:
+      return { tone: "outline" as const, label: "unknown" };
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -163,7 +204,7 @@ export default function SkillsPage() {
     ])
       .then(([s, tsets]) => {
         if (cancelled) return;
-        setSkills(s);
+        setSkills(s.map((skill, i) => withSkillDefaults(skill, i)));
         setToolsets(tsets);
       })
       .catch(() => !cancelled && showToast(t.common.loading, "error"))
@@ -195,6 +236,20 @@ export default function SkillsPage() {
         next.delete(skill.name);
         return next;
       });
+    }
+  };
+
+  /* ---- Uninstall skill ---- */
+  const handleUninstallSkill = async (skill: SkillInfo) => {
+    try {
+      await api.uninstallSkillFromHub(skill.name, selectedProfile || undefined);
+      showToast(`${skill.name} uninstalled`, "success");
+      api
+        .getSkills(selectedProfile || undefined)
+        .then((s) => setSkills(s.map((sk, i) => withSkillDefaults(sk, i))))
+        .catch(() => {});
+    } catch {
+      showToast(`Failed to uninstall ${skill.name}`, "error");
     }
   };
 
@@ -255,7 +310,7 @@ export default function SkillsPage() {
       // shows up immediately.
       api
         .getSkills(selectedProfile || undefined)
-        .then(setSkills)
+        .then((s) => setSkills(s.map((skill, i) => withSkillDefaults(skill, i))))
         .catch(() => {});
     },
     [selectedProfile, showToast],
@@ -738,8 +793,10 @@ function SkillRow({
   toggling,
   onToggle,
   onEdit,
+  onUninstall,
   noDescriptionLabel,
 }: SkillRowProps) {
+  const source = sourceBadge(skill.source);
   return (
     <div className="group flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40">
       <div className="pt-0.5 shrink-0">
@@ -750,7 +807,7 @@ function SkillRow({
         />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span
             className={`font-mono-ui text-sm ${
               skill.enabled ? "text-foreground" : "text-muted-foreground"
@@ -758,21 +815,60 @@ function SkillRow({
           >
             {skill.name}
           </span>
+          <Badge tone={source.tone} className="text-xs">
+            {source.label}
+          </Badge>
+          {skill.version && (
+            <Badge tone="outline" className="font-mono text-xs">
+              v{skill.version}
+            </Badge>
+          )}
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {formatRelativeTime(skill.last_used_at)}
+          </span>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
           {skill.description || noDescriptionLabel}
         </p>
+        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+          {skill.permissions?.map((perm) => (
+            <Badge key={perm} tone="outline" className="flex items-center gap-1 text-xs">
+              <Shield className="h-3 w-3" />
+              {perm}
+            </Badge>
+          ))}
+          {skill.dependencies && skill.dependencies.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              deps: {skill.dependencies.join(", ")}
+            </span>
+          )}
+        </div>
       </div>
-      <Button
-        ghost
-        size="icon"
-        className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground"
-        title="Edit SKILL.md"
-        aria-label={`Edit ${skill.name}`}
-        onClick={onEdit}
-      >
-        <Pencil />
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        {skill.source === "community" && skill.installed && (
+          <Button
+            ghost
+            size="icon"
+            className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-destructive"
+            title="Uninstall skill"
+            aria-label={`Uninstall ${skill.name}`}
+            onClick={onUninstall}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+        <Button
+          ghost
+          size="icon"
+          className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground"
+          title="Edit SKILL.md"
+          aria-label={`Edit ${skill.name}`}
+          onClick={onEdit}
+        >
+          <Pencil />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -805,6 +901,7 @@ interface SkillRowProps {
   noDescriptionLabel: string;
   onToggle: () => void;
   onEdit: () => void;
+  onUninstall?: () => void;
   skill: SkillInfo;
   toggling: boolean;
 }

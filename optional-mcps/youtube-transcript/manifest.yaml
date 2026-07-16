@@ -1,0 +1,30 @@
+manifest_version: 2
+name: youtube-transcript
+description: 通过模型上下文协议(MCP)从YouTube视频中提取字幕和转录文本的服务器
+source: https://www.mcp-cn.com/server/119
+transport:
+  type: stdio
+  command: npx
+  args:
+  - -y
+  - '@kimtaeyoon83/mcp-server-youtube-transcript'
+auth:
+  type: none
+post_install: 'youtube-transcript MCP 已安装。启动新会话以加载工具。
+
+  如需 API Key，请配置环境变量。
+
+  '
+id: youtube-transcript
+version: unresolved
+dependencies:
+  runtime: npm
+  package: '@kimtaeyoon83/mcp-server-youtube-transcript'
+permissions:
+- network:outbound
+health_check:
+  type: mcp_initialize
+  timeout_ms: 10000
+lifecycle:
+  status: active
+  deprecated: false

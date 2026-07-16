@@ -1,0 +1,233 @@
+<resources>
+    <string name="app_name">Karna</string>
+
+    <!-- 欢迎和配对 -->
+    <string name="welcome_title">欢迎使用 Karna</string>
+    <string name="welcome_subtitle">请先与桌面端配对，开始使用 AI 编程助手</string>
+    <string name="start_pairing">开始配对</string>
+    <string name="pair_device_title">配对设备</string>
+    <string name="scan_qr_code">扫描二维码</string>
+    <string name="scan_qr_code_title">扫描二维码</string>
+    <string name="confirm_sas_code">确认配对码</string>
+    <string name="sas_code_instruction">请确认桌面端显示的配对码</string>
+    <string name="sas_code_match_instruction">两端显示的数字应完全一致</string>
+    <string name="confirm">确认</string>
+    <string name="cancel">取消</string>
+    <string name="reject">拒绝</string>
+    <string name="back">返回</string>
+    <string name="camera_permission_required">需要相机权限才能扫描二维码</string>
+    <string name="camera_permission_settings">请在设置中允许相机权限</string>
+    <string name="processing_pairing">正在验证配对信息...</string>
+    <string name="completing_pairing">正在完成配对...</string>
+    <string name="pairing_failed">配对失败</string>
+
+    <!-- 导航项 -->
+    <string name="nav_projects">项目</string>
+    <string name="nav_conversations">对话</string>
+    <string name="nav_runs">运行</string>
+    <string name="nav_interactions">待审批</string>
+    <string name="nav_files">文件</string>
+    <string name="nav_devices">设备</string>
+
+    <!-- 操作按钮 -->
+    <string name="action_send">发送</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_resume">恢复</string>
+    <string name="action_approve">批准</string>
+    <string name="action_reject">拒绝</string>
+    <string name="action_retry">重试</string>
+    <string name="action_delete">删除</string>
+    <string name="action_refresh">刷新</string>
+
+    <!-- 状态文案 -->
+    <string name="status_connecting">连接中</string>
+    <string name="status_connected_lan">已连接 LAN</string>
+    <string name="status_connected_relay">已连接 Relay</string>
+    <string name="status_offline">离线</string>
+    <string name="status_generating">生成中</string>
+    <string name="status_interrupted">已中断</string>
+    <string name="status_streaming">生成中...</string>
+    <string name="status_connected">已连接</string>
+    <string name="status_completed">已完成</string>
+    <string name="status_running">运行中</string>
+    <string name="status_failed">失败</string>
+    <string name="status_awaiting_approval">等待审批</string>
+    <string name="status_paused">已暂停</string>
+    <string name="status_queued">排队中</string>
+
+    <!-- 页面标题 -->
+    <string name="title_new_project">新建项目</string>
+    <string name="title_version_compare">版本对比</string>
+    <string name="projects_title">项目列表</string>
+    <string name="conversations_title">对话列表</string>
+    <string name="conversation_detail_title">对话</string>
+    <string name="runs_title">运行</string>
+    <string name="files_title">文件</string>
+    <string name="interactions_title">待处理交互</string>
+    <string name="devices_title">设备</string>
+
+    <!-- 模式相关 -->
+    <string name="mode_direct">直接模式</string>
+    <string name="mode_direct_desc">立即执行，快速响应</string>
+    <string name="mode_plan">计划模式</string>
+    <string name="mode_goal">目标模式</string>
+    <string name="mode_living_work">活件模式</string>
+
+    <!-- 计划页面 -->
+    <string name="plan_title">计划</string>
+    <string name="plan_no_active">暂无活跃计划</string>
+    <string name="plan_no_active_desc">在计划模式下创建计划后将显示在此处</string>
+    <string name="plan_steps">步骤列表</string>
+    <string name="plan_risks">风险项</string>
+    <string name="plan_confirmations">确认事项</string>
+    <string name="plan_progress" formatted="false">进度：%d/%d 步</string>
+    <string name="plan_approve">批准计划</string>
+    <string name="plan_reject">退回修改</string>
+    <string name="plan_pause">暂停</string>
+    <string name="plan_resume">继续</string>
+    <string name="plan_reject_reason_default">计划需要修改</string>
+    <string name="plan_status_drafting">制定中</string>
+    <string name="plan_status_pending_approval">待审批</string>
+    <string name="plan_status_active">执行中</string>
+    <string name="plan_status_paused">已暂停</string>
+    <string name="plan_status_completed">已完成</string>
+    <string name="plan_status_abandoned">已终止</string>
+    <string name="plan_step_depends_on">依赖 %d 项</string>
+
+    <!-- 计划步骤状态 -->
+    <string name="step_status_pending">待开始</string>
+    <string name="step_status_in_progress">进行中</string>
+    <string name="step_status_completed">已完成</string>
+    <string name="step_status_blocked">已阻塞</string>
+    <string name="step_status_skipped">已跳过</string>
+
+    <!-- 目标页面 -->
+    <string name="goal_title">目标</string>
+    <string name="goal_no_active">暂无活跃目标</string>
+    <string name="goal_no_active_desc">在目标模式下设定目标后将显示在此处</string>
+    <string name="goal_progress">目标进度</string>
+    <string name="goal_budget">预算</string>
+    <string name="goal_success_criteria">成功标准</string>
+    <string name="goal_evidence">达成证据</string>
+    <string name="goal_blockers">阻塞项</string>
+    <string name="goal_confirm">确认目标</string>
+    <string name="goal_status_draft">草稿</string>
+    <string name="goal_status_active">进行中</string>
+    <string name="goal_status_paused">已暂停</string>
+    <string name="goal_status_completed">已完成</string>
+    <string name="goal_status_abandoned">已放弃</string>
+    <string name="resolve_blocker">解除阻塞</string>
+    <string name="budget_usage" formatted="false">已用 %d / %d %s</string>
+    <string name="rounds_usage" formatted="false">轮次：%d / %s</string>
+    <string name="budget_unit_tokens">Tokens</string>
+    <string name="budget_unit_money">金额</string>
+    <string name="budget_unit_time">时间</string>
+    <string name="budget_unit_turns">轮次</string>
+
+    <!-- Living Work 页面 -->
+    <string name="living_work_title">活件</string>
+    <string name="living_work_no_active">暂无活跃活件</string>
+    <string name="living_work_no_active_desc">在活件模式下开始工作后将显示在此处</string>
+    <string name="living_work_status_draft">准备中</string>
+    <string name="living_work_status_active">运行中</string>
+    <string name="living_work_status_awaiting_decision">等待决策</string>
+    <string name="living_work_status_paused">已暂停</string>
+    <string name="living_work_status_completed">已完成</string>
+    <string name="living_work_status_terminated">已终止</string>
+    <string name="iteration_count">第 %d 轮迭代</string>
+    <string name="creative_contract">创作合约</string>
+    <string name="contract_scope">范围</string>
+    <string name="contract_vision">愿景</string>
+    <string name="contract_do_not_do">禁止事项</string>
+    <string name="candidate_next_steps">候选下一步</string>
+    <string name="candidate_step">候选步骤</string>
+    <string name="rationale_label">理由</string>
+    <string name="estimated_tokens">预计 %d tokens</string>
+    <string name="impact_analysis">影响分析</string>
+    <string name="affected_files">影响文件</string>
+    <string name="affected_systems">影响系统</string>
+    <string name="rollback_steps">回滚步骤</string>
+    <string name="risks">风险</string>
+    <string name="author_decisions">作者决策历史</string>
+    <string name="decision_approve">批准</string>
+    <string name="decision_reject">拒绝</string>
+    <string name="decision_defer">延后</string>
+    <string name="decision_modify">修改</string>
+    <string name="defer">延后</string>
+    <string name="modify">修改</string>
+    <string name="modified_to">修改为</string>
+    <string name="reject_reason">拒绝原因</string>
+    <string name="modify_candidate_step">修改候选步骤</string>
+    <string name="reject_candidate_step">拒绝候选步骤</string>
+
+    <!-- 风险等级 -->
+    <string name="risk_low">低风险</string>
+    <string name="risk_medium">中风险</string>
+    <string name="risk_high">高风险</string>
+    <string name="risk_critical">严重风险</string>
+
+    <!-- 项目页面 -->
+    <string name="empty_projects_title">暂无项目</string>
+    <string name="empty_projects_subtitle">请先在桌面端创建项目或同步后查看</string>
+    <string name="project_conversations_count">%d 个对话</string>
+    <string name="project_type_unknown">未知类型</string>
+    <string name="project_active">当前活跃</string>
+    <string name="select_project_prompt">选择项目开始对话</string>
+    <string name="new_conversation">新建对话</string>
+    <string name="all_conversations">所有对话</string>
+    <string name="conversation_count">%d 个对话</string>
+
+    <!-- 对话页面 -->
+    <string name="empty_conversations_title">暂无对话</string>
+    <string name="empty_conversations_subtitle">点击右下角按钮创建新对话</string>
+    <string name="select_conversation_prompt">请选择一个对话查看消息</string>
+    <string name="interrupt_generation">中断生成</string>
+    <string name="send_message">发送</string>
+    <string name="message_hint">输入消息</string>
+    <string name="type_message">输入消息，Shift+Enter换行</string>
+    <string name="no_messages">暂无消息，开始对话吧</string>
+    <string name="typing_indicator">正在输入...</string>
+    <string name="thinking">思考中...</string>
+    <string name="generating">正在生成...</string>
+    <string name="tool_call">工具调用</string>
+    <string name="start_conversation">开始对话</string>
+    <string name="start_conversation_hint">在下方输入框中发送消息</string>
+
+    <!-- 运行页面 -->
+    <string name="empty_runs_title">暂无运行记录</string>
+    <string name="empty_runs_subtitle">开始对话后，运行记录将显示在这里</string>
+    <string name="select_run_prompt">请选择一个运行记录查看详情</string>
+    <string name="run_id_label">运行 #%s</string>
+
+    <!-- 文件页面 -->
+    <string name="empty_files_title">暂无文件</string>
+    <string name="select_file_prompt">请选择一个文件预览</string>
+    <string name="select_resource">选择资源</string>
+
+    <!-- 交互/审批页面 -->
+    <string name="empty_interactions_title">暂无待处理交互</string>
+    <string name="empty_interactions_subtitle">需要您审批或确认的操作将显示在这里</string>
+    <string name="select_interaction_prompt">请选择一个待处理事项查看详情</string>
+
+    <!-- 设备页面 -->
+    <string name="empty_devices_title">暂无已配对设备</string>
+    <string name="device_label">设备</string>
+
+    <!-- 错误消息 -->
+    <string name="error_send_failed">发送失败</string>
+    <string name="error_invalid_qr">二维码无效</string>
+    <string name="error_sas_failed">配对确认失败</string>
+    <string name="error_key_exchange_failed">密钥交换失败</string>
+    <string name="error_cannot_parse_qr">无法解析配对二维码</string>
+    <string name="error_no_active_session">没有活动的配对会话</string>
+    <string name="error_connection_timeout">连接超时</string>
+    <string name="error_permission_denied">权限不足</string>
+    <string name="error_file_too_large">文件过大</string>
+    <string name="error_preview_unavailable">预览不可用</string>
+
+    <!-- 生物识别 -->
+    <string name="biometric_required">需要生物识别确认</string>
+    <string name="biometric_prompt_title">验证身份</string>
+    <string name="biometric_prompt_subtitle">请验证以继续操作</string>
+</resources>

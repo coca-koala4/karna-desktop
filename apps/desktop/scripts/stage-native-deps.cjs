@@ -88,7 +88,7 @@ const NATIVE_DEPS = [
 // `vendor/` makes node_modules a subdirectory so it survives packing; the
 // require() fallback in git-review-ops.cjs resolves the matching
 // vendor/node_modules path.
-const JS_DEP_ROOTS = ['simple-git']
+const JS_DEP_ROOTS = ['electron-updater', 'simple-git']
 const JS_DEP_STAGE_ROOT = path.join(STAGE_ROOT, 'vendor', 'node_modules')
 
 function rmrf(target) {

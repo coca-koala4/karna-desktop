@@ -51,6 +51,38 @@ interface ArtifactRecord {
   timestamp: number
 }
 
+interface WriterProjectArtifact {
+  id: string
+  path?: string
+  rel?: string
+  title?: string
+  type?: string
+  updated_at?: string
+}
+
+interface WriterProjectSummary {
+  id: string
+  slug?: string
+  title: string
+}
+
+function writerArtifactRecord(project: WriterProjectSummary, artifact: WriterProjectArtifact): ArtifactRecord | null {
+  const value = artifact.path || artifact.rel || ''
+
+  if (!value) {return null}
+
+  return {
+    href: artifactHref(value),
+    id: `writer-${project.id}-${artifact.id}`,
+    kind: artifactKind(value),
+    label: artifact.title || artifactLabel(value),
+    sessionId: '',
+    sessionTitle: `Writer / ${project.title}`,
+    timestamp: Date.parse(artifact.updated_at || '') || 0,
+    value
+  }
+}
+
 const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\(([^)\s]+)\)/g
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g
 const URL_RE = /https?:\/\/[^\s<>"')]+/g
@@ -385,7 +417,12 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
     setRefreshing(true)
 
     try {
-      const sessions = (await listAllProfileSessions(30, 1)).sessions
+      const [sessionResponse, projectResponse] = await Promise.all([
+        listAllProfileSessions(30, 1),
+        window.karnaDesktop.api<{ projects?: WriterProjectSummary[] }>({ method: 'GET', path: '/api/writer/projects?includeArchived=1' }).catch(() => ({ projects: [] }))
+      ])
+
+      const sessions = sessionResponse.sessions
       const results = await Promise.allSettled(sessions.map(session => getSessionMessages(session.id, session.profile)))
       const nextArtifacts: ArtifactRecord[] = []
 
@@ -396,6 +433,22 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
         const session = sessions[index]
         nextArtifacts.push(...collectArtifactsForSession(session, result.value.messages))
+      })
+
+      const projects = projectResponse.projects || []
+
+      const writerResults = await Promise.allSettled(projects.map(project => window.karnaDesktop.api<{ artifacts?: WriterProjectArtifact[] }>({
+        method: 'GET',
+        path: `/api/writer/projects/${encodeURIComponent(project.slug || project.id)}/os/artifacts`
+      })))
+
+      writerResults.forEach((result, index) => {
+        if (result.status !== 'fulfilled') {return}
+
+        const project = projects[index]
+        const records = (result.value.artifacts || []).map(artifact => writerArtifactRecord(project, artifact)).filter((record): record is ArtifactRecord => Boolean(record))
+
+        nextArtifacts.push(...records)
       })
 
       setArtifacts(nextArtifacts.sort((left, right) => right.timestamp - left.timestamp))
@@ -505,7 +558,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
   const cellCtx: CellCtx = {
     onOpen: openArtifact,
-    onOpenChat: sessionId => navigate(sessionRoute(sessionId))
+    onOpenChat: sessionId => navigate(sessionId ? sessionRoute(sessionId) : '/karna/writer')
   }
 
   return (
@@ -583,7 +636,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                       failedImage={failedImageIds.has(artifact.id)}
                       key={artifact.id}
                       onImageError={markImageFailed}
-                      onOpenChat={sessionId => navigate(sessionRoute(sessionId))}
+                      onOpenChat={sessionId => navigate(sessionId ? sessionRoute(sessionId) : '/karna/writer')}
                     />
                   ))}
                 </div>
