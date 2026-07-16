@@ -2,7 +2,7 @@
   "name": "karna",
   "productName": "Karna",
   "private": true,
-  "version": "0.17.1",
+  "version": "0.17.2",
   "description": "Native desktop shell for Karna Agent. Powered by Hermes Agent runtime.",
   "author": "Karna",
   "type": "module",

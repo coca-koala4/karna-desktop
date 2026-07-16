@@ -24,8 +24,20 @@ const http = require('node:http')
 const https = require('node:https')
 const path = require('node:path')
 const os = require('node:os')
+const Module = require('node:module')
 const { pathToFileURL } = require('node:url')
 const { execFileSync, spawn } = require('node:child_process')
+
+// electron-builder intentionally ships a narrow runtime dependency closure
+// under resources/native-deps/vendor/node_modules. Add that directory to
+// Node's package search path before loading any local Electron modules: the
+// adapter and its lazy services require ws, adm-zip and fflate directly.
+// Without this bootstrap a clean installed build crashes before app.ready.
+const packagedVendorModules = path.join(process.resourcesPath, 'native-deps', 'vendor', 'node_modules')
+if (fs.existsSync(packagedVendorModules)) {
+  process.env.NODE_PATH = [packagedVendorModules, process.env.NODE_PATH].filter(Boolean).join(path.delimiter)
+  Module._initPaths()
+}
 const { installEmbedReferer } = require('./embed-referer.cjs')
 const { createDeepLinkManager } = require('./deep-link-manager.cjs')
 const { createDesktopPreferences } = require('./desktop-preferences.cjs')
