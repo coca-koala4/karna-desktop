@@ -9,6 +9,7 @@ const targetRoot = path.join(appRoot, 'build', 'skill-marketplace')
 const skillsTarget = path.join(targetRoot, 'skills')
 
 const DENY_DIR = new Set(['.git', '.github', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'test', 'tests', 'test-results', 'playwright-report', 'dist', 'build', 'coverage', '.cache'])
+const DENY_SKILL_PATH_RE = /(^|[\\/])autonomous-ai-agents[\\/]hermes-agent([\\/]|$)/i
 const DENY_FILE_RE = /(^|[\\/])(?:\.env|.*\.log|.*\.map|.*\.patch|.*\.bak|.*\.tmp|.*\.png|.*\.jpg|.*\.jpeg|.*\.webp|.*\.gif|.*\.zip|.*\.7z|.*\.rar|.*\.exe|.*\.dll|.*\.pdb)$/i
 const SECRET_RE = /(sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|ghp_[0-9A-Za-z]{20,}|-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----)/
 const MAX_FILE_BYTES = 512 * 1024
@@ -43,6 +44,7 @@ function listSkillFiles(dir, out = []) {
       if (DENY_DIR.has(entry.name.toLowerCase())) continue
       listSkillFiles(full, out)
     } else if (entry.isFile() && entry.name === 'SKILL.md') {
+      if (DENY_SKILL_PATH_RE.test(full)) continue
       out.push(full)
     }
   }
@@ -84,8 +86,15 @@ function copySafe(src, dst) {
   if (DENY_FILE_RE.test(rel) || st.size > MAX_FILE_BYTES) return
   const textExt = /\.(md|txt|json|ya?ml|toml|py|js|ts|tsx|sh|ps1)$/i.test(src)
   if (textExt) {
-    const text = fs.readFileSync(src, 'utf8')
+    let text = fs.readFileSync(src, 'utf8')
     if (SECRET_RE.test(text)) return
+    text = safeVisible(text)
+      .replace(/D:\\Agent/gi, '%KARNA_WORKSPACE%')
+      .replace(/NousResearch\/hermes-agent/gi, 'coca-koala4/karna-desktop')
+      .replace(/~\/.hermes/gi, '%APPDATA%/Karna')
+    ensure(path.dirname(dst))
+    fs.writeFileSync(dst, text, 'utf8')
+    return
   }
   ensure(path.dirname(dst))
   fs.copyFileSync(src, dst)
