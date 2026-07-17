@@ -5,9 +5,12 @@
 
 ; electron-builder compiles the same include once while generating the
 ; uninstaller. Installer-only custom-page callbacks are intentionally unused in
-; that pass; silence only NSIS 6010 while keeping every other warning fatal.
+; that pass; the installer/uninstaller dual pass also intentionally triggers
+; 6001 (variables used by only one pass) and 6020 (the uninstaller probe does
+; not write its final payload). Keep every unrelated warning fatal.
 !pragma warning disable 6010
 !pragma warning disable 6001
+!pragma warning disable 6020
 
 Var KarnaOptionsDialog
 Var KarnaWorkspaceField
