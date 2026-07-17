@@ -20,7 +20,7 @@ The redesigned installer contains a complete, versioned offline runtime. It does
 
 ## Downloads
 
-Download the unsigned [Karna 1.0.0 acceptance build](https://github.com/coca-koala4/karna-desktop/releases/download/v1.0.0/Karna-1.0.0-win-x64.exe), or review its [release notes and checksums](https://github.com/coca-koala4/karna-desktop/releases/tag/v1.0.0). A signed stable build will follow clean-machine acceptance testing.
+Download the unsigned [Karna 1.0.1 fixed acceptance build](https://github.com/coca-koala4/karna-desktop/releases/download/v1.0.1/Karna-1.0.1-win-x64.exe), or review its [release notes and checksums](https://github.com/coca-koala4/karna-desktop/releases/tag/v1.0.1). The broken 1.0.0 release has been withdrawn. A signed stable build will follow clean-machine acceptance testing.
 
 ## License and attribution
 
