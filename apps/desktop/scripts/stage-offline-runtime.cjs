@@ -4,6 +4,8 @@ const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { shouldIncludeOfflineRuntimePath } = require('./offline-runtime-filter.cjs')
+
 const appRoot = path.resolve(__dirname, '..')
 const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'))
 const source = process.env.KARNA_OFFLINE_RUNTIME_SOURCE && path.resolve(process.env.KARNA_OFFLINE_RUNTIME_SOURCE)
@@ -19,7 +21,6 @@ if (!fs.existsSync(path.join(source, 'hermes-agent', 'hermes_cli'))) {
   throw new Error('Offline runtime source is missing hermes-agent/hermes_cli')
 }
 
-const denied = /(^|[\\/])(\.git|\.venv|tests?|docs?|website|playwright-report|karna-data|__pycache__|\.pytest_cache|\.mypy_cache)([\\/]|$)/i
 fs.rmSync(target, { recursive: true, force: true })
 fs.mkdirSync(target, { recursive: true })
 const files = []
@@ -28,7 +29,7 @@ function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name)
     const relative = path.relative(source, absolute).replaceAll('\\', '/')
-    if (denied.test(relative)) continue
+    if (!shouldIncludeOfflineRuntimePath(relative)) continue
     if (entry.isSymbolicLink()) throw new Error(`Offline runtime may not contain symlinks: ${relative}`)
     if (entry.isDirectory()) walk(absolute)
     else if (entry.isFile()) {

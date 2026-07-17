@@ -19,8 +19,8 @@ describe('desktop slash command curation', () => {
     expect(isDesktopSlashSuggestion('/skin')).toBe(true)
     expect(isDesktopSlashSuggestion('/usage')).toBe(true)
     expect(isDesktopSlashSuggestion('/version')).toBe(true)
-    expect(isDesktopSlashSuggestion('/yolo')).toBe(true)
-    expect(isDesktopSlashCommand('/yolo')).toBe(true)
+    expect(isDesktopSlashSuggestion('/yolo')).toBe(false)
+    expect(isDesktopSlashCommand('/yolo')).toBe(false)
   })
 
   it('surfaces skill and quick commands (extensions) in suggestions and lets them run', () => {
@@ -35,7 +35,7 @@ describe('desktop slash command curation', () => {
     expect(isDesktopSlashSuggestion('/redraw')).toBe(false)
     expect(isDesktopSlashSuggestion('/approve')).toBe(false)
     expect(isDesktopSlashSuggestion('/model')).toBe(false)
-    expect(isDesktopSlashSuggestion('/skills')).toBe(false)
+    expect(isDesktopSlashSuggestion('/skills')).toBe(true)
     expect(isDesktopSlashSuggestion('/voice')).toBe(false)
     expect(isDesktopSlashSuggestion('/curator')).toBe(false)
   })
@@ -50,6 +50,13 @@ describe('desktop slash command curation', () => {
     expect(desktopSlashUnavailableMessage('/tools')).toBeNull()
     expect(desktopSlashUnavailableMessage('/save')).toBeNull()
     expect(desktopSlashUnavailableMessage('/personality')).toBeNull()
+  })
+
+  it('allows the packaged skill hub to search and install remote skills', () => {
+    expect(isDesktopSlashSuggestion('/skills')).toBe(true)
+    expect(isDesktopSlashCommand('/skills')).toBe(true)
+    expect(resolveDesktopCommand('/skills search writing')?.surface).toEqual({ kind: 'exec' })
+    expect(desktopSlashUnavailableMessage('/skills')).toBeNull()
   })
 
   it('routes /pet through the desktop action handler and drops /pets', () => {
@@ -166,7 +173,7 @@ describe('desktop slash command curation', () => {
 
   it('explains known commands that desktop owns elsewhere', () => {
     expect(desktopSlashUnavailableMessage('/model sonnet')).toContain('model picker')
-    expect(desktopSlashUnavailableMessage('/skills')).toContain('desktop sidebar')
+    expect(desktopSlashUnavailableMessage('/skills')).toBeNull()
     expect(desktopSlashUnavailableMessage('/clear')).toContain('terminal interface')
   })
 

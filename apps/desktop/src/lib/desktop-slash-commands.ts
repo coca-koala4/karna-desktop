@@ -163,6 +163,7 @@ const DESKTOP_COMMAND_SPECS: readonly DesktopCommandSpec[] = [
   { name: '/steer', description: '在下一次工具调用后引导当前运行', surface: exec() },
   { name: '/stop', description: '停止运行中的后台进程', surface: exec() },
   { name: '/tools', description: '列出或切换智能体可用工具', surface: exec(), args: true },
+  { name: '/skills', description: '搜索、检查并安装扩展 Skill', surface: exec(), args: true },
   { name: '/undo', description: 'Remove the last user/assistant exchange', surface: exec() },
   { name: '/usage', description: '显示当前会话的 Token 用量', surface: exec() },
   { name: '/version', description: 'Show Karna Agent version', surface: exec() },
@@ -210,7 +211,7 @@ const NO_DESKTOP_SURFACE: Record<DesktopUnavailableReason, readonly string[]> = 
   ],
   messaging: ['/approve', '/deny'],
   migrated: ['/yolo'],
-  settings: ['/skills', '/pets'],
+  settings: ['/pets'],
   advanced: ['/curator', '/fast', '/insights', '/kanban', '/reasoning', '/voice']
 }
 
