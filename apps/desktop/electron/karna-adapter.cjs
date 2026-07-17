@@ -1078,6 +1078,80 @@ function scanReleaseSkills() {
   }).sort((a, b) => Number(b.id.startsWith('karna-')) - Number(a.id.startsWith('karna-')) || a.id.localeCompare(b.id))
 }
 
+
+function scanMarketplaceSkills() {
+  const root = firstExistingDir(releaseResourceCandidates('skill-marketplace'))
+  const manifest = readReleaseJsonFile(path.join(root || '', 'manifest.json'), { entries: [] }) || { entries: [] }
+  const state = readBackendJson('skills_state.json', { version: 1, enabled: {}, installed_marketplace: {} })
+  const enabledMap = normalizeStateMap(state.enabled)
+  const installedMap = normalizeStateMap(state.installed_marketplace)
+  return (Array.isArray(manifest.entries) ? manifest.entries : []).map(entry => {
+    const id = String(entry.id || entry.slug || '').trim()
+    return {
+      id,
+      name: String(entry.name || entry.slug || id),
+      version: '1.0.0',
+      description: String(entry.description || 'Karna \u5916\u7f6e Skill\u3002'),
+      category: String(entry.category || '\u6269\u5c55 Skill'),
+      domains: [String(entry.category || '\u6269\u5c55 Skill')],
+      tags: [String(entry.source_pack || 'Karna \u5916\u7f6e Skill \u5e02\u573a'), entry.risk_level === 'high' ? '\u9ad8\u6743\u9650' : '\u6269\u5c55\u5e02\u573a'].filter(Boolean),
+      language: 'zh-CN',
+      risk_level: String(entry.risk_level || 'low'),
+      license: '\u6309 Skill \u58f0\u660e',
+      is_enabled: Boolean(installedMap[id]) && enabledMap[id] !== false,
+      is_builtin: false,
+      is_marketplace: true,
+      is_installed: Boolean(installedMap[id]),
+      source_pack: String(entry.source_pack || 'Karna \u5916\u7f6e Skill \u5e02\u573a'),
+      source_plugin: '',
+      plugin_id: 'karna.external-skill-marketplace',
+      install_path: path.join(root || '', String(entry.relative_path || '')),
+      marketplace_path: path.join(root || '', String(entry.relative_path || '')),
+      variants: ['\u6269\u5c55\u5e02\u573a'],
+      active_variant: '\u6269\u5c55\u5e02\u573a',
+      confidence: 0.86
+    }
+  }).filter(row => row.id)
+}
+
+function copyDirSafe(src, dest) {
+  if (!src || !fs.existsSync(src)) throw new Error(`\u6e90\u76ee\u5f55\u4e0d\u5b58\u5728\uff1a${src}`)
+  const blocked = /(^|[\/])(?:\.git|node_modules|\.venv|venv|__pycache__|\.pytest_cache|test|tests|test-results)([\/]|$)/i
+  const copy = (from, to) => {
+    const st = fs.statSync(from)
+    if (st.isDirectory()) {
+      if (blocked.test(from)) return
+      fs.mkdirSync(to, { recursive: true })
+      for (const child of fs.readdirSync(from)) copy(path.join(from, child), path.join(to, child))
+      return
+    }
+    if (!st.isFile()) return
+    if (blocked.test(from) || /\.(log|map|patch|bak|tmp)$/i.test(from)) return
+    fs.mkdirSync(path.dirname(to), { recursive: true })
+    fs.copyFileSync(from, to)
+  }
+  fs.rmSync(dest, { recursive: true, force: true })
+  copy(src, dest)
+}
+
+function installMarketplaceSkill(id) {
+  const skill = scanMarketplaceSkills().find(row => row.id === id)
+  if (!skill) return notConfigured('skills', `\u672a\u627e\u5230\u5916\u7f6e Skill\uff1a${id}`)
+  const dest = path.join(getUserSkillRoot(), skill.id.replace(/[^A-Za-z0-9_.-]+/g, '-'))
+  try {
+    copyDirSafe(skill.marketplace_path, dest)
+    const state = readBackendJson('skills_state.json', { version: 1, enabled: {}, installed_marketplace: {} })
+    state.enabled = normalizeStateMap(state.enabled)
+    state.installed_marketplace = normalizeStateMap(state.installed_marketplace)
+    state.enabled[id] = true
+    state.installed_marketplace[id] = true
+    writeBackendJson('skills_state.json', state)
+    return { ok: true, skill_id: id, install_path: dest, message: 'Skill \u5df2\u5b89\u88c5\u5e76\u542f\u7528\u3002' }
+  } catch (err) {
+    return notConfigured('skills', `\u5b89\u88c5 Skill \u5931\u8d25\uff1a${err.message}`)
+  }
+}
+
 function scanReleasePlugins() {
   const root = firstExistingDir(releaseResourceCandidates('builtin-plugins'))
   const state = readBackendJson('plugins.json', { version: 1, enabled: {} })
@@ -1117,20 +1191,55 @@ function scanReleasePlugins() {
 }
 
 function releaseSkillPacks() {
-  const skills = scanReleaseSkills()
-  return [{
+  const builtinSkills = scanReleaseSkills()
+  const marketplaceSkills = scanMarketplaceSkills()
+  const byCategory = new Map()
+  for (const skill of marketplaceSkills) {
+    const key = skill.category || '\u6269\u5c55 Skill'
+    if (!byCategory.has(key)) byCategory.set(key, [])
+    byCategory.get(key).push(skill)
+  }
+  const packs = [{
     id: 'karna.official-skills',
     version: '1.0.0',
-    category: 'Karna 官方',
-    name: 'Karna 官方内置 Skill 包',
-    description: 'Karna 随安装包离线提供的官方写作、研究、文档、浏览器和创作 Skill。',
-    skills_count: skills.length,
+    category: 'Karna \u5b98\u65b9',
+    name: 'Karna \u5b98\u65b9\u5185\u7f6e Skill \u5305',
+    description: '\u968f\u5b89\u88c5\u5305\u79bb\u7ebf\u63d0\u4f9b\u7684 Karna \u5b98\u65b9\u5199\u4f5c\u3001\u7814\u7a76\u3001\u6587\u6863\u3001\u6d4f\u89c8\u5668\u548c\u521b\u610f Skill\u3002',
+    skills_count: builtinSkills.length,
     size_bytes: 0,
     source_type: 'bundled',
     source_url: 'karna://builtin-skills',
     is_active: true,
-    skills
+    skills: builtinSkills
+  }, {
+    id: 'karna.external-skill-marketplace',
+    version: '1.0.0',
+    category: '\u5916\u7f6e Skill \u5e02\u573a',
+    name: 'Karna \u5916\u7f6e Skill \u5e02\u573a\u5168\u96c6',
+    description: '\u5b89\u88c5\u5305\u5185\u7f6e\u7684\u53ef\u9009\u5916\u7f6e Skill \u4e0b\u8f7d\u533a\u3002\u9ed8\u8ba4\u4e0d\u542f\u7528\uff1b\u7528\u6237\u53ef\u6309\u9700\u5b89\u88c5\u3002',
+    skills_count: marketplaceSkills.length,
+    size_bytes: 0,
+    source_type: 'bundled-marketplace',
+    source_url: 'karna://skill-marketplace',
+    is_active: true,
+    skills: marketplaceSkills
   }]
+  for (const [category, skills] of byCategory) {
+    packs.push({
+      id: `karna.marketplace.${String(category).replace(/\s+/g, '-').toLowerCase()}`,
+      version: '1.0.0',
+      category: '\u5916\u7f6e Skill \u5e02\u573a',
+      name: `${category} Skill \u6269\u5c55\u5305`,
+      description: `Karna \u5916\u7f6e Skill \u5e02\u573a\u4e2d\u7684\u300c${category}\u300d\u5206\u7c7b\uff0c\u53ef\u6309\u9700\u5b89\u88c5\u3002`,
+      skills_count: skills.length,
+      size_bytes: 0,
+      source_type: 'bundled-marketplace',
+      source_url: 'karna://skill-marketplace',
+      is_active: true,
+      skills
+    })
+  }
+  return packs
 }
 
 function handleKarnaPluginPlatform(reqPath, method, body) {
@@ -1154,7 +1263,7 @@ function handleKarnaPluginPlatform(reqPath, method, body) {
     return plugin || notConfigured('plugins', `插件不存在：${id}`)
   }
   if ((reqPath === '/api/karna/skills' || reqPath.startsWith('/api/karna/skills?')) && method === 'GET') {
-    return { ok: true, skills: scanReleaseSkills() }
+    return { ok: true, skills: [...scanReleaseSkills(), ...scanMarketplaceSkills()] }
   }
   const skillEnableMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/enable(?:\?|$)/)
   if (skillEnableMatch && method === 'POST') {
@@ -1169,8 +1278,16 @@ function handleKarnaPluginPlatform(reqPath, method, body) {
   if ((reqPath === '/api/karna/skill-packs' || reqPath.startsWith('/api/karna/skill-packs?')) && method === 'GET') {
     return { ok: true, skill_packs: releaseSkillPacks() }
   }
+  const skillInstallMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/install(?:\?|$)/)
+  if (skillInstallMatch && method === 'POST') {
+    return installMarketplaceSkill(decodeURIComponent(skillInstallMatch[1]))
+  }
+  if (reqPath === '/api/karna/skill-packs/install' && method === 'POST') {
+    const source = String(body?.source || body?.id || '').trim()
+    return { ok: true, job_id: `skill-pack-${Date.now()}`, state: 'completed', phase: 'active', progress: 100, operation: 'install', source: source || 'karna://skill-marketplace', plugin_id: source || 'karna.external-skill-marketplace', plugin_name: 'Karna Skill \u6269\u5c55\u5305', created_at: Date.now() / 1000, updated_at: Date.now() / 1000, message: '\u5916\u7f6e Skill \u5e02\u573a\u5df2\u968f\u5b89\u88c5\u5305\u79bb\u7ebf\u5185\u7f6e\uff0c\u8bf7\u5728\u201c\u6240\u6709 Skill\u201d\u91cc\u9010\u4e2a\u5b89\u88c5\u6216\u542f\u7528\u3002' }
+  }
   if (reqPath.includes('/preflight') || reqPath.includes('/install') || reqPath.includes('/update') || reqPath.includes('/rollback')) {
-    return notConfigured('plugins', '当前发行版仅支持离线内置插件和 Skill，在线扩展安装将在后续版本开放。')
+    return notConfigured('plugins', '\u5f53\u524d\u7248\u672c\u5df2\u5185\u7f6e\u79bb\u7ebf\u63d2\u4ef6\u548c Skill \u5e02\u573a\uff1b\u8bf7\u5728\u201c\u6240\u6709 Skill\u201d\u91cc\u9009\u62e9\u9700\u8981\u7684 Skill \u540e\u542f\u7528\u3002')
   }
   return null
 }
@@ -1787,7 +1904,7 @@ const normalizeAgentStatusLabel = label => {
   if (/working/i.test(text)) return '\u6b63\u5728\u5de5\u4f5c'
   if (/waiting/i.test(text)) return '\u7b49\u5f85\u524d\u7f6e\u4efb\u52a1'
   if (/ready/i.test(text)) return '\u5f85\u547d'
-  if (text === '??') return '\u4f11\u7720'
+  if (text === '\u7761\u7720') return '\u4f11\u7720'
   return text
 }
 const normalizeAgentInput = (agent, index, projectId) => {
@@ -3713,155 +3830,60 @@ const ingestService = createIngestService({
 })
 
 const enhancePromptText = async input => {
-  const raw = String(input?.text || input?.prompt || input || '').trim()
-  if (!raw) return { ok: false, error: '请先输入提示词内容' }
-  const mode = String(input?.mode || 'chat')
+  const raw = String(input?.text || input?.prompt || '').trim()
+  if (!raw) return { ok: false, error: '\u8bf7\u5148\u8f93\u5165\u9700\u8981\u589e\u5f3a\u7684\u63d0\u793a\u8bcd\u3002' }
+
+  const selected = resolveUsableModelSelection({ provider: input?.provider, model: input?.model })
+  const provider = selected.provider
+  const modelName = selected.model
+  if (!provider || !isProviderConfigured(provider) || !modelName) {
+    return {
+      ok: false,
+      error: '\u672a\u68c0\u6d4b\u5230\u5df2\u6388\u6743\u7684\u6a21\u578b\u3002\u8bf7\u5728\u8bbe\u7f6e\u2192\u6a21\u578b\u4e2d\u4fdd\u5b58 DeepSeek\u3001Qwen\u3001GLM \u6216\u81ea\u5b9a\u4e49 API Key\uff0c\u5e76\u70b9\u51fb\u201c\u8bbe\u4e3a\u9ed8\u8ba4\u201d\u540e\u518d\u4f7f\u7528\u63d0\u793a\u8bcd\u589e\u5f3a\u3002',
+      provider: provider?.slug || currentModelProvider || '',
+      model: modelName || currentModel || ''
+    }
+  }
+
+  const projectContext = input?.projectContext || input?.project_context || {}
+  const skills = Array.isArray(input?.skills) ? input.skills.map(String).filter(Boolean) : []
+  const mcp = Array.isArray(input?.mcp) ? input.mcp.map(String).filter(Boolean) : []
   const soul = String(input?.soul || '').trim()
-  const permission = String(input?.permission || 'project')
-  const cwd = input?.cwd ? String(input.cwd) : ''
-  const skills = Array.isArray(input?.skills) ? input.skills.filter(Boolean) : []
-  const mcp = Array.isArray(input?.mcp) ? input.mcp.filter(Boolean) : []
   const workflow = String(input?.workflow || '').trim()
-
-  let projectContext = null
-  let protectedNouns = []
-
-  if (cwd && fs.existsSync(cwd)) {
-    try {
-      const entries = fs.readdirSync(cwd, { withFileTypes: true })
-      const files = []
-      const dirs = []
-      for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue
-        if (entry.isDirectory()) dirs.push(entry.name)
-        else files.push(entry.name)
-      }
-
-      let projectType = '通用写作'
-      let projectGoal = ''
-      let keyFiles = []
-
-      const projectMdPath = path.join(cwd, 'project.md')
-      if (fs.existsSync(projectMdPath)) {
-        try {
-          const md = fs.readFileSync(projectMdPath, 'utf8')
-          const typeMatch = md.match(/Type:\s*(.+)/i)
-          const goalMatch = md.match(/## Goal\s*\n\s*(.+?)(?:\n##|$)/is)
-          if (typeMatch) projectType = typeMatch[1].trim()
-          if (goalMatch) projectGoal = goalMatch[1].trim()
-        } catch (e) { /* ignore */ }
-      }
-
-      const importantWritingFiles = ['project.md', 'outline.md', 'canon.md', 'characters.md', 'worldbuilding.md', 'timeline.md', 'bible.md']
-      keyFiles = files.filter(f =>
-        importantWritingFiles.includes(f.toLowerCase()) ||
-        /\.(md|txt|docx|epub)$/i.test(f)
-      ).slice(0, 15)
-
-      const chapterDirs = dirs.filter(d =>
-        /chapter|章|卷|part|section|draft|manuscript|稿|章节|正文/i.test(d)
-      )
-
-      projectContext = {
-        type: projectType,
-        goal: projectGoal,
-        files: keyFiles,
-        dirs,
-        chapterDirs
-      }
-
-      protectedNouns.push(...keyFiles.map(f => path.basename(f, path.extname(f))))
-      protectedNouns.push(...chapterDirs)
-    } catch (e) { /* ignore */ }
-  }
-
-  const resolvedModel = resolveUsableModelSelection(input)
-  const selectedProvider = resolvedModel.provider
-  const modelName = resolvedModel.model
-  if (!selectedProvider || !isProviderConfigured(selectedProvider) || !modelName) {
-    return { ok: false, error: '\u8bf7\u5148\u5728\u8bbe\u7f6e\u4e2d\u4fdd\u5b58 DeepSeek\u3001Qwen\u3001GLM \u6216\u81ea\u5b9a\u4e49\u6a21\u578b\u7684 API Key\uff0c\u5e76\u9009\u62e9\u4e00\u4e2a\u9ed8\u8ba4\u6a21\u578b\u540e\u518d\u4f7f\u7528\u667a\u80fd\u63d0\u793a\u8bcd\u589e\u5f3a\u3002' }
-  }
-
-  const allProtected = [...new Set([
-    ...protectedNouns,
-    ...skills,
-    ...mcp,
-    soul,
-    workflow,
-    'Karna', 'Hermes', '主控', 'Controller',
-    '灵魂工坊', 'Soul Workshop',
-    '技能', 'Skill',
-    'MCP',
-    '工作流', 'Workflow'
-  ].filter(Boolean))]
-
+  const mode = String(input?.mode || '').trim()
+  const permission = String(input?.permission || '').trim()
   const contextLines = []
-  if (projectContext?.type) contextLines.push(`项目类型：${projectContext.type}`)
-  if (projectContext?.goal) contextLines.push(`项目目标：${projectContext.goal}`)
-  if (projectContext?.files?.length) contextLines.push(`重要文件：${projectContext.files.join('、')}`)
-  if (soul) contextLines.push(`灵魂风格：${soul}`)
-  if (skills.length) contextLines.push(`可用技能：${skills.join('、')}`)
-  if (mcp.length) contextLines.push(`可用 MCP 工具：${mcp.join('、')}`)
-  if (workflow) contextLines.push(`使用工作流：${workflow}`)
-  if (mode === 'plan') contextLines.push('对话模式：计划模式（需要分步拆解）')
-  if (mode === 'goal') contextLines.push('对话模式：目标模式（需要明确交付标准）')
-  if (permission === 'computer') contextLines.push('操作权限：可读写电脑内任意文件')
-  if (permission === 'free') contextLines.push('操作权限：自由模式，可执行所有操作')
+  if (projectContext?.type) contextLines.push(`\u9879\u76ee\u7c7b\u578b\uff1a${projectContext.type}`)
+  if (projectContext?.goal) contextLines.push(`\u9879\u76ee\u76ee\u6807\uff1a${projectContext.goal}`)
+  if (Array.isArray(projectContext?.files) && projectContext.files.length) contextLines.push(`\u91cd\u8981\u6587\u4ef6\uff1a${projectContext.files.join('\u3001')}`)
+  if (soul) contextLines.push(`Soul \u98ce\u683c\uff1a${soul}`)
+  if (skills.length) contextLines.push(`\u53ef\u7528 Skill\uff1a${skills.join('\u3001')}`)
+  if (mcp.length) contextLines.push(`\u53ef\u7528 MCP\uff1a${mcp.join('\u3001')}`)
+  if (workflow) contextLines.push(`\u5de5\u4f5c\u6d41\uff1a${workflow}`)
+  if (mode) contextLines.push(`\u5bf9\u8bdd\u6a21\u5f0f\uff1a${mode}`)
+  if (permission) contextLines.push(`\u6743\u9650\u6a21\u5f0f\uff1a${permission}`)
 
-  const systemPrompt = `你是 Karna 的提示词增强模块。
-
-关于 Karna：
-Karna 是面向文字工作者的 AI 创作助手平台，核心能力包括：
-- 灵魂工坊：学习特定作者的写作风格，让 AI 以该风格产出内容
-- 多智能体协作：主控 + 多个写作智能体分工合作完成复杂创作
-- 技能系统：可扩展的写作辅助技能（角色设定、世界观构建、大纲生成等）
-- 项目管理：管理长篇作品的章节、人物、设定、大纲
-- 知识检索：从知识库/资料中检索信息辅助写作
-
-你的任务：
-将用户输入的大白话需求，转化为更清晰、更具体、更易于 Karna 智能体理解和执行的创作任务描述。
-
-增强原则（重要）：
-1. 有方向地增强，不是盲目扩写。围绕创作场景（写小说、写文案、改稿子、做设定等）补充真正有用的信息。
-2. 对齐 Karna 能力。如果需求可以用灵魂、技能、工作流来完成，要明确指出来，而不是凭空描述。
-3. 不改变原意。用户说什么就是什么，只做澄清、补全、结构化，不添加用户没提的需求。
-4. 越具体越好。明确体裁、风格、字数、结构、视角、语气、受众——这些是写作里真正重要的维度。
-5. 短需求精补，长需求结构化。三句话能说清的不要写成三段；复杂需求要拆成清晰的步骤或模块。
-
-【绝对不能动的名词】
-以下名称必须保持原样，严禁翻译、改写、替换、"润色"或"优化"：
-- 灵魂/作者名称（Soul）：${soul || '（当前未选择）'}
-- 技能名称（Skills）：${skills.length ? skills.join('、') : '（当前未启用）'}
-- MCP 服务器/工具名称：${mcp.length ? mcp.join('、') : '（当前未启用）'}
-- 工作流名称（Workflow）：${workflow || '（当前未选择）'}
-- 项目中的文件名、目录名、章节名：${projectContext?.files?.length ? projectContext.files.join('、') : '（无）'}
-- 作品名称、角色名、专有设定术语
-- Karna、Hermes、主控、Controller 等平台术语
-
-输出要求：
-- 直接输出增强后的完整提示词，不要加"以下是增强后的提示词"之类的前后缀
-- 中文表达，简洁有力，不说废话套话
-- 用户输入已经很清晰时，只做小幅补全和措辞调整，不为了增强而增强
-- 简单需求一段话就行；复杂需求可以用分点，但不要堆格式`
-
-  const userPrompt = contextLines.length > 0
-    ? `【项目上下文】\n${contextLines.join('\n')}\n\n【用户需求】\n${raw}\n\n请将以上需求增强为清晰、具体、可执行的创作任务描述。`
-    : `请增强以下用户需求，使其更清晰、更具体、更便于 AI 创作助手执行：\n\n${raw}`
+  const systemPrompt = [
+    '\u4f60\u662f Karna \u7684\u63d0\u793a\u8bcd\u589e\u5f3a\u6a21\u5757\u3002',
+    '\u4f60\u8981\u628a\u7528\u6237\u7684\u53e3\u8bed\u5316\u9700\u6c42\u6539\u5199\u6210\u66f4\u6e05\u6670\u3001\u66f4\u5177\u4f53\u3001\u66f4\u9002\u5408 Karna \u6267\u884c\u7684\u4e2d\u6587\u521b\u4f5c\u4efb\u52a1\u3002',
+    '\u4e0d\u6539\u53d8\u539f\u610f\uff0c\u4e0d\u865a\u6784\u7528\u6237\u6ca1\u6709\u63d0\u5230\u7684\u8981\u6c42\u3002',
+    '\u4fdd\u7559\u4f5c\u54c1\u540d\u3001\u4eba\u540d\u3001\u6587\u4ef6\u540d\u3001Skill\u3001MCP\u3001Soul\u3001Workflow \u7b49\u4e13\u6709\u540d\u8bcd\u3002',
+    '\u76f4\u63a5\u8f93\u51fa\u589e\u5f3a\u540e\u7684\u5b8c\u6574\u63d0\u793a\u8bcd\uff0c\u4e0d\u8981\u52a0\u201c\u4ee5\u4e0b\u662f\u201d\u7b49\u524d\u7f00\u3002'
+  ].join('\n')
+  const userPrompt = contextLines.length
+    ? `\u3010\u9879\u76ee\u4e0a\u4e0b\u6587\u3011\n${contextLines.join('\n')}\n\n\u3010\u7528\u6237\u9700\u6c42\u3011\n${raw}`
+    : `\u8bf7\u589e\u5f3a\u4ee5\u4e0b\u7528\u6237\u9700\u6c42\uff1a\n\n${raw}`
 
   try {
-    const content = await callChatCompletion(providerSlug, modelName, [
+    const content = await callChatCompletion(provider.slug, modelName, [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
-    ], { temperature: 0.6, maxTokens: 4096, timeoutMs: 60_000 })
-
+    ], { temperature: 0.45, maxTokens: 4096, timeoutMs: 60_000 })
     const enhanced = String(content || '').trim()
-    if (!enhanced) {
-      return { ok: false, error: '提示词增强返回为空' }
-    }
-
-    return { ok: true, text: enhanced }
+    if (!enhanced) return { ok: false, error: '\u63d0\u793a\u8bcd\u589e\u5f3a\u8fd4\u56de\u4e3a\u7a7a\u3002' }
+    return { ok: true, text: enhanced, provider: provider.slug, model: modelName }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    return { ok: false, error: err instanceof Error ? err.message : String(err), provider: provider.slug, model: modelName }
   }
 }
 

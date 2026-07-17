@@ -274,30 +274,16 @@ export const PLUGIN_CATEGORIES = [
 ] as const
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  writing: '写作',
-  research: '研究',
-  documents: '文档',
-  productivity: '生产力',
-  'knowledge-management': '知识管理',
-  'browser-automation': '浏览器自动化',
-  communication: '通信',
-  creative: '创意',
-  data: '数据',
-  development: '开发',
-  system: '系统',
-  uncategorized: '未分类',
-  '内置插件': '内置插件',
-  'Karna 官方': 'Karna 官方'
+  writing: '\u5199\u4f5c', research: '\u7814\u7a76', documents: '\u6587\u6863', productivity: '\u751f\u4ea7\u529b',
+  'knowledge-management': '\u77e5\u8bc6\u7ba1\u7406', 'browser-automation': '\u6d4f\u89c8\u5668\u81ea\u52a8\u5316', communication: '\u901a\u4fe1',
+  creative: '\u521b\u610f', data: '\u6570\u636e', development: '\u5f00\u53d1', system: '\u7cfb\u7edf', uncategorized: '\u672a\u5206\u7c7b',
+  builtin: '\u5185\u7f6e', marketplace: '\u6269\u5c55\u5e02\u573a', '\u5185\u7f6e\u63d2\u4ef6': '\u5185\u7f6e\u63d2\u4ef6', 'Karna \u5b98\u65b9': 'Karna \u5b98\u65b9',
+  'Karna \u5b98\u65b9\u5185\u7f6e': 'Karna \u5b98\u65b9\u5185\u7f6e', '\u5916\u7f6e Skill \u5e02\u573a': '\u5916\u7f6e Skill \u5e02\u573a'
 }
 
 export const HEALTH_STATUS_LABELS: Record<PluginHealthStatus, string> = {
-  ready: '就绪',
-  degraded: '降级',
-  missing_dependency: '缺少依赖',
-  permission_required: '需要授权',
-  unsupported_platform: '不支持平台',
-  error: '错误',
-  unknown: '未知'
+  ready: '\u5c31\u7eea', degraded: '\u964d\u7ea7', missing_dependency: '\u7f3a\u5c11\u4f9d\u8d56', permission_required: '\u9700\u8981\u6388\u6743',
+  unsupported_platform: '\u4e0d\u652f\u6301\u5f53\u524d\u5e73\u53f0', error: '\u9519\u8bef', unknown: '\u672a\u77e5'
 }
 
 export const HEALTH_STATUS_COLORS: Record<PluginHealthStatus, string> = {
@@ -311,26 +297,11 @@ export const HEALTH_STATUS_COLORS: Record<PluginHealthStatus, string> = {
 }
 
 export const PERMISSION_LABELS: Record<string, string> = {
-  'filesystem:project': '项目文件读写',
-  'filesystem:read': '读取文件',
-  'filesystem:write': '写入文件',
-  'process:bundled-runtime': '内置运行时进程',
-  'desktop:control': '桌面控制',
-  'screen:capture': '屏幕截图',
-  'browser:login': '浏览器登录会话',
-  'browser:isolated': '隔离浏览器',
-  'browser:login-session': '登录浏览器会话',
-  'email:read': '读取邮件',
-  'email:send': '发送邮件',
-  'email:modify': '修改邮件',
-  'calendar:read': '读取日历',
-  'calendar:write': '写入日历',
-  'network:request': '网络访问',
-  'network:local': '本地网络访问',
-  'oauth:desktop': '桌面 OAuth 授权',
-  'zotero:local': '本地 Zotero',
-  network: '网络访问',
-  shell: 'Shell 执行',
-  ocr: 'OCR 识别',
-  clipboard: '剪贴板访问'
+  'filesystem:project': '\u9879\u76ee\u6587\u4ef6\u8bfb\u5199', 'filesystem:read': '\u8bfb\u53d6\u6587\u4ef6', 'filesystem:write': '\u5199\u5165\u6587\u4ef6',
+  'process:bundled-runtime': '\u5185\u7f6e\u8fd0\u884c\u65f6\u8fdb\u7a0b', 'desktop:control': '\u684c\u9762\u63a7\u5236', 'screen:capture': '\u5c4f\u5e55\u622a\u56fe',
+  'browser:login': '\u6d4f\u89c8\u5668\u767b\u5f55\u4f1a\u8bdd', 'browser:isolated': '\u9694\u79bb\u6d4f\u89c8\u5668', 'browser:login-session': '\u767b\u5f55\u6d4f\u89c8\u5668\u4f1a\u8bdd',
+  'email:read': '\u8bfb\u53d6\u90ae\u4ef6', 'email:send': '\u53d1\u9001\u90ae\u4ef6', 'email:modify': '\u4fee\u6539\u90ae\u4ef6', 'calendar:read': '\u8bfb\u53d6\u65e5\u5386',
+  'calendar:write': '\u5199\u5165\u65e5\u5386', 'network:request': '\u7f51\u7edc\u8bbf\u95ee', 'network:local': '\u672c\u5730\u7f51\u7edc\u8bbf\u95ee',
+  'oauth:desktop': '\u684c\u9762 OAuth \u6388\u6743', 'zotero:local': '\u672c\u5730 Zotero', network: '\u7f51\u7edc\u8bbf\u95ee', shell: 'Shell \u6267\u884c',
+  ocr: 'OCR \u8bc6\u522b', clipboard: '\u526a\u8d34\u677f\u8bbf\u95ee'
 }

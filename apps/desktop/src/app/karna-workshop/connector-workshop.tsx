@@ -160,6 +160,22 @@ function toolDisplayName(name: string) {
   return TOOL_LABEL_ZH[name] || name.replace(/_/g, ' ')
 }
 
+const TOOL_DESC_ZH: Record<string, string> = {
+  'tools/list': '\u5217\u51fa\u8be5 MCP Server \u66b4\u9732\u7684\u5de5\u5177\u6e05\u5355\u3002', 'tools/call': '\u6309\u5de5\u5177 ID \u8c03\u7528\u6307\u5b9a MCP \u5de5\u5177\u3002',
+  create_doc: '\u521b\u5efa\u5728\u7ebf\u6587\u6863\u3001\u8868\u683c\u6216\u9879\u76ee\u8d44\u6599\u3002', edit_doc: '\u7f16\u8f91\u5df2\u6709\u6587\u6863\u5185\u5bb9\u5e76\u4fdd\u5b58\u4fee\u6539\u3002',
+  query_sheet: '\u67e5\u8be2\u8868\u683c\u6570\u636e\u3001\u7b5b\u9009\u8bb0\u5f55\u6216\u6c47\u603b\u5b57\u6bb5\u3002', search_doc: '\u641c\u7d22\u6587\u6863\u3001\u77e5\u8bc6\u5e93\u6216\u4e91\u76d8\u8d44\u6599\u3002',
+  send_message: '\u5411\u7fa4\u804a\u3001\u8054\u7cfb\u4eba\u6216\u673a\u5668\u4eba\u53d1\u9001\u6d88\u606f\u3002', calendar_event: '\u521b\u5efa\u3001\u67e5\u8be2\u6216\u66f4\u65b0\u65e5\u7a0b\u4e8b\u4ef6\u3002',
+  attendance_query: '\u67e5\u8be2\u8003\u52e4\u3001\u8bf7\u5047\u6216\u6253\u5361\u72b6\u6001\u3002', place_search: '\u641c\u7d22\u5730\u70b9\u3001POI \u6216\u5468\u8fb9\u670d\u52a1\u3002',
+  route_plan: '\u89c4\u5212\u51fa\u884c\u8def\u7ebf\u3001\u8ddd\u79bb\u548c\u9884\u8ba1\u65f6\u95f4\u3002', geocoding: '\u8fdb\u884c\u5730\u5740\u89e3\u6790\u4e0e\u5750\u6807\u8f6c\u6362\u3002',
+  stock_quote: '\u67e5\u8be2\u80a1\u7968\u6216\u57fa\u91d1\u5b9e\u65f6\u884c\u60c5\u3002', stock_screen: '\u6309\u6761\u4ef6\u7b5b\u9009\u80a1\u7968\u6216\u6807\u7684\u3002',
+  research_report: '\u68c0\u7d22\u7814\u62a5\u3001\u516c\u544a\u548c\u884c\u4e1a\u8d44\u6599\u3002', portfolio_query: '\u67e5\u8be2\u81ea\u9009\u80a1\u3001\u6301\u4ed3\u6216\u5173\u6ce8\u5217\u8868\u3002',
+  price_alert: '\u8bbe\u7f6e\u4ef7\u683c\u3001\u6da8\u8dcc\u5e45\u6216\u4e8b\u4ef6\u63d0\u9192\u3002', simulate_trade: '\u521b\u5efa\u6a21\u62df\u4ea4\u6613\u6216\u56de\u6d4b\u8bb0\u5f55\u3002'
+}
+
+function toolDisplayDescription(tool: Pick<ConnectorTool, 'name' | 'description'>) {
+  return TOOL_DESC_ZH[tool.name] || tool.description || '\u8be5\u5de5\u5177\u7684\u4e2d\u6587\u8bf4\u660e\u6682\u672a\u8865\u5145\uff0cKarna \u4f1a\u4fdd\u7559\u82f1\u6587\u6280\u672f ID \u4fbf\u4e8e\u6392\u969c\u3002'
+}
+
 type ConnectorAvatarIconKind = 'writer' | 'story' | 'state' | 'wiki' | 'search' | 'soul' | 'obsidian' | 'zotero' | 'arxiv' | 'wechat' | 'wps' | 'baidu_netdisk' | 'web' | 'browser' | 'mcp' | 'location'
 type ConnectorAvatarConfig = {
   label: string
@@ -491,7 +507,7 @@ export function ConnectorWorkshopView() {
               <div className="mt-2 rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/70 p-2 text-xs">
                 <div className="mb-1 text-muted-foreground">Intent: <span className="font-mono text-foreground">{routerResult.intent}</span></div>
                 <div className="flex flex-wrap gap-1">
-                  {(routerResult.tools || []).length === 0 ? <span className="text-muted-foreground">暂无候选工具；先连接对应连接器。</span> : routerResult.tools.map(tool => <WorkshopStatus key={tool.id || tool.name} tone="info">{tool.name}</WorkshopStatus>)}
+                  {(routerResult.tools || []).length === 0 ? <span className="text-muted-foreground">暂无候选工具；先连接对应连接器。</span> : routerResult.tools.map(tool => <WorkshopStatus key={tool.id || tool.name} tone="info">{toolDisplayName(tool.name)}</WorkshopStatus>)}
                 </div>
               </div>
             ) : null}
@@ -941,7 +957,7 @@ function ConnectorDetailDrawer({ instance, onChanged, onClose }: { instance: Con
               <div className="grid gap-2">
                 {(current.discoveredTools || []).length === 0 ? <WorkshopEmpty>还没有发现工具。</WorkshopEmpty> : current.discoveredTools.map(tool => (
                   <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/70 p-2 text-xs" key={tool.id || tool.name}>
-                    <div><div className="font-mono text-foreground">{tool.name}</div><p className="mt-0.5 text-muted-foreground">{tool.description}</p></div>
+                    <div><div className="font-medium text-foreground">{toolDisplayName(tool.name)} <span className="font-mono text-[10px] text-muted-foreground">{tool.name}</span></div><p className="mt-0.5 text-muted-foreground">{toolDisplayDescription(tool)}</p></div>
                     <div className="flex items-center gap-2">
                       <WorkshopStatus tone={RISK_TONE[tool.riskLevel || 'low']}>{RISK_LABEL[tool.riskLevel || 'low']}</WorkshopStatus>
                       <Button disabled={!tool.id || tool.enabled === false} onClick={() => setCallTarget(tool)} size="xs" variant="outline">调用</Button>
@@ -1074,11 +1090,11 @@ function ToolCallModal({ tool, projects, onCalled, onClose }: { tool: ConnectorT
       <div className="grid gap-3">
         <div className="rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/60 p-3 text-xs text-muted-foreground">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-foreground">{tool.name}</span>
+            <span className="font-medium text-foreground">{toolDisplayName(tool.name)} <span className="font-mono text-[11px] text-muted-foreground">{tool.name}</span></span>
             <WorkshopStatus tone={RISK_TONE[tool.riskLevel || 'low']}>{RISK_LABEL[tool.riskLevel || 'low']}</WorkshopStatus>
             <WorkshopStatus tone="info">{tool.source || 'connector'}</WorkshopStatus>
           </div>
-          {tool.description}
+          {toolDisplayDescription(tool)}
         </div>
         <FieldRow description="用于演示和验收 tools/call；实际 Agent 调用也走同一后端入口。" label="Arguments JSON">
           <textarea className="field min-h-40 font-mono text-xs" onChange={event => setRaw(event.target.value)} spellCheck={false} value={raw} />

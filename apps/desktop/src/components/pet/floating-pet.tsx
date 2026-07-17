@@ -18,7 +18,7 @@ import { type PetZoomAnchor, usePetZoomGesture } from './use-pet-zoom-gesture'
 
 // v2: positions are now top/left anchored (v1 stored bottom-anchored values,
 // which dragged inverted). Bumping the key discards stale v1 coordinates.
-const POSITION_KEY = 'hermes.desktop.pet-position.v2'
+const POSITION_KEY = 'karna.desktop.pet-position.v2'
 
 // Stand-in pet size for the pre-load clamp (real size flows in with `info`).
 const NOMINAL_PET_PX = 96
@@ -291,7 +291,7 @@ export function FloatingPet() {
     const rect = el.getBoundingClientRect()
 
     // Shift-click pops the pet out into a free-floating desktop overlay (it can
-    // leave the window and stays visible while Hermes is minimized) instead of
+    // leave the window and stays visible while Karna is minimized) instead of
     // starting an in-window drag. Primary window only — the overlay is anchored
     // to it.
     if (e.shiftKey && !isSecondaryWindow()) {
@@ -404,12 +404,22 @@ export function FloatingPet() {
 
   // While popped out, the desktop overlay window owns the mascot — hide the
   // in-window one so there aren't two.
+  const onDoubleClick = useCallback(() => {
+    const el = containerRef.current
+    if (!el || isSecondaryWindow()) return
+    const rect = el.getBoundingClientRect()
+    popOutPet({ height: rect.height, width: rect.width, x: rect.left, y: rect.top })
+  }, [])
+
   if (!info.enabled || !info.spritesheetBase64 || overlayActive) {
     return null
   }
 
   return (
     <div
+      aria-label="Karna 桌面宠物：拖拽移动，双击弹出到桌面，Shift+点击也可弹出"
+      title="双击弹出为桌面宠物；Shift+点击也可弹出"
+      onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
