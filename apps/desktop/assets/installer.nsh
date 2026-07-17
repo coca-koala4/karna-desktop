@@ -102,7 +102,8 @@ FunctionEnd
     ; Grant only the installing user modify access so a per-user Karna process
     ; can update dependencies without falling back to %LOCALAPPDATA% (C:).
     CreateDirectory "$INSTDIR\runtime"
-    nsExec::ExecToLog 'icacls "$INSTDIR\runtime" /grant "$USERNAME:(OI)(CI)M" /T /C'
+    StrCpy $8 "$USERNAME"
+    nsExec::ExecToLog 'icacls "$INSTDIR\runtime" /grant "$8:(OI)(CI)M" /T /C'
 
     ${WordReplace} "$KarnaWorkspace" "\" "/" "+" $0
     FileOpen $1 "$APPDATA\Karna\installer-options.json" w
