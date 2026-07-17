@@ -102,6 +102,7 @@ function ensureDir(target) {
 function isRuntimeFile(file) {
   const normalized = file.replace(/\\/g, '/')
   return !/(^|\/)(?:tests?|__tests__)(\/|$)/i.test(normalized) &&
+    !/\.map$/i.test(normalized) &&
     !/\.(?:test|spec)\.[cm]?[jt]sx?(?:\.map)?$/i.test(normalized)
 }
 

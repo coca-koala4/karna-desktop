@@ -21,7 +21,7 @@
  *   - 调用约定：每个 helper 是一个 0-arg 函数，便于未来注入用户偏好。
  *
  * 兼容：
- *   - 旧路径 D:\Agent\projects\karna-hermes\karna-data 在打包前继续生效，
+ *   - 开发检出目录中的旧 karna-data 在打包前继续生效，
  *     不会破坏现有 karna-data/writer-projects/.../ 测试/ 样例项目。
  */
 
