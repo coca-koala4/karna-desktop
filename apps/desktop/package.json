@@ -1,8 +1,8 @@
-{
+﻿{
     "name":  "karna",
     "productName":  "Karna",
     "private":  true,
-    "version":  "0.17.10",
+    "version": "0.17.11",
     "description":  "Native desktop shell for Karna Agent. Powered by Hermes Agent runtime.",
     "author":  "Karna",
     "type":  "module",
@@ -238,6 +238,10 @@
                                          {
                                              "from":  "build/release-manifest.json",
                                              "to":  "release-manifest.json"
+                                         },
+                                         {
+                                             "from":  "scripts/install.ps1",
+                                             "to":  "karna-runtime/install.ps1"
                                          }
                                      ],
                   "publish":  {
@@ -324,3 +328,4 @@
                            }
               }
 }
+

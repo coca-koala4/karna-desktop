@@ -81,6 +81,22 @@ function resolveLocalInstallScript(sourceRepoRoot) {
   }
 }
 
+// Packaged builds carry the exact installer script used to build the app.
+// Keeping this resource local avoids a fragile first-launch dependency on
+// raw.githubusercontent.com (which can fail with ECONNRESET on restricted or
+// slow networks). The script itself still performs its own repository
+// download fallback when it provisions the runtime.
+function resolveBundledInstallScript(resourcesPath) {
+  if (!resourcesPath) return null
+  const candidate = path.join(resourcesPath, 'karna-runtime', installScriptName())
+  try {
+    fs.accessSync(candidate, fs.constants.R_OK)
+    return candidate
+  } catch {
+    return null
+  }
+}
+
 function bootstrapCacheDir(hermesHome) {
   return path.join(hermesHome, 'bootstrap-cache')
 }
@@ -182,6 +198,7 @@ function downloadInstallScript(commit, destPath) {
 async function resolveInstallScript({
   installStamp,
   sourceRepoRoot,
+  resourcesPath,
   hermesHome,
   emit,
   _download = downloadInstallScript
@@ -195,7 +212,14 @@ async function resolveInstallScript({
     return { path: localScript, source: 'local', kind: installScriptKind() }
   }
 
-  // 2. Packaged path: download from GitHub at the pinned commit (1B's stamp).
+  const bundledScript = resolveBundledInstallScript(resourcesPath)
+  if (bundledScript) {
+    emit({ type: 'log', line: `[bootstrap] using bundled ${installScriptName()} at ${bundledScript}` })
+    return { path: bundledScript, source: 'bundled', commit: installStamp?.commit, kind: installScriptKind() }
+  }
+
+  // Fallback for older packaged builds: download from GitHub at the pinned
+  // commit (new builds never need this first-launch request).
   if (!installStamp || !installStamp.commit || !STAMP_COMMIT_RE.test(installStamp.commit)) {
     throw new Error(
       `Cannot resolve ${installScriptName()}: no SOURCE_REPO_ROOT and no install stamp. ` +
@@ -665,7 +689,13 @@ async function runBootstrap(opts) {
 
   try {
     // 1. Resolve the platform installer.
-    const scriptInfo = await resolveInstallScript({ installStamp, sourceRepoRoot, hermesHome, emit })
+    const scriptInfo = await resolveInstallScript({
+      installStamp,
+      sourceRepoRoot,
+      resourcesPath: process.resourcesPath,
+      hermesHome,
+      emit
+    })
     const installerKind = scriptInfo.kind || 'powershell'
 
     // 2. Fetch manifest
