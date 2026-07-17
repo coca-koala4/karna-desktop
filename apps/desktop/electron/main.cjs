@@ -355,6 +355,7 @@ function resolveHermesHome() {
     isPackaged: IS_PACKAGED,
     isWindows: IS_WINDOWS,
     userDataOverride: USER_DATA_OVERRIDE,
+    installRoot: path.dirname(process.execPath),
     homeDir: app.getPath('home'),
     normalize: normalizeHermesHomeRoot,
     directoryExists,

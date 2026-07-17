@@ -7,6 +7,7 @@ function resolveKarnaRuntimeHome(options = {}) {
   const isPackaged = Boolean(options.isPackaged)
   const isWindows = Boolean(options.isWindows)
   const userDataOverride = options.userDataOverride || null
+  const installRoot = options.installRoot || null
   const homeDir = options.homeDir || ''
   const normalize = options.normalize || (value => path.resolve(String(value)))
   const directoryExists = options.directoryExists || (() => false)
@@ -18,7 +19,10 @@ function resolveKarnaRuntimeHome(options = {}) {
   // A packaged Karna release must never reuse a Hermes CLI home: it can hold
   // unrelated projects, sessions, model selection and credentials.
   if (isPackaged) {
-    if (isWindows && env.LOCALAPPDATA) return path.join(env.LOCALAPPDATA, 'Karna', 'runtime')
+    // Keep the managed runtime beside the user-selected Karna installation,
+    // not in C:\Users\...\AppData\Local. The NSIS install directory is the
+    // source of truth for a portable/custom-location install.
+    if (installRoot) return path.join(path.resolve(installRoot), 'runtime')
     return path.join(homeDir, '.karna', 'runtime')
   }
 

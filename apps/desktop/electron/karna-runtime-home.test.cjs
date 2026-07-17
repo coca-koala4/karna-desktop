@@ -10,9 +10,10 @@ test('packaged Windows Karna ignores an existing Hermes home', () => {
     isPackaged: true,
     isWindows: true,
     homeDir: 'C:\\Users\\alice',
+    installRoot: 'D:\\Apps\\Karna',
     readWindowsUserEnvVar: () => 'E:\\also-private'
   })
-  assert.equal(result, 'C:\\Users\\alice\\AppData\\Local\\Karna\\runtime')
+  assert.equal(result, 'D:\\Apps\\Karna\\runtime')
 })
 
 test('packaged runtime supports an explicit Karna-only override', () => {
