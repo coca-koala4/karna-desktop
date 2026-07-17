@@ -139,7 +139,6 @@ const KarnaWriterWorkshopView = lazy(async () => ({ default: (await import('./ka
 const KarnaSoulWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaSoulWorkshopView }))
 const KarnaFlowWorkshopView = lazy(async () => ({ default: (await import('./agent-flow')).AgentFlowWorkshopPage }))
 const KarnaMcpWorkshopView = lazy(async () => ({ default: (await import('./karna-workshop')).KarnaMcpWorkshopView }))
-const KarnaPluginsView = lazy(async () => ({ default: (await import('./plugins')).PluginsView }))
 const KarnaHomeDemoView = lazy(async () => ({ default: (await import('./karna-workshop/home-demo')).KarnaHomeDemoView }))
 const StarmapView = lazy(async () => ({ default: (await import('./starmap')).StarmapView }))
 const MessagingView = lazy(async () => ({ default: (await import('./messaging')).MessagingView }))
@@ -1361,14 +1360,7 @@ export function DesktopController() {
             }
             path="karna/mcp"
           />
-          <Route
-            element={
-              <Suspense fallback={null}>
-                <KarnaPluginsView />
-              </Suspense>
-            }
-            path="karna/plugins"
-          />
+          <Route element={<Navigate replace to="/skills?tab=plugins" />} path="karna/plugins" />
           <Route
             element={
               <Suspense fallback={null}>

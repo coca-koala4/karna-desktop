@@ -123,7 +123,6 @@ import {
   type AppView,
   KARNA_FLOW_ROUTE,
   KARNA_MCP_ROUTE,
-  KARNA_PLUGINS_ROUTE,
   KARNA_SOUL_ROUTE,
   KARNA_WRITER_ROUTE,
   SETTINGS_ROUTE,
@@ -200,12 +199,6 @@ const SIDEBAR_NAV: SidebarNavItem[] = [
     icon: props => <Codicon name="plug" {...props} />,
     route: KARNA_MCP_ROUTE
   },
-  {
-    id: 'karna-plugins',
-    label: '插件平台',
-    icon: props => <Codicon name="extensions" {...props} />,
-    route: KARNA_PLUGINS_ROUTE
-  }
 ]
 
 // Two modes via the `compact` height variant (styles.css):

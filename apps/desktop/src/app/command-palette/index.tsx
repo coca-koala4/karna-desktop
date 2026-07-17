@@ -59,7 +59,6 @@ import {
   KARNA_AGENTS_ROUTE,
   KARNA_FLOW_ROUTE,
   KARNA_MCP_ROUTE,
-  KARNA_PLUGINS_ROUTE,
   KARNA_SOUL_ROUTE,
   KARNA_WRITER_ROUTE,
   MESSAGING_ROUTE,
@@ -398,8 +397,8 @@ export function CommandPalette() {
             icon: Package,
             id: 'nav-karna-plugins',
             keywords: ['karna', 'plugin', 'extension', 'addon', 'skill pack'],
-            label: '插件平台',
-            run: go(KARNA_PLUGINS_ROUTE)
+            label: '\u6280\u80fd\u4e0e\u5de5\u5177\u5de5\u574a\uff08\u63d2\u4ef6\uff09',
+            run: go('/skills?tab=plugins')
           },
           {
             action: 'nav.messaging',
