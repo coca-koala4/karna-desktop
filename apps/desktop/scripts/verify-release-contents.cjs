@@ -10,13 +10,17 @@ const DENIED_PATHS = [
   /\.test\.[cm]?[jt]sx?$/i,
   /(^|\/)(?:test-results|\.playwright-cli|\.venv|__pycache__|\.pytest_cache|backups?|temp)(\/|$)/i,
   /(?:^|\/)(?:dev-renderer|build-todo).+\.log$/i,
-  /\.patch$/i
+  /\.patch$/i,
+  /(^|\/)(?:hermes-frames|hermes-sprite\.png|hermes\.png|nous-girl\.jpg)(\/|$)/i,
+  /\.map$/i
 ]
 
 const DENIED_TEXT = [
   /D:\\Agent/i,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
-  /(?:sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/
+  /(?:sk-[A-Za-z0-9]{32,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/,
+  /logo\.clearbit\.com/i,
+  /NousResearch\/hermes-agent/i
 ]
 
 function walk(root) {
@@ -47,7 +51,7 @@ function verifyUnpacked(appOutDir) {
     }
   }
 
-  const required = ['builtin-skills', 'builtin-plugins', 'builtin-workflows', 'release-manifest.json']
+  const required = ['builtin-skills', 'builtin-plugins', 'builtin-workflows', 'offline-runtime', 'release-manifest.json', 'icon.ico']
   for (const name of required) {
     if (!fs.existsSync(path.join(resources, name))) problems.push(`missing required resource: ${name}`)
   }
@@ -68,6 +72,13 @@ function verifyUnpacked(appOutDir) {
       return [normalized, normalized.split('/').join(path.sep)]
     }))
     const entries = new Set(archiveEntries.keys())
+    for (const entry of entries) {
+      if (DENIED_PATHS.some(pattern => pattern.test(entry))) problems.push(`denied asar path: ${entry}`)
+      if (/\.(?:json|ya?ml|md|txt|js|cjs|mjs|html|css|tsx?)$/i.test(entry)) {
+        const source = extractFile(asarPath, archiveEntries.get(entry)).toString('utf8')
+        if (DENIED_TEXT.some(pattern => pattern.test(source))) problems.push(`sensitive asar text: ${entry}`)
+      }
+    }
     const candidatesFor = (from, request) => {
       const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), request))
       return [base, `${base}.cjs`, `${base}.js`, `${base}.json`, `${base}/index.cjs`, `${base}/index.js`]

@@ -710,30 +710,6 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({
     }
   }
 
-  const getNodeEmoji = (type: string) => {
-    const t = (type || '').toLowerCase()
-
-    if (t.includes('character') || t.includes('person')) {return '👤'}
-
-    if (t.includes('location') || t.includes('place')) {return '📍'}
-
-    if (t.includes('event')) {return '⚡'}
-
-    if (t.includes('object') || t.includes('item')) {return '🔮'}
-
-    if (t.includes('concept') || t.includes('theme')) {return '💡'}
-
-    if (t.includes('faction') || t.includes('organization')) {return '🏛️'}
-
-    if (t.includes('plot')) {return '📌'}
-
-    if (t.includes('foreshadow')) {return '✨'}
-
-    if (t.includes('chapter')) {return '📖'}
-
-    return '●'
-  }
-
   const neighbors = selectedNode ? getNeighbors(selectedNode.id) : new Set<string>()
   const searchLower = searchTerm.toLowerCase().trim()
 
@@ -900,15 +876,7 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({
                   fill="url(#nodeGlow)"
                   r={r * 0.6}
                 />
-                <text
-                  className="pointer-events-none select-none"
-                  fontSize={r * 0.7}
-                  textAnchor="middle"
-                  x={node.x}
-                  y={node.y + 5}
-                >
-                  {getNodeEmoji(node.type)}
-                </text>
+                <circle className="pointer-events-none" cx={node.x} cy={node.y} fill="currentColor" r={Math.max(2, r * 0.12)} />
                 <text
                   className="pointer-events-none select-none"
                   fill={isSelected ? '#fbbf24' : isNeighbor || isSearchMatch ? '#fff' : '#cbd5e1'}

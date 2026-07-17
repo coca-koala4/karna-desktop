@@ -257,7 +257,7 @@ export function ProjectDialog() {
                   onClick={() => setIdea(template.idea)}
                   type="button"
                 >
-                  <span aria-hidden>{template.emoji}</span>
+                  <Codicon name={template.icon} size="0.75rem" />
                   {template.label}
                 </button>
               ))}

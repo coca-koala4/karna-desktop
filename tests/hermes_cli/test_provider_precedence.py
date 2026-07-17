@@ -35,6 +35,20 @@ def _clear_provider_env(monkeypatch):
 
 
 class TestProviderPrecedence:
+    def test_karna_packaged_mode_rejects_all_implicit_credentials(self, monkeypatch):
+        _clear_provider_env(monkeypatch)
+        _login(monkeypatch, "copilot")
+        _config(monkeypatch, {})
+        monkeypatch.setenv("OPENROUTER_API_KEY", "must-not-be-used")
+        monkeypatch.setenv("KARNA_REQUIRE_EXPLICIT_PROVIDER", "1")
+        with pytest.raises(AuthError) as exc:
+            resolve_provider("auto")
+        assert exc.value.code == "no_provider_configured"
+
+    def test_karna_packaged_mode_allows_explicit_provider(self, monkeypatch):
+        monkeypatch.setenv("KARNA_REQUIRE_EXPLICIT_PROVIDER", "1")
+        assert resolve_provider("openrouter") == "openrouter"
+
     def test_config_provider_beats_stale_oauth(self, monkeypatch):
         """config.yaml model.provider wins over a logged-in OAuth active_provider."""
         _clear_provider_env(monkeypatch)

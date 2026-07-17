@@ -80,13 +80,15 @@ function buildDesktopBackendEnv({
   venvRoot,
   currentEnv = process.env,
   platform = process.platform,
-  pathModule = pathModuleForPlatform(platform)
+  pathModule = pathModuleForPlatform(platform),
+  isolateCredentials = false,
+  explicitCredentials = {}
 } = {}) {
   const delimiter = delimiterForPlatform(platform)
   const currentPythonPath = currentEnv?.PYTHONPATH || ''
   const key = pathEnvKey(currentEnv, platform)
 
-  return {
+  const result = {
     PYTHONPATH: appendUniquePathEntries([...pythonPathEntries, currentPythonPath], { delimiter }),
     [key]: buildDesktopBackendPath({
       hermesHome,
@@ -96,6 +98,35 @@ function buildDesktopBackendEnv({
       pathModule
     })
   }
+
+  // Packaged Karna must start from an explicitly authorised model provider.
+  // Empty values deliberately shadow credentials inherited from the desktop
+  // process (PowerShell profile, GitHub CLI/Copilot, old Hermes installs, CI).
+  if (isolateCredentials) {
+    for (const name of [
+      'OPENAI_API_KEY',
+      'OPENROUTER_API_KEY',
+      'ANTHROPIC_API_KEY',
+      'GEMINI_API_KEY',
+      'GOOGLE_API_KEY',
+      'MISTRAL_API_KEY',
+      'XAI_API_KEY',
+      'DEEPSEEK_API_KEY',
+      'COPILOT_GITHUB_TOKEN',
+      'GH_TOKEN',
+      'GITHUB_TOKEN',
+      'AWS_ACCESS_KEY_ID',
+      'AWS_SECRET_ACCESS_KEY',
+      'AWS_SESSION_TOKEN'
+    ]) {
+      result[name] = ''
+    }
+    result.KARNA_REQUIRE_EXPLICIT_PROVIDER = '1'
+    result.KARNA_DISABLE_IMPLICIT_CREDENTIALS = '1'
+    Object.assign(result, explicitCredentials)
+  }
+
+  return result
 }
 
 module.exports = {

@@ -1,77 +1,132 @@
 {
-  "feishu": {
-    "file": "feishu.jpg",
-    "source": "https://apps.apple.com/app/id1401729613",
-    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/3f/3c/a7/3f3ca745-2f9c-d56a-3cb9-a6aff1475051/AppIcon-0-0-1x_U007epad-0-0-0-1-0-0-85-220.png/512x512bb.jpg"
-  },
-  "tencent-docs": {
-    "file": "tencent-docs.jpg",
-    "source": "https://apps.apple.com/app/id1370780836",
-    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/1d/c7/96/1dc796d9-66b8-1748-bcde-233331376268/AppIcon-0-0-1x_U007epad-0-11-0-0-sRGB-GLES2_U002c0-85-220.png/512x512bb.jpg"
-  },
-  "wechat-reading": {
-    "file": "wechat-reading.jpg",
-    "source": "https://apps.apple.com/app/id952059546",
-    "image": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f4/82/23/f48223d4-19b3-dd26-6944-e06b69595991/AppIcon-0-1x_U007epad-0-11-0-85-220-0.png/512x512bb.jpg"
-  },
-  "dingtalk": {
-    "file": "dingtalk.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.alibaba.android.rimet",
-    "image": "https://play-lh.googleusercontent.com/YjG5hs0qlTHmued9XI5SV1LCk6cwcEUdTB8onHA1rtr7HGXNSDmyUxkKUjo84HSv8zG0ZyZRcrt6NgqyxddquA"
-  },
-  "wecom": {
-    "file": "wecom.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.tencent.wework",
-    "image": "https://play-lh.googleusercontent.com/5sNDbHha6vnP8VetEvlhVo7quxSL3U-c41DHUdC4z1HUxzxzMI1kCC3JpCiTE4F4zcuPkN9BI5ZTVlNQBsAbVw"
-  },
-  "gmail": {
-    "file": "gmail.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.gm",
-    "image": "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc"
-  },
-  "google-calendar": {
-    "file": "google-calendar.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.calendar",
-    "image": "https://play-lh.googleusercontent.com/vEoqLbT_QkYcEaawWBRc22N6i98OUtOUpM1LmKdVs_xx7lCsUyFfV0ZiqoUXjMijUteiBhhN4K5MpoF96FRNOg"
-  },
-  "baidu-map": {
-    "file": "baidu-map.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.baidu.BaiduMap",
-    "image": "https://play-lh.googleusercontent.com/ltVRNUUvyIAQpTvTGJlqgm7TEcB9xe0YdOcrqxB7IBtLoB4EqCaY8mU199Wg01PcLMTkoypVj8AI-VxNrzGuuQ"
-  },
-  "amap": {
-    "file": "amap.jpg",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.autonavi.minimap",
-    "image": "https://play-lh.googleusercontent.com/qikNJ3JNtoE7VkFmLvyDBYCZ3ATHPSUuKdhpcIfrbL2c7kC7elzdFR8XoXf-tijeedIoA-uK6SqCtENMvUvgxWw"
-  },
-  "zhihu": {
-    "file": "zhihu.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.zhihu.android",
-    "image": "https://play-lh.googleusercontent.com/2t_12vLlJhW_eqCUvzecvpt0XDWb47uvoeUY8HF57pdgiyUxyKti4kt11nxFFJyfNmqLWH0CTTJWcZOU2Imz4w"
-  },
-  "xiaohongshu": {
-    "file": "xiaohongshu.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.xingin.xhs",
-    "image": "https://play-lh.googleusercontent.com/c6Ipks61J7b4qgJMxo965UqsSo0M7ZwTDzQrmLKeBNneCk2gub-RitqSC-fnrmLGXTk3mNEceiBN5N3i26BmYHc"
-  },
-  "wordpress": {
-    "file": "wordpress.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=org.wordpress.android",
-    "image": "https://play-lh.googleusercontent.com/gNi9czjCA3CQFnljioY7UTPdjtzLzsyrOjy8pUJyb1GOLyeld-vQGo0pgz4ym6R4JVo1Tl-FLXIQW6BPK5KJiQ"
-  },
-  "substack": {
-    "file": "substack.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.substack.app",
-    "image": "https://play-lh.googleusercontent.com/UBlh59gph7xdRxHnZ91yDDsLxBuxYS69366uiFGHRBzoZz6subQzVJDcyyHN8BlqKJ49M21NKbmkKkSBb5rcdls"
-  },
-  "chrome": {
-    "file": "chrome.png",
-    "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.android.chrome",
-    "image": "https://play-lh.googleusercontent.com/gbkzfC3R1fXcGR4Uag1uRSN_123Tpo_KxhVZFLFCatmthFuO1bzPczUomFtxI42YYEQMJeAaZuIFVrTF58gZYg"
-  },
-  "tencent-map": {
-    "file": "tencent-map.png",
-    "source": "https://sj.qq.com/appdetail/com.tencent.map",
-    "image": "http://cms.myapp.com/yybUserIcon/2021/02/05/1612490631_b3063e3cacc25b17bf983ae5395876ba.png"
+  "schemaVersion": 1,
+  "runtimeNetworkRequests": false,
+  "icons": {
+    "amap": {
+      "file": "amap.jpg",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.autonavi.minimap",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "a7726d6b0c8350493fafe56b580d68f47227a11ef09658fc17e88528d8c95b4c",
+      "updatedAt": "2026-07-17"
+    },
+    "baidu-map": {
+      "file": "baidu-map.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.baidu.BaiduMap",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "cbca1ccaf556339adc9b72c4d9759252215a34a0e761497abc001f660e13f586",
+      "updatedAt": "2026-07-17"
+    },
+    "baidu-netdisk": {
+      "file": "baidu-netdisk.webp",
+      "source": "Karna original asset",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "c7d85b501a2704ce5b53c20b320ff7bc4a704f988cb743b29289af360b8ab1f9",
+      "updatedAt": "2026-07-17"
+    },
+    "chrome": {
+      "file": "chrome.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.android.chrome",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "023908028c891dfc070f5142a11e777f5f515d76da5e3a72c8354f29688d5073",
+      "updatedAt": "2026-07-17"
+    },
+    "dingtalk": {
+      "file": "dingtalk.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.alibaba.android.rimet",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "bb4cbd67adf68f7f2662cd22c5ad063bf6bc7ab9d1d3b05ea67953108eac6b9f",
+      "updatedAt": "2026-07-17"
+    },
+    "feishu": {
+      "file": "feishu.jpg",
+      "source": "https://apps.apple.com/app/id1401729613",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "9ceac67f5e52e98aa6a6186a84050cd3cd246247dd1cf81435cd83edf1c4c25a",
+      "updatedAt": "2026-07-17"
+    },
+    "gmail": {
+      "file": "gmail.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.gm",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "dc763cd3d878c4bd276bd093985827f34bb1be6474f4057582f43661efc018eb",
+      "updatedAt": "2026-07-17"
+    },
+    "google-calendar": {
+      "file": "google-calendar.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.google.android.calendar",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "db1895078d1e251444236fc89df446c2d13621ec50178ac5f5362e6717ab6169",
+      "updatedAt": "2026-07-17"
+    },
+    "karna-connector": {
+      "file": "karna-connector.svg",
+      "source": "Karna original asset",
+      "license": "Karna original",
+      "sha256": "18b78f510705ea8dcac59da1afc1ab5c87c124b9e250f23c074084294d38a147",
+      "updatedAt": "2026-07-17"
+    },
+    "substack": {
+      "file": "substack.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.substack.app",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "674f62fd1827571a2f3437e6b95c2b362e8bd6d92927f94739d79c7e710356a4",
+      "updatedAt": "2026-07-17"
+    },
+    "tencent-docs": {
+      "file": "tencent-docs.jpg",
+      "source": "https://apps.apple.com/app/id1370780836",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "ae54aef47ad6e138e05d42612a0bb6d146f8188d7345014404aa7c1874c357f8",
+      "updatedAt": "2026-07-17"
+    },
+    "tencent-map": {
+      "file": "tencent-map.png",
+      "source": "https://sj.qq.com/appdetail/com.tencent.map",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "2f6a8aa494172eaf13a8b9e31f3c4e80c1a03dada66b0802e783a1ee86236ead",
+      "updatedAt": "2026-07-17"
+    },
+    "wechat-reading": {
+      "file": "wechat-reading.jpg",
+      "source": "https://apps.apple.com/app/id952059546",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "34bffb3a6b17c290e7ad94e26ca5c09fe9b23e7596489882288891058a8ad3a5",
+      "updatedAt": "2026-07-17"
+    },
+    "wecom": {
+      "file": "wecom.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.tencent.wework",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "4a1982ccb197f06ce89750732aab7769d60ea82ffdc3f7eb1edd51d3cfdd948f",
+      "updatedAt": "2026-07-17"
+    },
+    "wordpress": {
+      "file": "wordpress.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=org.wordpress.android",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "b931f073ffceb3f6706522953d7654d2e58e2033fe6c9e8370cb90228b6d846d",
+      "updatedAt": "2026-07-17"
+    },
+    "wps-office": {
+      "file": "wps-office.webp",
+      "source": "Karna original asset",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "0ea5e0b58e387d11fbb9e2e2c6cec7cfc41cfe34bc045b8b7012efbaf8011493",
+      "updatedAt": "2026-07-17"
+    },
+    "xiaohongshu": {
+      "file": "xiaohongshu.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.xingin.xhs",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "a94a1a556c5fc8b5ef751e610f4c8b29baa188624d8eca862b22ae10bb6faa0f",
+      "updatedAt": "2026-07-17"
+    },
+    "zhihu": {
+      "file": "zhihu.png",
+      "source": "https://play.google.com/store/apps/details?hl=en_US&id=com.zhihu.android",
+      "license": "Service trademark; identification use only; redistribution review required",
+      "sha256": "ac9e951d8c1c72e6d01753f1cd94386154cfbd1c0faa615b4c82761c12c061f9",
+      "updatedAt": "2026-07-17"
+    }
   }
 }

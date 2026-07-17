@@ -52,32 +52,6 @@ const getEventColor = (e: TimelineEvent) => {
   return eventTypeColors[type] || eventTypeColors.event
 }
 
-const getEventEmoji = (e: TimelineEvent) => {
-  const type = (e.type || e.importance || 'event').toLowerCase()
-
-  if (type.includes('major') || type.includes('plot')) {return '🔥'}
-
-  if (type.includes('conflict') || type.includes('battle')) {return '⚔️'}
-
-  if (type.includes('death')) {return '💀'}
-
-  if (type.includes('birth')) {return '🌱'}
-
-  if (type.includes('romance') || type.includes('meeting')) {return '💞'}
-
-  if (type.includes('discovery') || type.includes('revelation')) {return '💡'}
-
-  if (type.includes('mystery')) {return '🔍'}
-
-  if (type.includes('journey')) {return '🚶'}
-
-  if (type.includes('transition')) {return '🔄'}
-
-  if (type.includes('minor') || type.includes('background')) {return '📌'}
-
-  return '📖'
-}
-
 const getEventTitle = (e: TimelineEvent) => e.event || e.title || e.name || '未命名事件'
 
 const getEventTime = (e: TimelineEvent) => {
@@ -269,7 +243,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                     >
                       <div className="p-3">
                         <div className="flex items-start gap-2">
-                          <span className="text-lg flex-shrink-0">{getEventEmoji(event)}</span>
+                          <span aria-hidden className="mt-1 size-2 flex-shrink-0 rounded-full bg-current" style={{ color: getEventColor(event) }} />
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-slate-200 group-hover:text-white transition-colors">{title}</h4>
                             {event.description && (

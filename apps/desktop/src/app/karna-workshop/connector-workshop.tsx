@@ -593,7 +593,7 @@ function BuiltInMcpAvatar({ mcp }: { mcp: BuiltInMcp }) {
           src={mcp.iconImage}
         />
       ) : (
-        <span className="select-none">{mcp.icon}</span>
+        <img alt="" className="h-full w-full object-cover" draggable={false} src="/connector-icons/karna-connector.svg" />
       )}
     </div>
   )

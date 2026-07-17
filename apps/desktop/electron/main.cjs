@@ -75,6 +75,8 @@ const { fetchMarketplaceThemes, searchMarketplaceThemes } = require('./vscode-ma
 const { buildDesktopBackendEnv, normalizeHermesHomeRoot } = require('./backend-env.cjs')
 const { readWindowsUserEnvVar } = require('./windows-user-env.cjs')
 const { resolveKarnaRuntimeHome } = require('./karna-runtime-home.cjs')
+const { installOfflineRuntime } = require('./offline-runtime.cjs')
+const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
 const { nativeOverlayWidth: computeNativeOverlayWidth } = require('./titlebar-overlay-width.cjs')
 const { readDirForIpc } = require('./fs-read-dir.cjs')
@@ -216,6 +218,11 @@ const IS_WINDOWS = process.platform === 'win32'
 const IS_WSL = isWslEnvironment()
 const APP_ROOT = app.getAppPath()
 const desktopPreferences = createDesktopPreferences({ app, fs, path, shell })
+const modelCredentialStore = createModelCredentialStore({ safeStorage, userDataPath: app.getPath('userData') })
+
+function explicitModelCredentialEnv() {
+  return IS_PACKAGED ? modelCredentialStore.list() : {}
+}
 
 function hiddenWindowsChildOptions(options = {}) {
   if (!IS_WINDOWS || Object.prototype.hasOwnProperty.call(options, 'windowsHide')) {
@@ -365,6 +372,11 @@ function resolveHermesHome() {
 
 const HERMES_HOME = resolveHermesHome()
 
+const RUNTIME_VERSION = app.getVersion()
+const ACTIVE_RUNTIME_VERSION_ROOT = IS_PACKAGED
+  ? path.join(HERMES_HOME, 'versions', RUNTIME_VERSION)
+  : HERMES_HOME
+
 function hermesManagedNodePathEntries() {
   // NOTE: keep this ordering in sync with iter_hermes_node_dirs() in
   // hermes_constants.py — this Node main process cannot import the Python
@@ -382,7 +394,7 @@ function pathWithHermesManagedNode(...entries) {
 // ACTIVE_HERMES_ROOT — the canonical mutable Hermes install. Same path
 // install.ps1 / install.sh use, so a desktop-only user and a CLI-only user end
 // up with identical layouts and can share one install.
-const ACTIVE_HERMES_ROOT = path.join(HERMES_HOME, 'hermes-agent')
+const ACTIVE_HERMES_ROOT = path.join(ACTIVE_RUNTIME_VERSION_ROOT, 'hermes-agent')
 // VENV_ROOT — venv lives inside the repo, exactly like install.ps1 does it.
 const VENV_ROOT = path.join(ACTIVE_HERMES_ROOT, 'venv')
 // BOOTSTRAP_COMPLETE_MARKER — written by the first-launch bootstrap runner
@@ -464,6 +476,7 @@ const WINDOW_BUTTON_POSITION = {
 // It's only the pre-layout fallback — the renderer measures the exact overlay
 // width live via the Window Controls Overlay API.
 const APP_ICON_PATHS = [
+  path.join(process.resourcesPath, 'icon.ico'),
   path.join(APP_ROOT, 'public', 'Karna.png'),
   path.join(APP_ROOT, 'dist', 'Karna.png'),
   path.join(unpackedPathFor(APP_ROOT), 'dist', 'Karna.png')
@@ -1443,7 +1456,9 @@ function unwrapWindowsVenvHermesCommand(command, backendArgs) {
     env: buildDesktopBackendEnv({
       hermesHome: HERMES_HOME,
       pythonPathEntries: [...(directoryExists(root) ? [root] : []), ...getVenvSitePackagesEntries(venvRoot)],
-      venvRoot
+      venvRoot,
+      isolateCredentials: IS_PACKAGED,
+      explicitCredentials: explicitModelCredentialEnv()
     }),
     kind: 'python',
     // Surfaced so backendSupportsServe() can read this runtime's source for the
@@ -2983,7 +2998,9 @@ function createPythonBackend(root, label, backendArgs, options = {}) {
     env: buildDesktopBackendEnv({
       hermesHome: HERMES_HOME,
       pythonPathEntries: [root, ...getVenvSitePackagesEntries(venvRoot)],
-      venvRoot
+      venvRoot,
+      isolateCredentials: IS_PACKAGED,
+      explicitCredentials: explicitModelCredentialEnv()
     }),
     root,
     bootstrap: Boolean(options.bootstrap),
@@ -3007,7 +3024,9 @@ function createActiveBackend(backendArgs) {
     env: buildDesktopBackendEnv({
       hermesHome: HERMES_HOME,
       pythonPathEntries: [ACTIVE_HERMES_ROOT, ...getVenvSitePackagesEntries(VENV_ROOT)],
-      venvRoot: VENV_ROOT
+      venvRoot: VENV_ROOT,
+      isolateCredentials: IS_PACKAGED,
+      explicitCredentials: explicitModelCredentialEnv()
     }),
     root: ACTIVE_HERMES_ROOT,
     bootstrap: true,
@@ -3181,6 +3200,27 @@ async function ensureRuntime(backend) {
   // to a renderer-side install overlay.
   if (backend.kind === 'bootstrap-needed') {
     rememberLog('[bootstrap] no Karna install found; starting first-launch bootstrap')
+
+    if (IS_PACKAGED) {
+      const bundleRoot = path.join(process.resourcesPath, 'offline-runtime')
+      if (!directoryExists(bundleRoot)) {
+        const missing = new Error('安装包缺少离线运行时，Karna 已阻止联网下载。请重新下载完整安装器。')
+        missing.isBootstrapFailure = true
+        bootstrapFailure = missing
+        throw missing
+      }
+      try {
+        installOfflineRuntime({ bundleRoot, runtimeHome: HERMES_HOME, version: RUNTIME_VERSION })
+        writeBootstrapMarker({ pinnedCommit: `offline-${RUNTIME_VERSION}`, pinnedBranch: 'offline-release' })
+        rememberLog(`[runtime] installed verified offline runtime ${RUNTIME_VERSION} at ${ACTIVE_RUNTIME_VERSION_ROOT}`)
+        return ensureRuntime(resolveHermesBackend(backend.args))
+      } catch (error) {
+        const failed = new Error(`离线运行时安装失败：${error.message}`)
+        failed.isBootstrapFailure = true
+        bootstrapFailure = failed
+        throw failed
+      }
+    }
 
     if (await handOffWindowsBootstrapRecovery('bootstrap-needed')) {
       const handoffError = new Error(
@@ -4575,6 +4615,7 @@ function openOauthLoginWindow(baseUrl) {
         width: 520,
         height: 720,
         title: 'Sign in to Karna gateway',
+        icon: getAppIconImage() ?? getAppIconPath(),
         autoHideMenuBar: true,
         webPreferences: {
           contextIsolation: true,
@@ -8003,6 +8044,7 @@ ipcMain.handle('flow-studio:open', async (_event, options = {}) => {
       width: Math.max(1200, Math.floor(width * 0.8)),
       height: Math.max(800, Math.floor(height * 0.8)),
       title: 'Karna Flow Studio',
+      icon: getAppIconImage() ?? getAppIconPath(),
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false

@@ -61,6 +61,8 @@ const { createPlanService } = require('./karna/plan-service.cjs')
 const { createGoalService } = require('./karna/goal-service.cjs')
 const { createCreativeService } = require('./karna/creative-service.cjs')
 const { MODEL_PROVIDERS, createCustomModelController, createCustomModelStore, createEmbeddingModelService, createImageModelService, createModelRouter, customEnvKey, modelCapabilities } = require('./karna/model-service.cjs')
+const { app, safeStorage } = require('electron')
+const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { resolveModelContextBudget } = require('../shared/model-context-budget.cjs')
 const storage = createStorageUtils({ fs, path })
 const analytics = createAnalyticsService({ fs, path, karnaPaths, storage })
@@ -379,7 +381,10 @@ const parseEnvFile = () => {
   return env
 }
 
-const getEnvValue = key => process.env[key] || parseEnvFile()[key] || ''
+const modelCredentialStore = createModelCredentialStore({ safeStorage, userDataPath: app.getPath('userData') })
+const getEnvValue = key => app.isPackaged
+  ? modelCredentialStore.get(key)
+  : process.env[key] || parseEnvFile()[key] || ''
 const customModelStore = createCustomModelStore({
   fs,
   getCustomModelsPath,
@@ -402,6 +407,10 @@ const findUsableImageModel = modelRouter.findUsableImageModel
 const routeModelForPrompt = modelRouter.routeModelForPrompt
 
 const writeEnvValue = (key, value) => {
+  if (app.isPackaged) {
+    modelCredentialStore.set(key, value)
+    return
+  }
   const envPath = getBackendEnvPath()
   fs.mkdirSync(path.dirname(envPath), { recursive: true })
   let lines = []
@@ -429,6 +438,10 @@ const writeEnvValue = (key, value) => {
 }
 
 const deleteEnvValue = key => {
+  if (app.isPackaged) {
+    modelCredentialStore.remove(key)
+    return
+  }
   const envPath = getBackendEnvPath()
   let lines = []
   try {

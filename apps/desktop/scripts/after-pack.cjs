@@ -34,10 +34,7 @@ exports.default = async function afterPack(context) {
   const exe = path.join(context.appOutDir, `${productName}.exe`)
   const desktopRoot = path.resolve(__dirname, '..')
 
-  try {
-    await stampExeIdentity(exe, desktopRoot)
-  } catch (err) {
-    // Never fail the build over a cosmetic stamp.
-    console.warn(`[after-pack] exe identity stamp failed (${err.message}); Hermes.exe keeps the stock Electron icon`)
-  }
+  // Branding is a release invariant, not a cosmetic best-effort operation.
+  // A stock Electron icon must never escape as a Karna build.
+  await stampExeIdentity(exe, desktopRoot)
 }

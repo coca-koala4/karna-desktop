@@ -665,9 +665,9 @@ export function PluginsView() {
           安装插件
         </Button>
       }
-      className="flex flex-col"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
     >
-      <div className="flex-1 overflow-y-auto" style={{ paddingLeft: PAGE_INSET_X, paddingRight: PAGE_INSET_X }}>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ paddingLeft: PAGE_INSET_X, paddingRight: PAGE_INSET_X }}>
         <Tabs value={tab} onValueChange={v => setTab(v as TabMode)} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="builtin">内置插件 ({builtinPlugins.length})</TabsTrigger>

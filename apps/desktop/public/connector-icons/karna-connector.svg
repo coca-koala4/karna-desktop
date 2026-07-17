@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Karna 通用连接器图标">
+  <rect width="64" height="64" rx="12" fill="#3157F5"/>
+  <path d="M22 17v12m20-12v12M18 29h28v6a14 14 0 0 1-28 0zM32 49V35" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

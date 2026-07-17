@@ -1664,6 +1664,17 @@ def resolve_provider(
             msg += " Check 'hermes model' for available providers, or run 'hermes doctor' to diagnose config issues."
         raise AuthError(msg, code="invalid_provider")
 
+    # The desktop release has a stricter privacy boundary than the upstream
+    # CLI: inherited environment variables, credential pools, OAuth sessions,
+    # GitHub CLI/Copilot state and AWS profiles must never silently authorise a
+    # freshly installed Karna.  An explicit provider selected in Karna settings
+    # is handled above; only the implicit ``auto`` path is rejected here.
+    if os.getenv("KARNA_REQUIRE_EXPLICIT_PROVIDER", "").strip() == "1":
+        raise AuthError(
+            "Karna 尚未配置模型。请先在设置中选择模型服务并完成授权。",
+            code="no_provider_configured",
+        )
+
     # Explicit one-off CLI creds always mean openrouter/custom
     if explicit_api_key or explicit_base_url:
         return "openrouter"

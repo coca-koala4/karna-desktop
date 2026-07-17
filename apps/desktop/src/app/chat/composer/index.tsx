@@ -285,7 +285,8 @@ export function ChatBar({
 
   const { stacked } = useComposerMetrics({ composerRef, composerSurfaceRef, editorRef, poppedOut })
   const hasComposerPayload = hasText || attachments.length > 0
-  const canSubmit = busy || hasComposerPayload
+  const modelConfigured = Boolean(state.model?.provider && state.model?.model)
+  const canSubmit = busy || (hasComposerPayload && modelConfigured)
   const busyAction = busy && hasComposerPayload ? 'queue' : 'stop'
 
   const canSteer = busy && !!onSteer && attachments.length === 0 && isSteerableText
@@ -644,6 +645,10 @@ export function ChatBar({
     onCancel,
     onSteer,
     onSubmit: (value, options) => {
+      if (!modelConfigured) {
+        notifyError('尚未配置模型', '请先在设置中选择模型服务、完成授权并通过连接测试。Karna 不会自动使用电脑上的 API Key 或 Copilot 登录。')
+        return false
+      }
       if (workflowResolveError) {
         notifyError('工作流错误', workflowResolveError)
         return false

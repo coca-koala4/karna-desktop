@@ -157,4 +157,14 @@ Function un.KarnaUninstallOptionsLeave
     RMDir /r "$APPDATA\Karna"
     RMDir /r "$LOCALAPPDATA\Karna"
   ${EndIf}
+  CreateDirectory "$INSTDIR"
+  ClearErrors
+  FileOpen $9 "$INSTDIR\.karna-write-test" w
+  ${If} ${Errors}
+    MessageBox MB_ICONSTOP "所选安装目录不可写。Karna 不会回退到 C 盘，请返回并选择一个当前用户可写的目录。"
+    Abort
+  ${EndIf}
+  FileWrite $9 "Karna"
+  FileClose $9
+  Delete "$INSTDIR\.karna-write-test"
 FunctionEnd

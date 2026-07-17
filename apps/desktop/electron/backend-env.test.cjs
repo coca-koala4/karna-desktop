@@ -103,3 +103,19 @@ test('Windows PATH casing and delimiter are preserved without POSIX sane entries
 test('appendUniquePathEntries drops empty entries and keeps first occurrence', () => {
   assert.equal(appendUniquePathEntries([':/a::/b', ['/a', '/c']], { delimiter: ':' }), '/a:/b:/c')
 })
+
+test('packaged credential isolation shadows inherited model and GitHub credentials', () => {
+  const env = buildDesktopBackendEnv({
+    hermesHome: 'D:\\Karna\\runtime',
+    venvRoot: 'D:\\Karna\\runtime\\versions\\1\\hermes-agent\\venv',
+    currentEnv: { Path: 'C:\\Windows', OPENROUTER_API_KEY: 'must-not-leak', GITHUB_TOKEN: 'must-not-leak' },
+    platform: 'win32',
+    pathModule: path.win32,
+    isolateCredentials: true
+  })
+
+  assert.equal(env.OPENROUTER_API_KEY, '')
+  assert.equal(env.GITHUB_TOKEN, '')
+  assert.equal(env.KARNA_REQUIRE_EXPLICIT_PROVIDER, '1')
+  assert.equal(env.KARNA_DISABLE_IMPLICIT_CREDENTIALS, '1')
+})
