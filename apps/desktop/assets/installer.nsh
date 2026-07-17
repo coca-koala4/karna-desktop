@@ -7,6 +7,7 @@
 ; uninstaller. Installer-only custom-page callbacks are intentionally unused in
 ; that pass; silence only NSIS 6010 while keeping every other warning fatal.
 !pragma warning disable 6010
+!pragma warning disable 6001
 
 Var KarnaOptionsDialog
 Var KarnaWorkspaceField
