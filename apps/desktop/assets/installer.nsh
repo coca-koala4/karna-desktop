@@ -128,8 +128,15 @@ FunctionEnd
     FileWrite $1 '}$\r$\n'
     FileClose $1
 
+    ; Recreate both shortcuts with the Karna ICO. Windows taskbar grouping uses
+    ; the Start Menu shortcut/AUMID more often than the desktop shortcut, so
+    ; fixing only the desktop link still leaves the taskbar on a stale Electron
+    ; icon after upgrades.
+    CreateShortCut "$SMPROGRAMS\Karna.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\resources\icon.ico" 0
+    WinShell::SetLnkAUMI "$SMPROGRAMS\Karna.lnk" "${APP_ID}"
     ${If} $KarnaDesktopShortcut == ${BST_CHECKED}
       CreateShortCut "$DESKTOP\Karna.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\resources\icon.ico" 0
+      WinShell::SetLnkAUMI "$DESKTOP\Karna.lnk" "${APP_ID}"
     ${Else}
       Delete "$DESKTOP\Karna.lnk"
     ${EndIf}

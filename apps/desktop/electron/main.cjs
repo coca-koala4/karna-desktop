@@ -1744,7 +1744,10 @@ function findGitBash() {
 }
 
 function getVenvPython(venvRoot) {
-  return path.join(venvRoot, IS_WINDOWS ? path.join('Scripts', 'python.exe') : path.join('bin', 'python'))
+  const candidates = IS_WINDOWS
+    ? [path.join(venvRoot, 'python.exe'), path.join(venvRoot, 'Scripts', 'python.exe')]
+    : [path.join(venvRoot, 'bin', 'python')]
+  return candidates.find(fileExists) || candidates[0]
 }
 
 // Windows console-window flashes are governed by the *parent's* console, not by
@@ -3320,18 +3323,14 @@ async function ensureRuntime(backend) {
     )
   }
 
-  // On Windows, preflight Git Bash. Hermes' terminal tool calls bash.exe
-  // directly (tools/environments/local.py); without it the agent can't run
-  // terminal commands. install.ps1's Stage-Git puts PortableGit at
-  // %LOCALAPPDATA%\hermes\git\, which findGitBash() picks up, so for any
-  // user who completed the bootstrap this is a no-op. For users who got
-  // here via an external `hermes` on PATH, this check still helps.
+  // On Windows, prefer Git Bash when it is available because some legacy
+  // terminal tools call bash.exe directly. A complete offline Karna installer
+  // must still be able to start on a clean Windows machine without a separate
+  // Git install, so absence of Git Bash is a capability warning, not a launch
+  // blocker.
   if (IS_WINDOWS && !findGitBash()) {
-    throw new Error(
-      'Git for Windows is required for Hermes on Windows (provides Git Bash, ' +
-        "which the agent's terminal tool uses). Install it from " +
-        'https://git-scm.com/download/win or run `winget install -e --id Git.Git`, ' +
-        'then relaunch Hermes.'
+    rememberLog(
+      '[runtime] Git Bash was not found; Karna will still start, but legacy bash-only terminal tools may be unavailable.'
     )
   }
 

@@ -65,3 +65,13 @@ test('Windows bootstrap recovery chooses --update when any real-install signal i
     'recovery regressed to gating only on the hermes.exe shim, which forces destructive --repair'
   )
 })
+
+
+test('Windows venv resolution accepts the offline-runtime root python.exe layout', () => {
+  const source = readMain()
+  assert.match(
+    source,
+    /path\.join\(venvRoot, 'python\.exe'\), path\.join\(venvRoot, 'Scripts', 'python\.exe'\)/,
+    'packaged offline runtime has venv\\python.exe, not only venv\\Scripts\\python.exe'
+  )
+})
