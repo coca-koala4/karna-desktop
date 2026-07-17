@@ -3,7 +3,7 @@
   "productName": "Karna",
   "private": true,
   "version": "0.18.0",
-  "description": "Native desktop shell for Karna Agent. Powered by Hermes Agent runtime.",
+  "description": "Karna 桌面优先的 AI 创作工作空间。",
   "author": "Karna",
   "type": "module",
   "main": "electron/main.cjs",
@@ -182,13 +182,7 @@
         "schemes": [
           "karna"
         ]
-      },
-      {
-        "name": "Karna Protocol",
-        "schemes": [
-          "hermes"
-        ]
-      }
+    }
     ],
     "artifactName": "Karna-${version}-${os}-${arch}.${ext}",
     "icon": "assets/icon",
