@@ -59,6 +59,9 @@ export function AboutSettings() {
   const behind = status?.behind ?? 0
   const supported = status?.supported !== false
   const applying = apply.applying || apply.stage === 'restart'
+  const updateHint = status?.branch === 'stable'
+    ? `???? ? ???? ${version?.appVersion || '??'}`
+    : a.branchCommit(status?.branch ?? 'unknown', status?.currentSha?.slice(0, 7) ?? 'unknown')
 
   const handleCheck = async () => {
     setJustChecked(false)
@@ -154,7 +157,7 @@ export function AboutSettings() {
 
         <ListRow
           description={a.automaticUpdatesDesc}
-          hint={a.branchCommit(status?.branch ?? 'unknown', status?.currentSha?.slice(0, 7) ?? 'unknown')}
+          hint={updateHint}
           title={a.automaticUpdates}
         />
 

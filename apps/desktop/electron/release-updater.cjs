@@ -21,7 +21,8 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
   })
 
   const initialize = () => {
-    if (initialized || !app.isPackaged || process.platform !== 'win32') return false
+    if (initialized) return true
+    if (!app.isPackaged || process.platform !== 'win32') return false
     initialized = true
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = false

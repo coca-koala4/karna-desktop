@@ -7767,6 +7767,7 @@ ipcMain.handle('hermes:updates:branch:set', async (_event, name) => {
 // which historically drifted (stuck at 0.0.2). Falls back to app.getVersion()
 // when the source tree can't be read (e.g. a packaged build without the repo).
 function resolveHermesVersion() {
+  if (app.isPackaged) return app.getVersion()
   try {
     const root = resolveUpdateRoot()
     const initPath = path.join(root, 'hermes_cli', '__init__.py')
@@ -7797,7 +7798,8 @@ function showAboutPanelFresh() {
 }
 
 ipcMain.handle('hermes:version', async () => ({
-  appVersion: resolveHermesVersion(),
+  appVersion: app.getVersion(),
+  runtimeVersion: resolveHermesVersion(),
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
   platform: process.platform,
