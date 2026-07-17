@@ -2,7 +2,7 @@
   "name": "karna",
   "productName": "Karna",
   "private": true,
-  "version": "0.18.0",
+  "version": "1.0.0",
   "description": "Karna 桌面优先的 AI 创作工作空间。",
   "author": "Karna",
   "type": "module",
@@ -182,7 +182,7 @@
         "schemes": [
           "karna"
         ]
-    }
+      }
     ],
     "artifactName": "Karna-${version}-${os}-${arch}.${ext}",
     "icon": "assets/icon",
