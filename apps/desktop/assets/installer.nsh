@@ -120,10 +120,10 @@ FunctionEnd
 ; application files are already removed at that point; the page only controls
 ; optional cleanup of user-owned data and plugin folders.
 !macro customUninstallPage
-  UninstPage custom KarnaUninstallOptionsPage KarnaUninstallOptionsLeave
+  UninstPage custom un.KarnaUninstallOptionsPage un.KarnaUninstallOptionsLeave
 !macroend
 
-Function KarnaUninstallOptionsPage
+Function un.KarnaUninstallOptionsPage
   nsDialogs::Create 1018
   Pop $KarnaUninstallDialog
   ${If} $KarnaUninstallDialog == error
@@ -143,7 +143,7 @@ Function KarnaUninstallOptionsPage
   nsDialogs::Show
 FunctionEnd
 
-Function KarnaUninstallOptionsLeave
+Function un.KarnaUninstallOptionsLeave
   ${NSD_GetState} $KarnaRemovePluginsCheckbox $KarnaRemovePlugins
   ${NSD_GetState} $KarnaRemoveUserDataCheckbox $KarnaRemoveUserData
 
