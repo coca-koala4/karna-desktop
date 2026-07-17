@@ -7,6 +7,10 @@ function boolValue(value) {
 function createDesktopPreferences({ app, fs, path, processRef = process, shell }) {
   const installerOptionsPath = () => path.join(app.getPath('userData'), 'installer-options.json')
   const shortcutPath = () => path.join(app.getPath('desktop'), 'Karna.lnk')
+  const installedIconPath = () => {
+    const candidate = path.join(path.dirname(processRef.execPath), 'resources', 'icon.ico')
+    return fs.existsSync(candidate) ? candidate : processRef.execPath
+  }
   const loginOptions = () => ({ path: processRef.execPath, args: ['--startup'], name: 'Karna' })
 
   const getAutostart = () => {
@@ -34,10 +38,11 @@ function createDesktopPreferences({ app, fs, path, processRef = process, shell }
         target: processRef.execPath,
         cwd: path.dirname(processRef.execPath),
         description: 'Karna 写作操作系统',
-        icon: processRef.execPath,
-        iconIndex: 0
+        icon: installedIconPath(),
+        iconIndex: 0,
+        appUserModelId: 'com.karna.desktop'
       })
-      if (!ok) throw new Error('Windows could not create the desktop shortcut.')
+      if (!ok) throw new Error('Windows 无法创建桌面快捷方式。')
     } else {
       fs.rmSync(target, { force: true })
     }

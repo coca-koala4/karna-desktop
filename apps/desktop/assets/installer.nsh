@@ -1,4 +1,4 @@
-﻿!include "nsDialogs.nsh"
+!include "nsDialogs.nsh"
 !include "LogicLib.nsh"
 !include "WordFunc.nsh"
 !include "FileFunc.nsh"
@@ -95,6 +95,16 @@ Function KarnaOptionsLeave
     MessageBox MB_ICONEXCLAMATION "请选择 Karna 默认工作空间。"
     Abort
   ${EndIf}
+  CreateDirectory "$INSTDIR"
+  ClearErrors
+  FileOpen $9 "$INSTDIR\.karna-write-test" w
+  ${If} ${Errors}
+    MessageBox MB_ICONSTOP "所选安装目录不可写。Karna 不会回退到 C 盘，请返回并选择一个当前用户可写的目录。"
+    Abort
+  ${EndIf}
+  FileWrite $9 "Karna"
+  FileClose $9
+  Delete "$INSTDIR\.karna-write-test"
 FunctionEnd
 
 !macro customInstall
@@ -119,10 +129,15 @@ FunctionEnd
     FileClose $1
 
     ${If} $KarnaDesktopShortcut == ${BST_CHECKED}
-      CreateShortCut "$DESKTOP\Karna.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0
+      CreateShortCut "$DESKTOP\Karna.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\resources\icon.ico" 0
     ${Else}
       Delete "$DESKTOP\Karna.lnk"
     ${EndIf}
+    ; Force Explorer/taskbar to drop stale Electron/blank icon cache entries
+    ; from earlier acceptance builds.
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
+    IfFileExists "$SYSDIR\ie4uinit.exe" 0 +2
+      ExecWait '"$SYSDIR\ie4uinit.exe" -show'
   ${EndIf}
 !macroend
 
@@ -167,14 +182,4 @@ Function un.KarnaUninstallOptionsLeave
     RMDir /r "$APPDATA\Karna"
     RMDir /r "$LOCALAPPDATA\Karna"
   ${EndIf}
-  CreateDirectory "$INSTDIR"
-  ClearErrors
-  FileOpen $9 "$INSTDIR\.karna-write-test" w
-  ${If} ${Errors}
-    MessageBox MB_ICONSTOP "所选安装目录不可写。Karna 不会回退到 C 盘，请返回并选择一个当前用户可写的目录。"
-    Abort
-  ${EndIf}
-  FileWrite $9 "Karna"
-  FileClose $9
-  Delete "$INSTDIR\.karna-write-test"
 FunctionEnd

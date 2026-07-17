@@ -75,7 +75,7 @@ const { fetchMarketplaceThemes, searchMarketplaceThemes } = require('./vscode-ma
 const { buildDesktopBackendEnv, normalizeHermesHomeRoot } = require('./backend-env.cjs')
 const { readWindowsUserEnvVar } = require('./windows-user-env.cjs')
 const { resolveKarnaRuntimeHome } = require('./karna-runtime-home.cjs')
-const { installOfflineRuntime } = require('./offline-runtime.cjs')
+const { installOfflineRuntimeAsync } = require('./offline-runtime.cjs')
 const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
 const { nativeOverlayWidth: computeNativeOverlayWidth } = require('./titlebar-overlay-width.cjs')
@@ -3210,7 +3210,7 @@ async function ensureRuntime(backend) {
         throw missing
       }
       try {
-        installOfflineRuntime({ bundleRoot, runtimeHome: HERMES_HOME, version: RUNTIME_VERSION })
+        await installOfflineRuntimeAsync({ bundleRoot, runtimeHome: HERMES_HOME, version: RUNTIME_VERSION })
         writeBootstrapMarker({ pinnedCommit: `offline-${RUNTIME_VERSION}`, pinnedBranch: 'offline-release' })
         rememberLog(`[runtime] installed verified offline runtime ${RUNTIME_VERSION} at ${ACTIVE_RUNTIME_VERSION_ROOT}`)
         return ensureRuntime(resolveHermesBackend(backend.args))

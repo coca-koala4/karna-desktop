@@ -3,6 +3,12 @@
 const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
+let WorkerThreads = null
+try {
+  WorkerThreads = require('node:worker_threads')
+} catch {
+  WorkerThreads = null
+}
 
 function sha256(file) {
   const hash = crypto.createHash('sha256')
@@ -26,7 +32,7 @@ function verifyBundle(bundleRoot, expectedVersion) {
   }
   for (const item of manifest.files) {
     const relative = String(item.path || '').replaceAll('\\', '/')
-    if (!relative || relative.startsWith('/') || relative.includes('../')) throw new Error('离线运行时清单包含非法路径')
+    if (!relative || relative.startsWith('/') || relative.includes('../')) throw new Error('离线运行时清单包含非法路径。')
     const file = path.join(bundleRoot, ...relative.split('/'))
     if (!fs.statSync(file).isFile() || sha256(file) !== item.sha256) {
       throw new Error(`离线运行时校验失败：${relative}`)
@@ -35,18 +41,30 @@ function verifyBundle(bundleRoot, expectedVersion) {
   return manifest
 }
 
+function installedMarkerIsCurrent({ bundleRoot, finalRoot, runtimeHome, version }) {
+  try {
+    const manifestSha256 = sha256(path.join(bundleRoot, 'runtime-manifest.json'))
+    const marker = path.join(finalRoot, '.karna-offline-runtime.json')
+    const current = JSON.parse(fs.readFileSync(marker, 'utf8'))
+    const activeVersion = fs.readFileSync(path.join(runtimeHome, 'active-version'), 'utf8').trim()
+    return current.manifestSha256 === manifestSha256 && String(current.version) === String(version) && activeVersion === String(version)
+  } catch {
+    return false
+  }
+}
+
 function installOfflineRuntime({ bundleRoot, runtimeHome, version }) {
-  const manifest = verifyBundle(bundleRoot, version)
   const versionsRoot = path.join(runtimeHome, 'versions')
   const finalRoot = path.join(versionsRoot, String(version))
-  const marker = path.join(finalRoot, '.karna-offline-runtime.json')
-  try {
-    const current = JSON.parse(fs.readFileSync(marker, 'utf8'))
-    if (current.manifestSha256 === sha256(path.join(bundleRoot, 'runtime-manifest.json'))) return finalRoot
-  } catch {
-    // Missing or stale installation: replace it atomically below.
+
+  // Startup fast path: the runtime was fully verified before this marker was
+  // written. Re-hashing all bundled files on every launch blocked Electron's
+  // main thread at 28% and made the window look frozen.
+  if (installedMarkerIsCurrent({ bundleRoot, finalRoot, runtimeHome, version })) {
+    return finalRoot
   }
 
+  const manifest = verifyBundle(bundleRoot, version)
   fs.mkdirSync(versionsRoot, { recursive: true })
   const staging = path.join(versionsRoot, `.${version}.staging-${process.pid}-${Date.now()}`)
   fs.rmSync(staging, { recursive: true, force: true })
@@ -66,4 +84,36 @@ function installOfflineRuntime({ bundleRoot, runtimeHome, version }) {
   return finalRoot
 }
 
-module.exports = { installOfflineRuntime, readManifest, verifyBundle }
+function installOfflineRuntimeAsync(options) {
+  if (!WorkerThreads?.Worker || WorkerThreads.isMainThread === false) {
+    return Promise.resolve().then(() => installOfflineRuntime(options))
+  }
+  return new Promise((resolve, reject) => {
+    const worker = new WorkerThreads.Worker(__filename, { workerData: options })
+    let settled = false
+    const finish = (fn, value) => {
+      if (settled) return
+      settled = true
+      fn(value)
+    }
+    worker.once('message', message => {
+      if (message?.ok) finish(resolve, message.installed)
+      else finish(reject, new Error(message?.error || '离线运行时安装失败。'))
+    })
+    worker.once('error', error => finish(reject, error))
+    worker.once('exit', code => {
+      if (code !== 0) finish(reject, new Error(`离线运行时安装进程退出：${code}`))
+    })
+  })
+}
+
+if (WorkerThreads && WorkerThreads.isMainThread === false) {
+  try {
+    const installed = installOfflineRuntime(WorkerThreads.workerData)
+    WorkerThreads.parentPort.postMessage({ ok: true, installed })
+  } catch (error) {
+    WorkerThreads.parentPort.postMessage({ ok: false, error: error?.message || String(error) })
+  }
+}
+
+module.exports = { installOfflineRuntime, installOfflineRuntimeAsync, readManifest, verifyBundle }
