@@ -3,6 +3,11 @@
 !include "WordFunc.nsh"
 !include "FileFunc.nsh"
 
+; electron-builder compiles the same include once while generating the
+; uninstaller. Installer-only custom-page callbacks are intentionally unused in
+; that pass; silence only NSIS 6010 while keeping every other warning fatal.
+!pragma warning disable 6010
+
 Var KarnaOptionsDialog
 Var KarnaWorkspaceField
 Var KarnaWorkspaceBrowse
