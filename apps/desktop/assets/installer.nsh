@@ -12,6 +12,11 @@ Var KarnaWorkspace
 Var KarnaAutostart
 Var KarnaDesktopShortcut
 Var KarnaIsUpdate
+Var KarnaUninstallDialog
+Var KarnaRemovePluginsCheckbox
+Var KarnaRemoveUserDataCheckbox
+Var KarnaRemovePlugins
+Var KarnaRemoveUserData
 
 !macro customInit
   StrCpy $KarnaWorkspace "$DOCUMENTS\Karna"
@@ -110,3 +115,46 @@ FunctionEnd
     ${EndIf}
   ${EndIf}
 !macroend
+
+; electron-builder inserts this page after the uninstall progress page. The
+; application files are already removed at that point; the page only controls
+; optional cleanup of user-owned data and plugin folders.
+!macro customUninstallPage
+  UninstPage custom KarnaUninstallOptionsPage KarnaUninstallOptionsLeave
+!macroend
+
+Function KarnaUninstallOptionsPage
+  nsDialogs::Create 1018
+  Pop $KarnaUninstallDialog
+  ${If} $KarnaUninstallDialog == error
+    Abort
+  ${EndIf}
+
+  ${NSD_CreateLabel} 0 0 100% 24u "Karna 卸载选项"
+  Pop $0
+  ${NSD_CreateCheckbox} 0 32u 100% 14u "同时卸载相关插件"
+  Pop $KarnaRemovePluginsCheckbox
+  ${NSD_Uncheck} $KarnaRemovePluginsCheckbox
+  ${NSD_CreateCheckbox} 0 56u 100% 14u "卸载 Karna 用户数据（聊天、配置、缓存）"
+  Pop $KarnaRemoveUserDataCheckbox
+  ${NSD_Uncheck} $KarnaRemoveUserDataCheckbox
+  ${NSD_CreateLabel} 0 86u 100% 34u "默认不删除用户数据和工作空间。选择用户数据后将无法恢复，请先备份。"
+  Pop $0
+  nsDialogs::Show
+FunctionEnd
+
+Function KarnaUninstallOptionsLeave
+  ${NSD_GetState} $KarnaRemovePluginsCheckbox $KarnaRemovePlugins
+  ${NSD_GetState} $KarnaRemoveUserDataCheckbox $KarnaRemoveUserData
+
+  ${If} $KarnaRemovePlugins == ${BST_CHECKED}
+    RMDir /r "$APPDATA\Karna\plugins"
+    RMDir /r "$APPDATA\Karna\karna-data\plugins"
+    RMDir /r "$LOCALAPPDATA\Karna\plugins"
+  ${EndIf}
+
+  ${If} $KarnaRemoveUserData == ${BST_CHECKED}
+    RMDir /r "$APPDATA\Karna"
+    RMDir /r "$LOCALAPPDATA\Karna"
+  ${EndIf}
+FunctionEnd
