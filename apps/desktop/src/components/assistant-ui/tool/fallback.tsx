@@ -356,7 +356,7 @@ function ToolEntry({ part }: ToolEntryProps) {
     (part.toolName === 'terminal' || part.toolName === 'execute_code' || part.toolName === 'read_file')
 
   const hasSearchHits = Boolean(view.searchHits?.length)
-  const searchResultsLabel = part.toolName === 'web_search' ? 'Search results' : view.detailLabel
+  const searchResultsLabel = part.toolName === 'web_search' ? '搜索结果' : view.detailLabel
 
   const showRawSearchDrilldown =
     part.toolName === 'web_search' &&
@@ -589,7 +589,7 @@ function ToolEntry({ part }: ToolEntryProps) {
           )}
           {toolViewMode === 'technical' && isFileEdit && view.inlineDiff && (
             <details className="max-w-full">
-              <summary className={cn(TOOL_SECTION_LABEL_CLASS, 'mb-0 cursor-pointer')}>Tool payload</summary>
+              <summary className={cn(TOOL_SECTION_LABEL_CLASS, 'mb-0 cursor-pointer')}>工具载荷</summary>
               <pre className={cn(TOOL_SECTION_PRE_CLASS, 'mt-1 whitespace-pre-wrap wrap-anywhere')}>
                 {rawTechnicalTrace(part.args, part.result)}
               </pre>

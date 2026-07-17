@@ -430,7 +430,7 @@ export function NewProjectWizard({ open, onClose, onCreated }: NewProjectWizardP
       })
 
       if (!writerProjectResponse?.ok || !writerProjectResponse?.project) {
-        const message = writerProjectResponse?.message || writerProjectResponse?.error || 'Writer OS project registration failed'
+        const message = writerProjectResponse?.message || writerProjectResponse?.error || 'Writer OS 项目登记失败'
         throw new Error(message)
       }
 

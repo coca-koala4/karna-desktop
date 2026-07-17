@@ -17,18 +17,18 @@ export function GenerateUnavailable({ onSetup }: GenerateUnavailableProps) {
       </span>
       <div className="space-y-1.5">
         <p className="text-[length:var(--conversation-text-font-size)] font-semibold">
-          Add an image backend to generate
+          配置图像生成服务后继续
         </p>
         <p className="mx-auto max-w-[19rem] text-[length:var(--conversation-caption-font-size)] leading-relaxed text-(--ui-text-tertiary)">
-          Hatching a custom pet needs a provider that can ground on a reference image.
+          孵化自定义宠物需要能够理解参考图片的图像服务商。
         </p>
       </div>
       <Button onClick={onSetup} size="sm">
         <Settings2 className="size-4" />
-        Set up image generation
+        配置图像生成
       </Button>
       <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-[0.6875rem] text-(--ui-text-tertiary)">
-        <span>Grab a key from</span>
+        <span>请前往此处获取密钥</span>
         <ExternalLink href="https://portal.nousresearch.com" showExternalIcon={false}>
           Nous Portal
         </ExternalLink>

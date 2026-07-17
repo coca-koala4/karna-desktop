@@ -87,7 +87,7 @@ export function modelDisplayParts(model: string): { name: string; tag: string } 
   // Drop a trailing date-pin (`…-20251101`) — snapshot noise, not a name.
   base = base.replace(/-\d{8}$/, '')
 
-  return { name: prettifyBase(base) || model.trim() || 'No model', tag }
+  return { name: prettifyBase(base) || model.trim() || '未选择模型', tag }
 }
 
 /** Friendly one-line model name for menus and the status bar. */

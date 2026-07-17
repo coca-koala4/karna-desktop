@@ -102,11 +102,11 @@ describe('desktop slash command curation', () => {
     })
 
     expect(filtered.categories).toEqual([
-      { name: 'Session', pairs: [['/new', 'Start a new desktop chat']] },
+      { name: 'Session', pairs: [['/new', '新建桌面对话']] },
       { name: 'User commands', pairs: [['/ship-it', 'Run release checklist']] }
     ])
     expect(filtered.pairs).toEqual([
-      ['/new', 'Start a new desktop chat'],
+      ['/new', '新建桌面对话'],
       ['/ship-it', 'Run release checklist']
     ])
     // skill_count is recomputed from the filtered output (only /ship-it is an
@@ -132,10 +132,10 @@ describe('desktop slash command curation', () => {
 
   it('uses desktop-specific labels for commands with different UI behavior', () => {
     expect(desktopSlashDescription('/branch', 'Branch the current session')).toBe(
-      'Branch the latest message into a new chat'
+      '将最新消息分支为新对话'
     )
     expect(desktopSlashDescription('/skin', 'Show or change the display skin/theme')).toBe(
-      'Switch desktop theme or cycle to the next one'
+      '切换桌面主题或进入下一个主题'
     )
   })
 

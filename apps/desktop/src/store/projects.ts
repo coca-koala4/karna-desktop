@@ -237,7 +237,7 @@ async function gatewayRequest<T>(method: string, params: Record<string, unknown>
   }
 
   if (!gateway) {
-    throw new Error('Hermes gateway is not connected')
+    throw new Error('Karna 后台服务未连接')
   }
 
   return gateway.request<T>(method, params)

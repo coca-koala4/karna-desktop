@@ -241,9 +241,9 @@ export function KnowledgePanel({ active, busy, setBusy }: { active: WriterProjec
                 title="Vector provider"
                 value={vectorProvider}
               >
-                <option value="local">Local Hash</option>
-                <option value="auto">Auto: Embedding first</option>
-                <option value="embedding">Force Embedding</option>
+                <option value="local">本地哈希</option>
+                <option value="auto">自动：优先向量嵌入</option>
+                <option value="embedding">强制向量嵌入</option>
               </select>
               <Button disabled={busy === 'rag'} onClick={() => void buildRag()} size="sm" variant="outline"><Codicon name="build" /> 构建索引</Button>
               <Button disabled={busy === 'rag-vector'} onClick={() => void buildVectorStore()} size="sm" variant="outline"><Codicon name="database" /> 构建向量库</Button>
@@ -257,7 +257,7 @@ export function KnowledgePanel({ active, busy, setBusy }: { active: WriterProjec
         >
           <div className="mb-3 grid gap-2 rounded-[2px] border border-(--ui-stroke-tertiary) bg-background/60 p-2 text-xs text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
             <div>Mode: <span className="font-mono text-foreground">{ragStats.mode || 'lexical-local'}</span></div>
-            <div>Current vectors: <span className="font-mono text-foreground">{vectorCurrent}/{vectorCount || vectorCurrent}</span></div>
+            <div>当前向量数：<span className="font-mono text-foreground">{vectorCurrent}/{vectorCount || vectorCurrent}</span></div>
             <div>Dimensions: <span className="font-mono text-foreground">{ragStats.vector_dimensions || vectorDatabase?.dimensions || 0}</span></div>
             <div>Provider: <span className="font-mono text-foreground">{ragStats.vector_provider || vectorDatabase?.provider?.id || 'local-hash-vector'}</span></div>
             <div>Coverage: <span className="font-mono text-foreground">{Math.round(vectorCoverage * 100)}%</span></div>

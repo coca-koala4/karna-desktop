@@ -64,21 +64,21 @@ interface BaseCurveOptions extends Pick<
 const TWO_PI = Math.PI * 2
 
 const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
-  'original-thinking': thinkingCurve('Original Thinking', 7, {
+  'original-thinking': thinkingCurve('原点思考', 7, {
     durationMs: 4600,
     particleCount: 64,
     pulseDurationMs: 4200,
     rotationDurationMs: 28000,
     trailSpan: 0.38
   }),
-  'thinking-five': thinkingCurve('Thinking Five', 5, {
+  'thinking-five': thinkingCurve('五阶思考', 5, {
     durationMs: 4600,
     particleCount: 62,
     pulseDurationMs: 4200,
     rotationDurationMs: 28000,
     trailSpan: 0.38
   }),
-  'thinking-nine': thinkingCurve('Thinking Nine', 9, {
+  'thinking-nine': thinkingCurve('九阶思考', 9, {
     durationMs: 4700,
     particleCount: 68,
     pulseDurationMs: 4200,
@@ -86,7 +86,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     trailSpan: 0.39
   }),
   'rose-orbit': {
-    ...baseCurve('Rose Orbit', {
+    ...baseCurve('玫瑰轨道', {
       durationMs: 5200,
       particleCount: 72,
       pulseDurationMs: 4600,
@@ -105,28 +105,28 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
       }
     }
   },
-  'rose-curve': roseCurve('Rose Curve', 5, {
+  'rose-curve': roseCurve('玫瑰曲线', 5, {
     durationMs: 5400,
     particleCount: 78,
     pulseDurationMs: 4600,
     strokeWidth: 4.5,
     trailSpan: 0.32
   }),
-  'rose-two': roseCurve('Rose Two', 2, {
+  'rose-two': roseCurve('双瓣玫瑰', 2, {
     durationMs: 5200,
     particleCount: 74,
     pulseDurationMs: 4300,
     strokeWidth: 4.6,
     trailSpan: 0.3
   }),
-  'rose-three': roseCurve('Rose Three', 3, {
+  'rose-three': roseCurve('三瓣玫瑰', 3, {
     durationMs: 5300,
     particleCount: 76,
     pulseDurationMs: 4400,
     strokeWidth: 4.6,
     trailSpan: 0.31
   }),
-  'rose-four': roseCurve('Rose Four', 4, {
+  'rose-four': roseCurve('四瓣玫瑰', 4, {
     durationMs: 5400,
     particleCount: 78,
     pulseDurationMs: 4500,
@@ -134,7 +134,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     trailSpan: 0.32
   }),
   'lissajous-drift': {
-    ...baseCurve('Lissajous Drift', {
+    ...baseCurve('李萨如漂移', {
       durationMs: 6000,
       particleCount: 68,
       pulseDurationMs: 5400,
@@ -152,7 +152,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     }
   },
   'lemniscate-bloom': {
-    ...baseCurve('Lemniscate Bloom', {
+    ...baseCurve('双纽线绽放', {
       durationMs: 5600,
       particleCount: 70,
       pulseDurationMs: 5000,
@@ -172,7 +172,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     }
   },
   'hypotrochoid-loop': {
-    ...baseCurve('Hypotrochoid Loop', {
+    ...baseCurve('内旋轮回环', {
       durationMs: 7600,
       particleCount: 82,
       pulseDurationMs: 6200,
@@ -193,12 +193,12 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
       }
     }
   },
-  'three-petal-spiral': spiralPetalCurve('Three-Petal Spiral', 3, 82),
-  'four-petal-spiral': spiralPetalCurve('Four-Petal Spiral', 4, 84),
-  'five-petal-spiral': spiralPetalCurve('Five-Petal Spiral', 5, 85),
-  'six-petal-spiral': spiralPetalCurve('Six-Petal Spiral', 6, 86),
+  'three-petal-spiral': spiralPetalCurve('三瓣螺旋', 3, 82),
+  'four-petal-spiral': spiralPetalCurve('四瓣螺旋', 4, 84),
+  'five-petal-spiral': spiralPetalCurve('五瓣螺旋', 5, 85),
+  'six-petal-spiral': spiralPetalCurve('六瓣螺旋', 6, 86),
   'butterfly-phase': {
-    ...baseCurve('Butterfly Phase', {
+    ...baseCurve('蝴蝶相位', {
       durationMs: 9000,
       particleCount: 88,
       pulseDurationMs: 7000,
@@ -219,7 +219,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
       }
     }
   },
-  'cardioid-glow': cardioidCurve('Cardioid Glow', {
+  'cardioid-glow': cardioidCurve('心形辉光', {
     a: 8.4,
     particleCount: 72,
     pointFor(t, r, scale) {
@@ -232,7 +232,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
       return a * (1 - Math.cos(t))
     }
   }),
-  'cardioid-heart': cardioidCurve('Cardioid Heart', {
+  'cardioid-heart': cardioidCurve('心形轨迹', {
     a: 8.8,
     particleCount: 74,
     pointFor(t, r, scale) {
@@ -249,7 +249,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     }
   }),
   'heart-wave': {
-    ...baseCurve('Heart Wave', {
+    ...baseCurve('心形波', {
       durationMs: 8400,
       particleCount: 104,
       pulseDurationMs: 5600,
@@ -273,7 +273,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     }
   },
   'spiral-search': {
-    ...baseCurve('Spiral Search', {
+    ...baseCurve('螺旋检索', {
       durationMs: 7800,
       particleCount: 86,
       pulseDurationMs: 6800,
@@ -293,7 +293,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
     }
   },
   'fourier-flow': {
-    ...baseCurve('Fourier Flow', {
+    ...baseCurve('傅里叶流', {
       durationMs: 2200,
       particleCount: 92,
       pulseDurationMs: 2000,
@@ -317,7 +317,7 @@ const LOADER_CURVES: Record<LoaderType, LoaderCurve> = {
 
 export function Loader({
   className,
-  label = 'Loading',
+  label = '加载中',
   pathSteps = 240,
   role = 'status',
   strokeScale = 1,

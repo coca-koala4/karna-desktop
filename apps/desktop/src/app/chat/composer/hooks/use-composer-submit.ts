@@ -143,8 +143,8 @@ export function useComposerSubmit({
     if (payloadPresent && hasParsingAttachments(attachments)) {
       notify({
         kind: 'warning',
-        title: 'Documents still parsing',
-        message: 'Please wait for document parsing to complete before sending.'
+        title: '文档仍在解析',
+        message: '请等待文档解析完成后再发送。'
       })
       focusInput()
       return

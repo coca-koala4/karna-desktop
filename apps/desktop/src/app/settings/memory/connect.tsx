@@ -76,7 +76,7 @@ export function MemoryConnect({ provider }: { provider: string }) {
     } catch (err) {
       setPhase('error')
       setDetail('Could not start the connection.')
-      notifyError(err, 'Failed to start connection')
+      notifyError(err, '启动连接失败')
 
       return
     }
@@ -138,7 +138,7 @@ export function MemoryConnect({ provider }: { provider: string }) {
         <>
           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
             <Loader2 className="size-3 animate-spin" />
-            Waiting for browser consent…
+            正在等待浏览器授权…
           </span>
           <Button className="h-auto p-0 text-xs" onClick={cancel} size="sm" type="button" variant="link">
             Cancel

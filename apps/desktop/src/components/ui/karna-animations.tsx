@@ -109,7 +109,7 @@ export function KarnaStartupAnimation({ className, onComplete }: { className?: s
           <span className="ks-letter ks-l5">A</span>
         </div>
         <div className="ks-underline-wrap" />
-        <div className="ks-subtitle">YOUR WRITING WORKSTATION</div>
+        <div className="ks-subtitle">你的专属创作工作站</div>
       </div>
     </div>
   )

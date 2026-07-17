@@ -21,9 +21,9 @@ interface SignInCopy {
 }
 
 const DEFAULT_SIGN_IN_COPY: SignInCopy = {
-  identityProvider: 'your identity provider',
-  remoteGateway: 'Sign in to remote gateway',
-  withProvider: provider => `Sign in with ${provider}`
+  identityProvider: '身份认证服务商',
+  remoteGateway: '登录远程网关',
+  withProvider: provider => `使用 ${provider} 登录`
 }
 
 // A remote, gated (oauth-bucket), not-currently-connected gateway is a

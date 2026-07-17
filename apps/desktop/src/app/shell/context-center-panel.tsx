@@ -58,12 +58,12 @@ const TYPE_LABELS: Record<string, string> = {
   preference: 'Preference',
   fact: 'Fact',
   decision: 'Decision',
-  file_path: 'File Path',
-  code_pattern: 'Code Pattern',
-  error_pattern: 'Error Pattern',
-  ui_rule: 'UI Rule',
-  writing_style: 'Writing Style',
-  plot_point: 'Plot Point',
+  file_path: '文件路径',
+  code_pattern: '代码模式',
+  error_pattern: '错误模式',
+  ui_rule: '界面规则',
+  writing_style: '写作风格',
+  plot_point: '情节点',
   character: 'Character',
   worldbuilding: 'Worldbuilding',
   context: 'Context',
@@ -217,7 +217,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
       setReuseRecords(rr.records || [])
       setTokenEvents(te.events || [])
     } catch (e: any) {
-      setError(e?.message || 'Failed to load context data')
+      setError(e?.message || '加载上下文数据失败')
     } finally {
       setLoading(false)
     }
@@ -274,7 +274,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
       const res = await getContextToolOutputContent(output.id)
       setToolOutputContent(res.content)
     } catch (e: any) {
-      setToolOutputContent(`Error loading content: ${e?.message || 'Unknown error'}`)
+      setToolOutputContent(`加载内容失败：${e?.message || '未知错误'}`)
     } finally {
       setToolOutputLoading(false)
     }
@@ -292,7 +292,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
       })
       setPromptPreview(res)
     } catch (e: any) {
-      setPromptPreviewError(e?.message || 'Failed to generate preview')
+      setPromptPreviewError(e?.message || '生成预览失败')
     } finally {
       setPromptPreviewLoading(false)
     }
@@ -313,7 +313,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
       }
       loadData()
     } catch (e: any) {
-      setCompactResult(`Compaction failed: ${e?.message || 'Unknown error'}`)
+      setCompactResult(`压缩失败：${e?.message || '未知错误'}`)
     } finally {
       setCompactLoading(false)
     }
@@ -368,7 +368,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
             <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
             <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
           </svg>
-          <h2 className="text-sm font-semibold tracking-wide">Context Center</h2>
+          <h2 className="text-sm font-semibold tracking-wide">上下文中心</h2>
         </div>
         {onClose && (
           <button
@@ -389,8 +389,8 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
           ['pins', 'Pins'],
           ['decisions', 'Decisions'],
           ['nodes', 'Nodes'],
-          ['tool-outputs', 'Tool Outputs'],
-          ['prompt-preview', 'Prompt Preview'],
+          ['tool-outputs', '工具输出'],
+          ['prompt-preview', '提示词预览'],
           ['compression', 'Compression'],
           ['tokens', 'Token / Cost'],
         ] as [Tab, string][]).map(([key, label]) => (
@@ -431,8 +431,8 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 ['Memory', (snapshot?.counts.memories ?? stats?.context_memory ?? 0), 'bg-violet-500/10 border-violet-500/20 text-violet-300'],
                 ['Pinned', (snapshot?.counts.pins ?? stats?.pinned_context ?? 0), 'bg-orange-500/10 border-orange-500/20 text-orange-300'],
                 ['Decisions', (snapshot?.counts.decisions ?? stats?.decision_log ?? 0), 'bg-blue-500/10 border-blue-500/20 text-blue-300'],
-                ['Tool Outputs', stats?.tool_output_records ?? 0, 'bg-green-500/10 border-green-500/20 text-green-300'],
-                ['Node Runs', stats?.agent_node_run_summaries ?? 0, 'bg-pink-500/10 border-pink-500/20 text-pink-300'],
+                ['工具输出', stats?.tool_output_records ?? 0, 'bg-green-500/10 border-green-500/20 text-green-300'],
+                ['节点运行', stats?.agent_node_run_summaries ?? 0, 'bg-pink-500/10 border-pink-500/20 text-pink-300'],
               ].map(([label, count, cls]) => (
                 <div key={label as string} className={`rounded-lg border p-3 ${cls as string}`}>
                   <div className="text-xl font-bold">{count as number}</div>
@@ -443,28 +443,28 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
 
             {snapshot?.envelope && (
               <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-                <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Active Context Envelope</h3>
+                <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">当前上下文信封</h3>
                 {snapshot.envelope.writing_domain && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-zinc-500">Writing Domain:</span>
+                    <span className="text-zinc-500">写作领域：</span>
                     <span className="text-zinc-300">{snapshot.envelope.writing_domain}</span>
                   </div>
                 )}
                 {snapshot.envelope.runtime_profile && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-zinc-500">Runtime Profile:</span>
+                    <span className="text-zinc-500">运行配置：</span>
                     <span className="text-zinc-300">{snapshot.envelope.runtime_profile}</span>
                   </div>
                 )}
                 {snapshot.envelope.active_artifact_path && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-zinc-500">Active Artifact:</span>
+                    <span className="text-zinc-500">当前交付物：</span>
                     <span className="text-zinc-300 font-mono text-[11px] truncate">{snapshot.envelope.active_artifact_path}</span>
                   </div>
                 )}
                 {snapshot.envelope.module && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-zinc-500">Module:</span>
+                    <span className="text-zinc-500">模块：</span>
                     <span className="text-zinc-300">{snapshot.envelope.module}</span>
                   </div>
                 )}
@@ -473,7 +473,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
 
             {stats?.by_type && Object.keys(stats.by_type).length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Memory by Type</h3>
+                <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">按类型查看记忆</h3>
                 <div className="space-y-1">
                   {Object.entries(stats.by_type)
                     .sort((a, b) => b[1] - a[1])
@@ -488,13 +488,13 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
             )}
 
             <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3">
-              <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">How It Works</h3>
+              <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">工作原理</h3>
               <ul className="text-[11px] text-zinc-500 space-y-1 leading-relaxed">
-                <li>Context OS automatically extracts key facts, constraints, and decisions from your conversation</li>
-                <li>Critical constraints are pinned and always included in context</li>
-                <li>Long tool outputs are externalized to disk to save context window space</li>
-                <li>Multi-agent flows produce structured node summaries for cross-context continuity</li>
-                <li>Memories are relevance-ranked before injection, not dumped wholesale</li>
+                <li>Context OS 会从会话中自动提取关键事实、约束和决策</li>
+                <li>关键约束会被固定，并始终加入上下文</li>
+                <li>较长的工具输出会保存到磁盘，减少上下文窗口占用</li>
+                <li>多智能体流程会生成结构化节点摘要，保持跨上下文连续性</li>
+                <li>记忆会按相关度排序后注入，而不是不加筛选地全部加入</li>
               </ul>
             </div>
           </div>
@@ -503,7 +503,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'memories' && (
           <div className="p-3 space-y-2">
             {memories.length === 0 && (
-              <div className="text-center text-xs text-zinc-500 py-8">No memories yet. Context OS extracts them automatically.</div>
+              <div className="text-center text-xs text-zinc-500 py-8">暂无记忆，Context OS 会自动提取。</div>
             )}
             {memories.map(mem => (
               <div key={mem.id} className={`rounded-lg border p-3 ${mem.status === 'resolved' ? 'bg-zinc-800/30 border-zinc-800 opacity-60' : 'bg-zinc-800/50 border-zinc-700/50'}`}>
@@ -553,7 +553,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'pins' && (
           <div className="p-3 space-y-3">
             <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-              <h3 className="text-xs font-semibold text-zinc-400">Pin New Constraint</h3>
+              <h3 className="text-xs font-semibold text-zinc-400">固定新约束</h3>
               <textarea
                 value={newPinContent}
                 onChange={e => setNewPinContent(e.target.value)}
@@ -567,9 +567,9 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   onChange={e => setNewPinPriority(e.target.value)}
                   className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none"
                 >
-                  <option value="critical">Critical</option>
+                  <option value="critical">关键</option>
                   <option value="high">High</option>
-                  <option value="normal">Normal</option>
+                  <option value="normal">普通</option>
                   <option value="low">Low</option>
                 </select>
                 <button
@@ -577,13 +577,13 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   disabled={!newPinContent.trim()}
                   className="px-3 py-1 rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
                 >
-                  Pin It
+                  固定约束
                 </button>
               </div>
             </div>
 
             {pins.length === 0 && (
-              <div className="text-center text-xs text-zinc-500 py-6">No pinned contexts yet.</div>
+              <div className="text-center text-xs text-zinc-500 py-6">暂无固定上下文。</div>
             )}
             {pins.map(pin => (
               <div key={pin.id} className={`rounded-lg border p-3 ${pin.is_active ? 'bg-orange-500/5 border-orange-500/20' : 'bg-zinc-800/30 border-zinc-800 opacity-50'}`}>
@@ -596,7 +596,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                     <button
                       onClick={() => handleTogglePin(pin.id, !!pin.is_active)}
                       className={`p-1 rounded transition-colors ${pin.is_active ? 'hover:bg-zinc-700 text-zinc-400' : 'hover:bg-green-500/20 text-green-400/70'}`}
-                      title={pin.is_active ? 'Unpin' : 'Repin'}
+                      title={pin.is_active ? '取消固定' : '重新固定'}
                     >
                       {pin.is_active ? (
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
@@ -607,7 +607,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                     <button
                       onClick={() => handleDeletePin(pin.id)}
                       className="p-1 rounded hover:bg-red-500/20 text-red-400/70 hover:text-red-300 transition-colors"
-                      title="Delete"
+                      title="删除"
                     >
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
@@ -623,7 +623,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'decisions' && (
           <div className="p-3 space-y-2">
             {decisions.length === 0 && (
-              <div className="text-center text-xs text-zinc-500 py-8">No decisions logged yet.</div>
+              <div className="text-center text-xs text-zinc-500 py-8">尚未记录决策。</div>
             )}
             {decisions.map(dec => (
               <div key={dec.id} className="rounded-lg border bg-zinc-800/50 border-zinc-700/50 p-3">
@@ -634,14 +634,14 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   <button
                     onClick={() => handleDeleteDecision(dec.id)}
                     className="p-1 rounded hover:bg-red-500/20 text-red-400/70 hover:text-red-300 transition-colors"
-                    title="Delete"
+                    title="删除"
                   >
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                   </button>
                 </div>
                 <p className="text-xs font-medium text-zinc-200 leading-relaxed">{dec.decision}</p>
                 {dec.reason && (
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed italic">Reason: {dec.reason}</p>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed italic">原因：{dec.reason}</p>
                 )}
                 <div className="text-[10px] text-zinc-600 mt-1.5">{formatTime(dec.created_at)}</div>
               </div>
@@ -652,7 +652,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'nodes' && (
           <div className="p-3 space-y-2">
             {nodes.length === 0 && (
-              <div className="text-center text-xs text-zinc-500 py-8">No multi-agent node runs yet. Run a multi-agent flow to see summaries here.</div>
+              <div className="text-center text-xs text-zinc-500 py-8">暂无多智能体节点运行记录，运行工作流后可在这里查看摘要。</div>
             )}
             {nodes.map(node => (
               <div key={node.id} className="rounded-lg border bg-zinc-800/50 border-zinc-700/50 p-3">
@@ -699,7 +699,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'tool-outputs' && (
           <div className="p-3 space-y-2">
             {toolOutputs.length === 0 && (
-              <div className="text-center text-xs text-zinc-500 py-8">No tool outputs stored yet.</div>
+              <div className="text-center text-xs text-zinc-500 py-8">尚未保存工具输出。</div>
             )}
             {toolOutputs.map(output => (
               <div key={output.id} className="rounded-lg border bg-zinc-800/50 border-zinc-700/50 p-3">
@@ -717,7 +717,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                     onClick={() => handleViewToolOutput(output)}
                     className="px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-[11px] font-medium transition-colors shrink-0"
                   >
-                    View Content
+                    查看内容
                   </button>
                 </div>
               </div>
@@ -728,11 +728,11 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'prompt-preview' && (
           <div className="p-3 space-y-3">
             <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-3">
-              <h3 className="text-xs font-semibold text-zinc-400">Context Preview Configuration</h3>
+              <h3 className="text-xs font-semibold text-zinc-400">上下文预览配置</h3>
               <textarea
                 value={promptQuery}
                 onChange={e => setPromptQuery(e.target.value)}
-                placeholder="Enter your query or user message to preview the assembled context..."
+                placeholder="输入查询或用户消息，预览组装后的上下文…"
                 className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 resize-none focus:outline-none focus:border-violet-500/50"
                 rows={4}
               />
@@ -750,7 +750,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-zinc-500 mb-1">Writing Domain</label>
+                  <label className="block text-[10px] text-zinc-500 mb-1">写作领域</label>
                   <select
                     value={promptWritingDomain}
                     onChange={e => setPromptWritingDomain(e.target.value)}
@@ -763,13 +763,13 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 </div>
               </div>
               <div>
-                <div className="mb-1 text-[10px] text-zinc-500">Optional BYOK price override ($ / 1M tokens)</div>
+                <div className="mb-1 text-[10px] text-zinc-500">可选 BYOK 价格覆盖（美元 / 百万 Token）</div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    ['Input', inputPrice, setInputPrice],
-                    ['Cached input', cachedInputPrice, setCachedInputPrice],
-                    ['Output', outputPrice, setOutputPrice],
-                    ['Reasoning', reasoningPrice, setReasoningPrice],
+                    ['输入', inputPrice, setInputPrice],
+                    ['缓存输入', cachedInputPrice, setCachedInputPrice],
+                    ['输出', outputPrice, setOutputPrice],
+                    ['推理', reasoningPrice, setReasoningPrice],
                   ].map(([label, value, setter]) => (
                     <label className="text-[10px] text-zinc-500" key={String(label)}>
                       {String(label)}
@@ -777,7 +777,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                         className="mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
                         min="0"
                         onChange={event => (setter as typeof setInputPrice)(event.target.value ? Number(event.target.value) : '')}
-                        placeholder="unknown"
+                        placeholder="未知"
                         step="0.01"
                         type="number"
                         value={value as number | ''}
@@ -787,13 +787,13 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 </div>
               </div>
               <div className="rounded border border-zinc-700/60 bg-zinc-900/40 p-2 space-y-2">
-                <div className="text-[10px] font-medium text-zinc-400">BYOK price override (USD / 1M tokens)</div>
+                <div className="text-[10px] font-medium text-zinc-400">BYOK 价格覆盖（美元 / 百万 Token）</div>
                 <div className="grid grid-cols-2 gap-2">
                   {([
-                    ['Input', inputPrice, setInputPrice],
-                    ['Cached input', cachedInputPrice, setCachedInputPrice],
-                    ['Output', outputPrice, setOutputPrice],
-                    ['Reasoning', reasoningPrice, setReasoningPrice],
+                    ['输入', inputPrice, setInputPrice],
+                    ['缓存输入', cachedInputPrice, setCachedInputPrice],
+                    ['输出', outputPrice, setOutputPrice],
+                    ['推理', reasoningPrice, setReasoningPrice],
                   ] as const).map(([label, value, setter]) => (
                     <label className="text-[10px] text-zinc-500" key={label}>
                       {label}
@@ -803,18 +803,18 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                         step="0.01"
                         value={value}
                         onChange={event => setter(event.target.value ? Number(event.target.value) : '')}
-                        placeholder="unknown"
+                        placeholder="未知"
                         className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none"
                       />
                     </label>
                   ))}
                 </div>
-                <p className="text-[10px] text-zinc-600">Leave blank for token-only accounting when Karna has no verified price.</p>
+                <p className="text-[10px] text-zinc-600">Karna 没有可靠价格数据时请留空，仅统计 Token。</p>
               </div>
               <div className="rounded border border-zinc-700/60 bg-zinc-900/40 p-2 space-y-2">
-                <div className="text-[10px] font-medium text-zinc-400">Workflow model routing (optional)</div>
+                <div className="text-[10px] font-medium text-zinc-400">工作流模型路由（可选）</div>
                 <div className="grid grid-cols-[80px_1fr_1fr] gap-1 text-[10px] text-zinc-600">
-                  <span>Node slot</span><span>Provider</span><span>Model</span>
+                  <span>节点槽位</span><span>服务商</span><span>模型</span>
                 </div>
                 {['lightweight', 'research', 'critic', 'final', 'default'].map(slot => (
                   <div className="grid grid-cols-[80px_1fr_1fr] gap-1 items-center" key={slot}>
@@ -822,25 +822,25 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                     <input
                       value={providerSlots[slot] || ''}
                       onChange={event => setProviderSlots(current => ({ ...current, [slot]: event.target.value }))}
-                      placeholder="inherit"
+                      placeholder="继承"
                       className="min-w-0 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[10px] text-zinc-200 placeholder-zinc-700 focus:outline-none"
                     />
                     <input
                       value={modelSlots[slot] || ''}
                       onChange={event => setModelSlots(current => ({ ...current, [slot]: event.target.value }))}
-                      placeholder="inherit"
+                      placeholder="继承"
                       className="min-w-0 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-[10px] text-zinc-200 placeholder-zinc-700 focus:outline-none"
                     />
                   </div>
                 ))}
-                <p className="text-[10px] text-zinc-600">Cheap models can handle lightweight nodes; final and critic slots can retain stronger models.</p>
+                <p className="text-[10px] text-zinc-600">轻量节点可使用低成本模型，终稿和评审槽位可以保留更强模型。</p>
               </div>
               <button
                 onClick={handlePreviewPrompt}
                 disabled={!promptQuery.trim() || promptPreviewLoading}
                 className="w-full px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
               >
-                {promptPreviewLoading ? 'Generating Preview...' : 'Preview Context'}
+                {promptPreviewLoading ? '正在生成预览…' : '预览上下文'}
               </button>
             </div>
 
@@ -859,7 +859,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   </div>
                   <div className="rounded-lg border bg-blue-500/10 border-blue-500/20 p-2 text-center">
                     <div className="text-lg font-bold text-blue-300">{promptPreview.memory_count}</div>
-                    <div className="text-[10px] text-zinc-500">Memories</div>
+                    <div className="text-[10px] text-zinc-500">记忆</div>
                   </div>
                   <div className="rounded-lg border bg-orange-500/10 border-orange-500/20 p-2 text-center">
                     <div className="text-lg font-bold text-orange-300">{promptPreview.pin_count}</div>
@@ -867,13 +867,13 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                   </div>
                   <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-2 text-center">
                     <div className="text-lg font-bold text-green-300">{promptPreview.decision_count}</div>
-                    <div className="text-[10px] text-zinc-500">Decisions</div>
+                    <div className="text-[10px] text-zinc-500">决策</div>
                   </div>
                 </div>
 
                 <div className="rounded-lg border bg-zinc-800/50 border-zinc-700/50">
                   <div className="px-3 py-2 border-b border-zinc-700/50">
-                    <h3 className="text-xs font-semibold text-zinc-400">Assembled Context Text</h3>
+                    <h3 className="text-xs font-semibold text-zinc-400">组装后的上下文文本</h3>
                   </div>
                   <pre className="p-3 text-[11px] text-zinc-300 whitespace-pre-wrap overflow-auto max-h-96 font-mono leading-relaxed">
                     {promptPreview.context_text}
@@ -887,16 +887,16 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'compression' && (
           <div className="p-3 space-y-3">
             <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-              <h3 className="text-xs font-semibold text-zinc-400">Manual Compaction</h3>
+              <h3 className="text-xs font-semibold text-zinc-400">手动压缩</h3>
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Run a context compaction to summarize older messages and free up context window space. This is a demo/test action and will not modify your active conversation.
+                执行上下文压缩以总结较早消息并释放窗口空间。此验收操作不会修改当前活动会话。
               </p>
               <button
                 onClick={handleRunCompaction}
                 disabled={compactLoading}
                 className="px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
               >
-                {compactLoading ? 'Running Compaction...' : 'Run Manual Compaction'}
+                {compactLoading ? '正在压缩…' : '执行手动压缩'}
               </button>
               {compactResult && (
                 <p className="text-[11px] text-cyan-300 mt-2">{compactResult}</p>
@@ -904,9 +904,9 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Recent Compression Events</h3>
+              <h3 className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">最近的压缩事件</h3>
               {(!snapshot?.recent_compressions || snapshot.recent_compressions.length === 0) ? (
-                <div className="text-center text-xs text-zinc-500 py-6">No compression events recorded yet.</div>
+                <div className="text-center text-xs text-zinc-500 py-6">尚未记录压缩事件。</div>
               ) : (
                 <div className="space-y-2">
                   {snapshot.recent_compressions.map(event => (
@@ -920,7 +920,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                           )}
                           {event.aborted && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-500/30">
-                              Aborted
+                              已中止
                             </span>
                           )}
                           {typeof event.quality_score === 'number' && (
@@ -931,10 +931,10 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs">
-                        <span className="text-zinc-500">Before: <span className="text-zinc-300">{event.before_tokens.toLocaleString()} tok</span></span>
-                        <span className="text-zinc-500">After: <span className="text-zinc-300">{event.after_tokens.toLocaleString()} tok</span></span>
+                        <span className="text-zinc-500">压缩前：<span className="text-zinc-300">{event.before_tokens.toLocaleString()} Token</span></span>
+                        <span className="text-zinc-500">压缩后：<span className="text-zinc-300">{event.after_tokens.toLocaleString()} Token</span></span>
                         <span className="text-zinc-500">
-                          Saved: <span className="text-green-300">
+                          节省：<span className="text-green-300">
                             {event.before_tokens > 0 ? `${Math.round((1 - event.after_tokens / event.before_tokens) * 100)}%` : '-'}
                           </span>
                         </span>
@@ -951,27 +951,27 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
         {!loading && !error && tab === 'tokens' && (
           <div className="p-3 space-y-4">
             <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Token Policy</h3>
+              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Token 策略</h3>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] text-zinc-500 mb-1">Mode</label>
+                  <label className="block text-[10px] text-zinc-500 mb-1">模式</label>
                   <select
                     value={policyMode}
                     onChange={e => setPolicyMode(e.target.value as any)}
                     className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none"
                   >
-                    <option value="balanced">Balanced (Default)</option>
-                    <option value="saving">Aggressive Saving</option>
-                    <option value="quality">Quality First</option>
+                    <option value="balanced">平衡（默认）</option>
+                    <option value="saving">优先节省</option>
+                    <option value="quality">质量优先</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-zinc-500 mb-1">Hard Token Budget (blank=advisory)</label>
+                  <label className="block text-[10px] text-zinc-500 mb-1">Token 硬预算（留空表示仅提醒）</label>
                   <input
                     type="number"
                     value={hardBudget}
                     onChange={e => setHardBudget(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="e.g. 100000"
+                    placeholder="例如 100000"
                     className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none"
                   />
                 </div>
@@ -981,16 +981,16 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 disabled={tokenSaving}
                 className="w-full px-3 py-1.5 rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-medium transition-colors"
               >
-                {tokenSaving ? 'Saving...' : 'Save Policy'}
+                {tokenSaving ? '保存中…' : '保存策略'}
               </button>
               <p className="text-[10px] text-zinc-500 leading-relaxed">
-                Balanced mode protects requested output length while reducing repeated context. Hard budget pauses execution before a call would exceed the set limit. Final output is never auto-truncated.
+                平衡模式在减少重复上下文的同时保护所需输出长度。硬预算会在下一次调用超限前暂停执行，最终输出不会被自动截断。
               </p>
             </div>
 
             {tokenEvents.some(event => event.event_type === 'token.warning' || event.event_type === 'token.budget.blocked') && (
               <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-300">Budget Events</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-300">预算事件</h3>
                 <div className="mt-2 space-y-2">
                   {tokenEvents
                     .filter(event => event.event_type === 'token.warning' || event.event_type === 'token.budget.blocked')
@@ -1001,7 +1001,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                           <strong className={event.event_type === 'token.budget.blocked' ? 'text-red-300' : 'text-amber-300'}>{event.event_type}</strong>
                           <span className="text-zinc-600">{formatTime(event.created_at)}</span>
                         </div>
-                        <p className="mt-1 text-zinc-400">{String(event.payload.reason || event.payload.message || 'Token budget notification')}</p>
+                        <p className="mt-1 text-zinc-400">{String(event.payload.reason || event.payload.message || 'Token 预算通知')}</p>
                       </div>
                     ))}
                 </div>
@@ -1013,46 +1013,46 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border bg-violet-500/10 border-violet-500/20 p-3">
                     <div className="text-lg font-bold text-violet-300">{tokenUsage.calls}</div>
-                    <div className="text-[10px] text-zinc-500">Model Calls</div>
+                    <div className="text-[10px] text-zinc-500">模型调用</div>
                   </div>
                   <div className="rounded-lg border bg-cyan-500/10 border-cyan-500/20 p-3">
                     <div className="text-lg font-bold text-cyan-300">{(tokenUsage.input_tokens / 1000).toFixed(1)}k</div>
-                    <div className="text-[10px] text-zinc-500">Input Tokens</div>
+                    <div className="text-[10px] text-zinc-500">输入 Token</div>
                   </div>
                   <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-3">
                     <div className="text-lg font-bold text-green-300">{(tokenUsage.cached_input_tokens / 1000).toFixed(1)}k</div>
-                    <div className="text-[10px] text-zinc-500">Cached Input (Saved)</div>
+                    <div className="text-[10px] text-zinc-500">缓存输入（已节省）</div>
                   </div>
                   <div className="rounded-lg border bg-orange-500/10 border-orange-500/20 p-3">
                     <div className="text-lg font-bold text-orange-300">{(tokenUsage.output_tokens / 1000).toFixed(1)}k</div>
-                    <div className="text-[10px] text-zinc-500">Output Tokens</div>
+                    <div className="text-[10px] text-zinc-500">输出 Token</div>
                   </div>
                   <div className="rounded-lg border bg-blue-500/10 border-blue-500/20 p-3">
                     <div className="text-lg font-bold text-blue-300">{(tokenUsage.total_tokens / 1000).toFixed(1)}k</div>
-                    <div className="text-[10px] text-zinc-500">Total Tokens</div>
+                    <div className="text-[10px] text-zinc-500">总 Token</div>
                   </div>
                   <div className="rounded-lg border bg-yellow-500/10 border-yellow-500/20 p-3">
                     <div className="text-lg font-bold text-yellow-300">
                       {tokenUsage.estimated_cost_usd > 0 ? `$${tokenUsage.estimated_cost_usd.toFixed(4)}` : 'N/A'}
                     </div>
-                    <div className="text-[10px] text-zinc-500">Est. Cost (USD)</div>
+                    <div className="text-[10px] text-zinc-500">预估费用（美元）</div>
                   </div>
                 </div>
 
                 <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Context Breakdown (Input)</h3>
+                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">输入上下文构成</h3>
                   {Object.entries(tokenUsage.breakdown || {}).length > 0 ? (
                     <div className="space-y-1.5">
                       {(() => {
                         const bd = tokenUsage.breakdown
                         const total = tokenUsage.input_tokens - tokenUsage.cached_input_tokens
                         const items = [
-                          ['System Prompt', bd.system_prompt || 0, 'bg-blue-500/20'],
-                          ['Tool Schemas', bd.tool_schema || 0, 'bg-purple-500/20'],
-                          ['Memory & Pins', bd.memory || 0, 'bg-orange-500/20'],
+                          ['系统提示词', bd.system_prompt || 0, 'bg-blue-500/20'],
+                          ['工具结构', bd.tool_schema || 0, 'bg-purple-500/20'],
+                          ['记忆与固定约束', bd.memory || 0, 'bg-orange-500/20'],
                           ['RAG / Retrieval', bd.rag || 0, 'bg-pink-500/20'],
-                          ['Artifact / Selection', bd.artifact || 0, 'bg-cyan-500/20'],
-                          ['Upstream / Nodes', bd.upstream || 0, 'bg-green-500/20'],
+                          ['交付物 / 选区', bd.artifact || 0, 'bg-cyan-500/20'],
+                          ['上游 / 节点', bd.upstream || 0, 'bg-green-500/20'],
                         ]
                         return items.map(([label, val, cls]) => {
                           const pct = total > 0 ? Math.round((val as number) / total * 100) : 0
@@ -1070,34 +1070,34 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                       })()}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-zinc-500">No breakdown data yet. Make a model call to see input composition.</p>
+                    <p className="text-[11px] text-zinc-500">暂无构成数据，完成一次模型调用后即可查看。</p>
                   )}
                 </div>
 
                 <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Savings</h3>
+                  <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">节省量</h3>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="text-center p-2 rounded bg-green-500/10 border border-green-500/20">
                       <div className="text-sm font-bold text-green-300">{(tokenUsage.savings.cache_hit_tokens / 1000).toFixed(1)}k</div>
-                      <div className="text-[10px] text-zinc-500">Cache Hits</div>
+                      <div className="text-[10px] text-zinc-500">缓存命中</div>
                     </div>
                     <div className="text-center p-2 rounded bg-cyan-500/10 border border-cyan-500/20">
                       <div className="text-sm font-bold text-cyan-300">{(tokenUsage.savings.reuse_tokens / 1000).toFixed(1)}k</div>
-                      <div className="text-[10px] text-zinc-500">Result Reuse</div>
+                      <div className="text-[10px] text-zinc-500">结果复用</div>
                     </div>
                     <div className="text-center p-2 rounded bg-violet-500/10 border border-violet-500/20">
                       <div className="text-sm font-bold text-violet-300">{(tokenUsage.savings.externalized_tokens_estimate / 1000).toFixed(1)}k</div>
-                      <div className="text-[10px] text-zinc-500">Externalized Outputs</div>
+                      <div className="text-[10px] text-zinc-500">外置输出</div>
                     </div>
                   </div>
                 </div>
 
                 {cacheStatsData && cacheStatsData.total_calls > 0 && (
                   <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Prompt Cache</h3>
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">提示词缓存</h3>
                     <div className="flex items-center gap-4 text-xs">
-                      <span className="text-zinc-500">Hit Rate: <span className="text-green-300 font-bold">{(cacheStatsData.hit_rate * 100).toFixed(1)}%</span></span>
-                      <span className="text-zinc-500">Saved: <span className="text-green-300">{(cacheStatsData.cached_tokens_read / 1000).toFixed(1)}k t</span></span>
+                      <span className="text-zinc-500">命中率：<span className="text-green-300 font-bold">{(cacheStatsData.hit_rate * 100).toFixed(1)}%</span></span>
+                      <span className="text-zinc-500">已节省：<span className="text-green-300">{(cacheStatsData.cached_tokens_read / 1000).toFixed(1)}k Token</span></span>
                     </div>
                     <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400" style={{ width: `${Math.min(cacheStatsData.hit_rate * 100, 100)}%` }} />
@@ -1107,12 +1107,12 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
 
                 {Object.keys(tokenUsage.by_model || {}).length > 0 && (
                   <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-2">
-                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Usage by Model</h3>
+                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">各模型用量</h3>
                     <div className="space-y-1">
                       {Object.entries(tokenUsage.by_model).map(([model, data]) => (
                         <div key={model} className="flex items-center gap-2 text-xs">
                           <span className="font-mono text-[10px] text-zinc-400 w-32 truncate">{model}</span>
-                          <span className="text-zinc-500">{data.calls} calls</span>
+                          <span className="text-zinc-500">{data.calls} 次调用</span>
                           <span className="text-cyan-400">in:{(data.input / 1000).toFixed(1)}k</span>
                           <span className="text-orange-400">out:{(data.output / 1000).toFixed(1)}k</span>
                         </div>
@@ -1125,7 +1125,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
 
             {!tokenUsage && (
               <div className="text-center text-xs text-zinc-500 py-8">
-                No token usage recorded for this session yet. Start a conversation to see real-time usage stats.
+                当前会话尚无 Token 用量记录，开始对话后即可查看实时统计。
               </div>
             )}
           </div>
@@ -1161,7 +1161,7 @@ export function ContextCenterPanel({ onClose }: { onClose?: () => void }) {
                 </div>
               ) : (
                 <pre className="text-[11px] text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
-                  {toolOutputContent || 'No content'}
+                  {toolOutputContent || '暂无内容'}
                 </pre>
               )}
             </div>

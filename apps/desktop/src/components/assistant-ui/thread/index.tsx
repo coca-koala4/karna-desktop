@@ -63,7 +63,7 @@ export const Thread: FC<{
 
     closeRestoreConfirm()
     void Promise.resolve(onRestoreToMessage(messageId, { text, userOrdinal })).catch((error: unknown) => {
-      notifyError(error, 'Restore failed')
+      notifyError(error, '恢复失败')
     })
   }, [closeRestoreConfirm, onRestoreToMessage, restoreConfirmTarget])
 

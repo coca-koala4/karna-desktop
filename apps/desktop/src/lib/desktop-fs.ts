@@ -46,7 +46,7 @@ function bridge() {
   const desktop = window.hermesDesktop
 
   if (!desktop) {
-    throw new Error('Hermes Desktop bridge is unavailable')
+    throw new Error('Karna 桌面桥接不可用')
   }
 
   return desktop
@@ -83,7 +83,7 @@ export async function writeDesktopFileText(path: string, content: string): Promi
 
   if (!isDesktopFsRemoteMode()) {
     if (!desktop.writeTextFile) {
-      throw new Error('Saving is not available')
+      throw new Error('保存功能不可用')
     }
 
     return desktop.writeTextFile(path, content)
@@ -99,7 +99,7 @@ export async function createDesktopDirectory(path: string): Promise<{ path: stri
 
   if (!isDesktopFsRemoteMode()) {
     if (!desktop.createDirectory) {
-      throw new Error('Directory creation is not available')
+      throw new Error('创建目录功能不可用')
     }
 
     return desktop.createDirectory(path)
@@ -148,7 +148,7 @@ export async function renameDesktopPath(path: string, newName: string): Promise<
   const desktop = bridge()
 
   if (!desktop.renamePath) {
-    throw new Error('Rename is not available')
+    throw new Error('重命名功能不可用')
   }
 
   const result = await desktop.renamePath(path, newName)
@@ -161,7 +161,7 @@ export async function trashDesktopPath(path: string): Promise<void> {
   const desktop = bridge()
 
   if (!desktop.trashPath) {
-    throw new Error('Delete is not available')
+    throw new Error('删除功能不可用')
   }
 
   await desktop.trashPath(path)

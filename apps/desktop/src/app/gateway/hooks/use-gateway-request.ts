@@ -98,7 +98,7 @@ export function useGatewayRequest() {
       const gateway = gatewayRef.current
 
       if (!gateway) {
-        throw new Error('Karna runtime unavailable')
+        throw new Error('Karna 运行时不可用')
       }
 
       try {

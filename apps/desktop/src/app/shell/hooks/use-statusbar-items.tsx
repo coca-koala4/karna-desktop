@@ -194,7 +194,7 @@ export function useStatusbarItems({
             <ContextCenterPanel />
           </div>
         ),
-        title: 'Context Center',
+        title: '上下文中心',
         variant: 'menu'
       },
       {

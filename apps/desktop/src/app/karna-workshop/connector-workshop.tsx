@@ -146,20 +146,20 @@ type ConnectorAvatarConfig = {
 }
 
 const CONNECTOR_AVATARS: Record<string, ConnectorAvatarConfig> = {
-  writer_workspace: { label: 'Writer Workspace', icon: 'writer', gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)', glow: 'rgba(37, 99, 235, 0.22)' },
-  story_bible: { label: 'Story Bible', icon: 'story', gradient: 'linear-gradient(135deg, #7c3aed, #db2777)', glow: 'rgba(124, 58, 237, 0.22)' },
-  narrative_state: { label: 'Narrative State', icon: 'state', gradient: 'linear-gradient(135deg, #0891b2, #2563eb)', glow: 'rgba(8, 145, 178, 0.22)' },
-  living_wiki: { label: 'Living Wiki', icon: 'wiki', gradient: 'linear-gradient(135deg, #059669, #0d9488)', glow: 'rgba(5, 150, 105, 0.22)' },
-  creative_search: { label: 'Creative Search', icon: 'search', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)', glow: 'rgba(245, 158, 11, 0.22)' },
-  soul_workshop: { label: 'Soul Workshop', icon: 'soul', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)', glow: 'rgba(236, 72, 153, 0.22)' },
+  writer_workspace: { label: '写作工作区', icon: 'writer', gradient: 'linear-gradient(135deg, #2563eb, #7c3aed)', glow: 'rgba(37, 99, 235, 0.22)' },
+  story_bible: { label: '故事圣经', icon: 'story', gradient: 'linear-gradient(135deg, #7c3aed, #db2777)', glow: 'rgba(124, 58, 237, 0.22)' },
+  narrative_state: { label: '叙事状态', icon: 'state', gradient: 'linear-gradient(135deg, #0891b2, #2563eb)', glow: 'rgba(8, 145, 178, 0.22)' },
+  living_wiki: { label: '动态百科', icon: 'wiki', gradient: 'linear-gradient(135deg, #059669, #0d9488)', glow: 'rgba(5, 150, 105, 0.22)' },
+  creative_search: { label: '创意检索', icon: 'search', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)', glow: 'rgba(245, 158, 11, 0.22)' },
+  soul_workshop: { label: 'Soul 工坊', icon: 'soul', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)', glow: 'rgba(236, 72, 153, 0.22)' },
   obsidian_vault: { label: 'Obsidian', icon: 'obsidian', gradient: 'linear-gradient(135deg, #4c1d95, #8b5cf6)', glow: 'rgba(109, 40, 217, 0.24)', sourceUrl: 'https://obsidian.md/' },
   wps_docs: { label: 'WPS Office', icon: 'wps', imageSrc: '/connector-icons/wps-office.webp', gradient: 'linear-gradient(135deg, #dc2626, #f97316)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=cn.wps.moffice_eng' },
   baidu_netdisk: { label: 'Baidu Netdisk', icon: 'baidu_netdisk', imageSrc: '/connector-icons/baidu-netdisk.webp', gradient: 'linear-gradient(135deg, #1d4ed8, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.drive.app' },
-  web_search: { label: 'Web Search', icon: 'web', gradient: 'linear-gradient(135deg, #0ea5e9, #22c55e)', glow: 'rgba(14, 165, 233, 0.20)' },
-  browser_reader: { label: 'Browser Reader', icon: 'browser', imageSrc: '/connector-icons/chrome.png', gradient: 'linear-gradient(135deg, #f97316, #f59e0b)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.android.chrome' },
-  feishu_docs: { label: 'Feishu Docs', icon: 'browser', imageSrc: '/connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
-  tencent_docs: { label: 'Tencent Docs', icon: 'browser', imageSrc: '/connector-icons/tencent-docs.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1370780836' },
-  wechat_reading: { label: 'WeChat Reading', icon: 'browser', imageSrc: '/connector-icons/wechat-reading.jpg', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://apps.apple.com/app/id952059546' },
+  web_search: { label: '网页检索', icon: 'web', gradient: 'linear-gradient(135deg, #0ea5e9, #22c55e)', glow: 'rgba(14, 165, 233, 0.20)' },
+  browser_reader: { label: '浏览器阅读器', icon: 'browser', imageSrc: '/connector-icons/chrome.png', gradient: 'linear-gradient(135deg, #f97316, #f59e0b)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.android.chrome' },
+  feishu_docs: { label: '飞书文档', icon: 'browser', imageSrc: '/connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
+  tencent_docs: { label: '腾讯文档', icon: 'browser', imageSrc: '/connector-icons/tencent-docs.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1370780836' },
+  wechat_reading: { label: '微信读书', icon: 'browser', imageSrc: '/connector-icons/wechat-reading.jpg', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://apps.apple.com/app/id952059546' },
   zotero_library: { label: 'Zotero', icon: 'zotero', gradient: 'linear-gradient(135deg, #b91c1c, #ef4444)', glow: 'rgba(185, 28, 28, 0.20)', sourceUrl: 'https://www.zotero.org/' },
   arxiv_search: { label: 'arXiv', icon: 'arxiv', gradient: 'linear-gradient(135deg, #991b1b, #7f1d1d)', glow: 'rgba(153, 27, 27, 0.20)', sourceUrl: 'https://arxiv.org/' },
   feishu: { label: 'Feishu', icon: 'browser', imageSrc: '/connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
@@ -170,7 +170,7 @@ const CONNECTOR_AVATARS: Record<string, ConnectorAvatarConfig> = {
   baidu_map: { label: 'Baidu Map', icon: 'browser', imageSrc: '/connector-icons/baidu-map.png', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.BaiduMap' },
   amap: { label: 'Amap', icon: 'browser', imageSrc: '/connector-icons/amap.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.autonavi.minimap' },
   tencent_location: { label: '腾讯位置服务', icon: 'location', gradient: 'linear-gradient(135deg, #0ea5e9, #2563eb)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://sj.qq.com/appdetail/com.tencent.map' },
-  wechat_official: { label: 'WeChat Official Account', icon: 'wechat', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://weixin.qq.com/' },
+  wechat_official: { label: '微信公众号', icon: 'wechat', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://weixin.qq.com/' },
   zhihu: { label: 'Zhihu', icon: 'browser', imageSrc: '/connector-icons/zhihu.png', gradient: 'linear-gradient(135deg, #2563eb, #0ea5e9)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.zhihu.android' },
   xiaohongshu: { label: 'Xiaohongshu', icon: 'browser', imageSrc: '/connector-icons/xiaohongshu.png', gradient: 'linear-gradient(135deg, #dc2626, #ef4444)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.xingin.xhs' },
   wordpress: { label: 'WordPress', icon: 'browser', imageSrc: '/connector-icons/wordpress.png', gradient: 'linear-gradient(135deg, #1e40af, #0f172a)', glow: 'rgba(30, 64, 175, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=org.wordpress.android' },
@@ -396,7 +396,7 @@ export function ConnectorWorkshopView() {
         <div className="mx-6 mt-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
           <Codicon className="mt-0.5 flex-shrink-0 text-amber-500" name="globe" size={18} />
           <div className="flex-1 text-amber-700 dark:text-amber-200">
-            🌐 浏览器演示模式：当前仅显示 3 个示例连接器。安装桌面版可管理真实 MCP 服务器、配置认证和权限。
+            浏览器演示模式：当前仅显示 3 个示例连接器。安装桌面版可管理真实 MCP 服务器、配置认证和权限。
           </div>
           <button
             className="flex-shrink-0 rounded-md p-1 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
@@ -431,7 +431,7 @@ export function ConnectorWorkshopView() {
           <div className="flex items-center gap-2 text-[0.7rem] text-muted-foreground">
             <WorkshopStatus tone="info">权限控权</WorkshopStatus>
             <WorkshopStatus tone="warning">凭据加密存储</WorkshopStatus>
-            <WorkshopStatus tone="success">Tool Discovery</WorkshopStatus>
+            <WorkshopStatus tone="success">工具发现</WorkshopStatus>
           </div>
         </div>
 
@@ -945,8 +945,8 @@ function ConnectorDetailDrawer({ instance, onChanged, onClose }: { instance: Con
                      defaultValue="all"
                      onChange={e => setLogTimeFilter(e.target.value)}
                    >
-                     <option value="all">All time</option>
-                     <option value="today">Today</option>
+                     <option value="all">全部时间</option>
+                     <option value="today">今天</option>
                      <option value="7d">7 days</option>
                      <option value="30d">30 days</option>
                    </select>

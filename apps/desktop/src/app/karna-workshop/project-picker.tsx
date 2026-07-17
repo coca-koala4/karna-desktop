@@ -420,10 +420,10 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
 
       if (result.after) {setCommandCenter(result.after)}
       const ok = result.results?.filter(r => r.ok).length || 0
-      notify({ kind: result.ok === false ? 'warning' : 'success', title: moduleId ? 'Module repair executed' : 'Next fix executed', message: `${ok}/${result.results?.length || 0} actions` })
+      notify({ kind: result.ok === false ? 'warning' : 'success', title: moduleId ? '模块修复已执行' : '下一项修复已执行', message: `${ok}/${result.results?.length || 0} actions` })
       await load()
       await onRefresh()
-    } catch (err) { notifyError(err, 'Command Center action failed') } finally { setBusy(false) }
+    } catch (err) { notifyError(err, '指令中心操作失败') } finally { setBusy(false) }
   }
 
 
@@ -450,10 +450,10 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
     try {
       const result = await api<WriterGuide>(`/api/writer/projects/${encodeURIComponent(ref)}/guide`, 'POST', { action: 'next', provider: 'local' })
       setGuide(result)
-      notify({ kind: 'success', title: 'Guide next step executed', message: result.next_action?.title || 'updated' })
+      notify({ kind: 'success', title: '指南下一步已执行', message: result.next_action?.title || '已更新' })
       await load()
       await onRefresh()
-    } catch (err) { notifyError(err, 'Guide next step failed') } finally { setBusy(false) }
+    } catch (err) { notifyError(err, '指南下一步执行失败') } finally { setBusy(false) }
   }
 
   const repairGuide = async () => {
@@ -463,10 +463,10 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
       const result = await api<WriterGuide & { benchmark?: { score?: number }; results?: Array<{ ok?: boolean }> }>(`/api/writer/projects/${encodeURIComponent(ref)}/guide`, 'POST', { action: 'repair', provider: 'local' })
       setGuide(result)
       const ok = result.results?.filter(r => r.ok).length || 0
-      notify({ kind: 'success', title: 'Writer OS guide advanced', message: `${ok}/${result.results?.length || 0} actions - score ${Number(result.benchmark?.score || 0).toFixed(2)}` })
+      notify({ kind: 'success', title: 'Writer OS 指南已推进', message: `${ok}/${result.results?.length || 0} actions - score ${Number(result.benchmark?.score || 0).toFixed(2)}` })
       await load()
       await onRefresh()
-    } catch (err) { notifyError(err, 'Writer OS guide repair failed') } finally { setBusy(false) }
+    } catch (err) { notifyError(err, 'Writer OS 指南修复失败') } finally { setBusy(false) }
   }
 
   return (
@@ -519,11 +519,11 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
         >
           <div className="grid gap-2 lg:grid-cols-[14rem_1fr]">
             <div className="grid gap-2 rounded-[2px] border border-(--ui-stroke-tertiary) bg-background/70 p-3 text-xs">
-              <div className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">Next action</div>
-              <div className="font-medium">{commandCenter?.next_action?.title || 'All clear'}</div>
+              <div className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">下一步操作</div>
+              <div className="font-medium">{commandCenter?.next_action?.title || '当前无待修复项'}</div>
               <div className="text-[0.7rem] text-muted-foreground">{commandCenter?.next_action?.action || 'Keep writing and rerun benchmark after major changes.'}</div>
               <div className="font-mono text-[0.65rem] text-muted-foreground">green {commandCenter?.counts?.green || 0} ? yellow {commandCenter?.counts?.yellow || 0} ? red {commandCenter?.counts?.red || 0}</div>
-              <Button disabled={busy || !commandCenter?.next_action} onClick={() => void runCommandCenterAction()} size="xs" variant="outline"><Codicon name="wrench" /> Run next fix</Button>
+              <Button disabled={busy || !commandCenter?.next_action} onClick={() => void runCommandCenterAction()} size="xs" variant="outline"><Codicon name="wrench" /> 执行下一项修复</Button>
             </div>
             <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
               {(commandCenter?.modules || []).map(m => (
@@ -537,7 +537,7 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
                   {m.status !== 'green' ? <Button className="mt-1" disabled={busy} onClick={() => void runCommandCenterAction(m.id)} size="xs" variant="outline">Fix</Button> : null}
                 </div>
               ))}
-              {!commandCenter ? <WorkshopEmpty>Loading status console...</WorkshopEmpty> : null}
+              {!commandCenter ? <WorkshopEmpty>正在加载状态控制台…</WorkshopEmpty> : null}
             </div>
           </div>
         </WorkshopPanel>
@@ -546,9 +546,9 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
           <WorkshopPanel
             actions={
               <div className="flex items-center gap-2">
-                <Button disabled={busy} onClick={() => void runWorkflowIssueAction('retry')} size="xs" variant="outline"><Codicon name="refresh" /> Retry node</Button>
+                <Button disabled={busy} onClick={() => void runWorkflowIssueAction('retry')} size="xs" variant="outline"><Codicon name="refresh" /> 重试节点</Button>
                 <Button disabled={busy} onClick={() => void runWorkflowIssueAction('skip')} size="xs" variant="outline">Skip</Button>
-                <Button disabled={busy} onClick={() => void runWorkflowIssueAction('accept')} size="xs" variant="outline">Accept</Button>
+                <Button disabled={busy} onClick={() => void runWorkflowIssueAction('accept')} size="xs" variant="outline">接受</Button>
               </div>
             }
             description={commandCenter.workflow_issue.recommendation || 'Inspect the blocked workflow node and choose retry, skip, or accept.'}
@@ -569,7 +569,7 @@ function ProjectOverviewCard({ project, onRefresh }: { project: ProjectSummary; 
                   </div>
                   {node.summary ? <p className="mt-1 line-clamp-3 text-[0.7rem] text-muted-foreground">{node.summary}</p> : null}
                   <div className="mt-1 font-mono text-[0.6rem] text-muted-foreground">
-                    RAG {node.rag_context_id || '-'} / {node.rag_citations || 0} cites - Guard {node.draft_guard_id || '-'} / {node.draft_guard_issues || 0} issues
+                    RAG {node.rag_context_id || '-'} / {node.rag_citations || 0} 条引用 - 草稿守卫 {node.draft_guard_id || '-'} / {node.draft_guard_issues || 0} 个问题
                   </div>
                 </div>
               ))}
@@ -765,7 +765,7 @@ function NextSteps({ guide, overview, onBenchmark, onRepair }: { guide: WriterGu
             key={s.key}
           >
             <span className="grid size-5 place-items-center rounded-full border border-(--ui-stroke-tertiary) bg-background text-[0.6rem] font-mono">
-              {s.done ? '✓' : idx + 1}
+              {s.done ? <Codicon aria-label="已完成" name="check" size={11} /> : idx + 1}
             </span>
             <span className={s.done ? 'text-muted-foreground line-through' : 'text-foreground/90'}>{s.label}</span>
             {s.action}

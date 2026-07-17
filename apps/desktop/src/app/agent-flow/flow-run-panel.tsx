@@ -568,7 +568,7 @@ function PromptTab() {
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1">
               <Codicon name="shield" size={12} />
-              System Prompt
+              系统提示词
             </span>
             <span className="text-[0.65rem] text-slate-400">~{systemPrompt.length} 字符</span>
           </div>
@@ -583,7 +583,7 @@ function PromptTab() {
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1">
               <Codicon name="person" size={12} />
-              User Prompt
+              用户提示词
             </span>
             <span className="text-[0.65rem] text-slate-400">~{userPrompt.length} 字符</span>
           </div>

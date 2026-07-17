@@ -153,7 +153,7 @@ export function delegateTaskPayloads(
         : 'subagent.progress'
 
   return tasks.map((task, index) => {
-    const goal = firstString(task.goal, args.goal, payload.context) || 'Delegated task'
+    const goal = firstString(task.goal, args.goal, payload.context) || '委派任务'
     const summary = firstString(result.summary, payload.summary, payload.message)
 
     return {

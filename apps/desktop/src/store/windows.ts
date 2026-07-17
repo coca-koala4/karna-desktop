@@ -102,7 +102,7 @@ export async function openSessionInNewWindow(sessionId: string, opts?: { watch?:
     return
   }
 
-  await openWindow(() => window.hermesDesktop.openSessionWindow(sessionId, opts), 'Could not open chat in a new window')
+  await openWindow(() => window.hermesDesktop.openSessionWindow(sessionId, opts), '无法在新窗口中打开会话')
 }
 
 // Open a fresh compact window on the new-session draft.
@@ -111,5 +111,5 @@ export async function openNewSessionInNewWindow(): Promise<void> {
     return
   }
 
-  await openWindow(() => window.hermesDesktop.openNewSessionWindow(), 'Could not open new session window')
+  await openWindow(() => window.hermesDesktop.openNewSessionWindow(), '无法打开新会话窗口')
 }

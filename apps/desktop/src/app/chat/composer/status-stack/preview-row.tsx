@@ -64,7 +64,7 @@ export const PreviewStatusRow = memo(function PreviewStatusRow({ item, onDismiss
       const bridge = window.hermesDesktop?.openPreviewInBrowser
 
       if (!bridge) {
-        throw new Error('Desktop preview browser bridge is unavailable')
+        throw new Error('桌面预览浏览器桥接不可用')
       }
 
       await bridge((await resolveTarget()).url)

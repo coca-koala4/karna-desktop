@@ -41,8 +41,8 @@ export function buildRailTasks(
 
     return {
       id: `session:${id}`,
-      label: session ? sessionTitle(session) : 'Session task',
-      detail: 'Agent task running',
+      label: session ? sessionTitle(session) : '会话任务',
+      detail: '智能体任务运行中',
       status: 'running',
       updatedAt: session?.last_active || Date.now() - index
     }
@@ -52,7 +52,7 @@ export function buildRailTasks(
     ? [
         {
           id: `preview:${previewRestart.taskId}`,
-          label: 'Preview restart',
+          label: '预览重启',
           detail: previewRestart.message || previewRestart.url,
           status:
             previewRestart.status === 'error' ? 'error' : previewRestart.status === 'running' ? 'running' : 'success',

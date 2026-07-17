@@ -40,7 +40,7 @@ export function FlowStudioEmbed({ workspaceId, workflowId, onClose, onWorkflowSa
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to start Flow Studio')
+          setError(err instanceof Error ? err.message : '启动流程工作室失败')
           setLoading(false)
         }
       }

@@ -12,94 +12,54 @@ export interface ProjectIdeaTemplate {
 export const PROJECT_IDEA_TEMPLATES: ProjectIdeaTemplate[] = [
   {
     icon: 'file-text',
-    label: 'Game jam',
-    idea: 'A tiny browser game built in a weekend.\n\n- One core mechanic, juicy feedback\n- No build step — single HTML/JS file\n- Playable in under 60 seconds'
+    label: '长篇小说',
+    idea: '创作一部长篇小说。\n\n- 管理章节、人物与时间线\n- 制定每日字数目标\n- 让研究资料与正文保持关联'
   },
   {
     icon: 'file-text',
-    label: 'Novel',
-    idea: 'A novel-in-progress.\n\n- Track chapters, characters, and timeline\n- Daily word-count goal\n- Keep research notes beside the draft'
+    label: '短篇小说集',
+    idea: '策划并完成一组主题短篇。\n\n- 统一世界观或母题\n- 为每篇建立独立节奏\n- 完成编辑、校对与交付'
   },
   {
     icon: 'file-text',
-    label: 'Discord bot',
-    idea: 'A Discord bot for a small community.\n\n- Slash commands + a fun daily ritual\n- Lightweight persistence\n- Deploy somewhere free'
+    label: '学术论文',
+    idea: '完成一篇结构严谨的学术论文。\n\n- 建立研究问题与论证路径\n- 管理文献和证据引用\n- 分阶段完成初稿与审校'
   },
   {
     icon: 'file-text',
-    label: 'Data viz',
-    idea: 'An interactive visualization of a dataset I care about.\n\n- Pick the dataset and the one question it answers\n- Clean → chart → annotate\n- Shareable as a single page'
+    label: '影视剧本',
+    idea: '创作一部可拍摄的影视剧本。\n\n- 从一句话梗概推进到场次\n- 管理人物动机与冲突\n- 检查节奏、对白和格式'
   },
   {
     icon: 'file-text',
-    label: 'Generative art',
-    idea: 'A generative art piece.\n\n- One algorithm, lots of seeds\n- Export high-res stills\n- A gallery of the best outputs'
+    label: '人物小传',
+    idea: '建立可复用的人物档案。\n\n- 梳理经历、欲望与恐惧\n- 记录关系和成长弧\n- 保持人物行为一致性'
   },
   {
     icon: 'file-text',
-    label: 'Recipe box',
-    idea: 'A personal recipe collection.\n\n- Searchable by ingredient and mood\n- Scale servings on the fly\n- Auto-build a shopping list'
+    label: '世界观设定',
+    idea: '构建一套可持续扩展的世界观。\n\n- 定义历史、地理与规则\n- 维护势力和人物关系\n- 标记不可违背的设定'
   },
   {
     icon: 'file-text',
-    label: 'Research log',
-    idea: 'A research notebook for an open question.\n\n- Log experiments, results, and dead ends\n- Cite sources inline\n- Weekly synthesis of what I learned'
+    label: '研究日志',
+    idea: '围绕一个开放问题建立研究日志。\n\n- 记录实验、结果与失败路径\n- 在正文中关联来源\n- 每周总结新的认识'
   },
   {
     icon: 'file-text',
-    label: 'Budget tracker',
-    idea: 'A no-nonsense budget tracker.\n\n- Import transactions, tag them fast\n- Monthly burn vs. plan\n- One chart that tells the truth'
+    label: '品牌文案',
+    idea: '建立一套一致的品牌文案。\n\n- 明确受众、价值与语气\n- 产出首页、广告与社交内容\n- 统一术语并反复审校'
   },
   {
     icon: 'file-text',
-    label: 'Habit tracker',
-    idea: 'A habit tracker that actually sticks.\n\n- A handful of daily checkboxes\n- Streaks without guilt\n- A calm weekly review'
+    label: '课程讲义',
+    idea: '设计一套循序渐进的课程讲义。\n\n- 先搭建知识地图\n- 每节课包含例子与练习\n- 最后生成复习与验收材料'
   },
   {
     icon: 'file-text',
-    label: 'Trip planner',
-    idea: 'A trip planner for an upcoming adventure.\n\n- Day-by-day itinerary\n- Map of pins + notes\n- Packing + budget checklist'
+    label: '非虚构写作',
+    idea: '完成一篇基于事实的深度文章。\n\n- 明确核心问题与叙事线\n- 管理采访、资料和证据\n- 区分事实、推断与观点'
   },
-  {
-    icon: 'file-text',
-    label: 'Music toy',
-    idea: 'A little music-making toy.\n\n- One instrument or sequencer\n- Web Audio, no installs\n- Record + share a loop'
-  },
-  {
-    icon: 'file-text',
-    label: 'Puzzle maker',
-    idea: 'A generator for a puzzle I love.\n\n- Procedurally make solvable puzzles\n- Difficulty dial\n- Printable + playable'
-  },
-  {
-    icon: 'file-text',
-    label: 'Digital garden',
-    idea: 'A digital garden / personal wiki.\n\n- Atomic notes that link to each other\n- Grows over time, never "done"\n- Publish the public ones'
-  },
-  {
-    icon: 'file-text',
-    label: 'API wrapper',
-    idea: 'A clean wrapper around an API I keep reaching for.\n\n- Typed client + sensible defaults\n- One example per endpoint\n- Publish it'
-  },
-  {
-    icon: 'file-text',
-    label: 'Workout plan',
-    idea: 'A workout planner / logger.\n\n- Build a weekly split\n- Log sets fast on mobile\n- Track progress over months'
-  },
-  {
-    icon: 'file-text',
-    label: 'Flashcards',
-    idea: 'A spaced-repetition flashcard app.\n\n- Quick card capture\n- Simple SM-2 scheduling\n- A daily review that fits in 5 minutes'
-  },
-  {
-    icon: 'file-text',
-    label: 'Screenplay',
-    idea: 'A short screenplay.\n\n- Logline → beats → scenes\n- Proper format, distraction-free\n- A table read by the end'
-  },
-  {
-    icon: 'file-text',
-    label: 'Learn-by-building',
-    idea: "A project to learn a thing I've been avoiding.\n\n- Smallest real thing that teaches it\n- Notes on every gotcha\n- A writeup when it works"
-  }
 ]
 
 // A shuffled slice of the pool — the pills shown at any moment.

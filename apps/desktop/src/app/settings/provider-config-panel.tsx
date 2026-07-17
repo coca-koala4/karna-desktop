@@ -57,7 +57,7 @@ function FieldControl({
         <Input
           className="min-w-64 flex-1 font-mono"
           onChange={event => onChange(event.target.value)}
-          placeholder={field.is_set ? 'Leave blank to keep current value' : field.placeholder}
+          placeholder={field.is_set ? '留空以保留当前值' : field.placeholder}
           type="password"
           value={value}
         />
@@ -93,7 +93,7 @@ export function ProviderConfigPanel({ provider }: { provider: string }) {
       setConfig(next)
       setValues(seedValues(next))
     } catch (err) {
-      notifyError(err, 'Memory provider settings failed to load')
+      notifyError(err, '记忆服务商设置加载失败')
       setConfig(null)
     }
   }, [provider])

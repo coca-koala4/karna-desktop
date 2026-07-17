@@ -97,7 +97,7 @@ export function AboutSettings() {
             {version?.appVersion ? a.version(version.appVersion) : a.versionUnavailable}
           </p>
           <p className="mt-1 text-[0.7rem] text-muted-foreground/70">
-            Powered by Hermes runtime
+            基于兼容运行时构建
           </p>
         </div>
       </div>

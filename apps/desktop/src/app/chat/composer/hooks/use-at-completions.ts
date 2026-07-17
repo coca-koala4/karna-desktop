@@ -10,12 +10,12 @@ const KIND_RE = /^@(file|folder|url|image|tool|git):(.*)$/
 const REF_STARTERS = new Set(['file', 'folder', 'url', 'image', 'tool', 'git'])
 
 const STARTER_META: Record<string, string> = {
-  file: 'Attach a file reference',
-  folder: 'Attach a folder reference',
-  url: 'Attach a URL reference',
-  image: 'Attach an image reference',
-  tool: 'Attach a tool reference',
-  git: 'Attach git context'
+  file: '引用文件',
+  folder: '引用文件夹',
+  url: '引用网址',
+  image: '引用图片',
+  tool: '引用工具',
+  git: '引用 Git 上下文'
 }
 
 function starterEntries(query: string): CompletionEntry[] {

@@ -1131,7 +1131,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
         { runId: run.run_id, humanInput: humanReviewText }
       )
 
-      if (!result.ok || !result.run) throw new Error(result.error || 'Continue failed')
+      if (!result.ok || !result.run) throw new Error(result.error || '继续运行失败')
       setLastRun(result.run)
       setHumanReviewText('')
       applyRunToCanvas(result.run)
@@ -1153,7 +1153,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
         { humanReviewText }
       )
 
-      if (!result.ok || !result.run) throw new Error(result.error || 'Update failed')
+      if (!result.ok || !result.run) throw new Error(result.error || '更新失败')
       setLastRun(result.run)
       applyRunToCanvas(result.run)
 

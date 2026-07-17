@@ -143,7 +143,7 @@ function MarketplaceThemeResults({
 
   const header = (
     <p className="mb-2 mt-4 text-[length:var(--conversation-caption-font-size)] font-medium text-(--ui-text-tertiary)">
-      From the VS Code Marketplace
+      来自 VS Code 扩展市场
     </p>
   )
 
@@ -312,7 +312,7 @@ export function AppearanceSettings() {
                   {filteredThemes.length === 0 ? (
                     needle ? (
                       <p className="text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
-                        No installed themes match "{query.trim()}".
+                        没有已安装主题匹配“{query.trim()}”。
                       </p>
                     ) : null
                   ) : (

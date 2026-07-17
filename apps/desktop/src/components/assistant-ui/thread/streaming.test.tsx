@@ -438,14 +438,14 @@ describe('assistant-ui streaming renderer', () => {
   it('omits the dismiss control when no onDismissError handler is supplied', () => {
     render(<MessageHarness message={assistantErrorMessage('OpenRouter rejected the request (403).')} />)
 
-    expect(screen.queryByRole('button', { name: 'Dismiss error' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '关闭错误' })).toBeNull()
   })
 
   it('invokes onDismissError with the errored message id when the dismiss control is clicked', () => {
     const onDismissError = vi.fn()
     render(<DismissibleErrorHarness onDismissError={onDismissError} />)
 
-    const dismiss = screen.getByRole('button', { name: 'Dismiss error' })
+    const dismiss = screen.getByRole('button', { name: '关闭错误' })
     fireEvent.click(dismiss)
 
     expect(onDismissError).toHaveBeenCalledTimes(1)
@@ -472,7 +472,7 @@ describe('assistant-ui streaming renderer', () => {
   it('renders an incomplete streaming reasoning fenced code block as a code card', async () => {
     const { container } = render(<RunningReasoningHarness />)
     const ui = within(container)
-    const thinkingToggle = ui.getByRole('button', { name: /thinking/i })
+    const thinkingToggle = ui.getByRole('button', { name: /思考中/ })
 
     if (thinkingToggle.getAttribute('aria-expanded') !== 'true') {
       fireEvent.click(thinkingToggle)
@@ -492,7 +492,7 @@ describe('assistant-ui streaming renderer', () => {
     const { container } = render(<ReasoningHarness />)
     const ui = within(container)
 
-    fireEvent.click(ui.getByRole('button', { name: /thinking/i }))
+    fireEvent.click(ui.getByRole('button', { name: /思考中/ }))
 
     expect(container.querySelector('[data-slot="aui_reasoning-text"]')?.textContent).toBe(
       'The user is asking what this file is.'

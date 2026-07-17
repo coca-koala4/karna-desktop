@@ -80,7 +80,7 @@ export function useAttachmentIngest() {
           }).catch(() => {
             setComposerAttachmentParseState(attachment.id, {
               parseState: 'failed',
-              parseMessage: 'Failed to retrieve result'
+              parseMessage: '获取结果失败'
             })
           })
         } else if (job.status === 'failed') {
@@ -88,7 +88,7 @@ export function useAttachmentIngest() {
           pollersRef.current.delete(attachment.id)
           setComposerAttachmentParseState(attachment.id, {
             parseState: 'failed',
-            parseMessage: job.error || 'Parse failed',
+            parseMessage: job.error || '解析失败',
             parseProgress: 0
           })
         } else if (job.status === 'unsupported') {
@@ -96,7 +96,7 @@ export function useAttachmentIngest() {
           pollersRef.current.delete(attachment.id)
           setComposerAttachmentParseState(attachment.id, {
             parseState: 'failed',
-            parseMessage: 'File type not supported',
+            parseMessage: '不支持该文件类型',
             parseProgress: 0
           })
         }
@@ -106,7 +106,7 @@ export function useAttachmentIngest() {
     } catch (err) {
       setComposerAttachmentParseState(attachment.id, {
         parseState: 'failed',
-        parseMessage: err instanceof Error ? err.message : 'Parse failed',
+        parseMessage: err instanceof Error ? err.message : '解析失败',
         parseProgress: 0
       })
     }

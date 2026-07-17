@@ -523,7 +523,7 @@ export function useIdeFileTree(
       const loaded = await loadChildren(rootResult.entries, rootPath, showKarnaFiles, docMap)
       setData(loaded)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load directory')
+      setError(err instanceof Error ? err.message : '加载目录失败')
     } finally {
       setLoading(false)
     }

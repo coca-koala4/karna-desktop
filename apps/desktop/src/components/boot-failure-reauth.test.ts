@@ -84,17 +84,17 @@ describe('deriveProviderShape', () => {
 describe('signInLabel', () => {
   it('password gateway gets the plain "Sign in to remote gateway" copy', () => {
     expect(signInLabel({ url: 'x', isPassword: true, providerLabel: 'Username & Password' })).toBe(
-      'Sign in to remote gateway'
+      '登录远程网关'
     )
   })
 
   it('OAuth gateway names the provider', () => {
     expect(signInLabel({ url: 'x', isPassword: false, providerLabel: 'Nous Research' })).toBe(
-      'Sign in with Nous Research'
+      '使用 Nous Research 登录'
     )
   })
 
   it('null reauth falls back to the generic provider phrase', () => {
-    expect(signInLabel(null)).toBe('Sign in with your identity provider')
+    expect(signInLabel(null)).toBe('使用 身份认证服务商 登录')
   })
 })

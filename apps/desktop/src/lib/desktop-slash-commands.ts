@@ -97,23 +97,23 @@ const unavailable = (reason: DesktopUnavailableReason): DesktopCommandSurface =>
  */
 const DESKTOP_COMMAND_SPECS: readonly DesktopCommandSpec[] = [
   // Local client actions
-  { name: '/new', description: 'Start a new desktop chat', aliases: ['/reset'], surface: action('new') },
+  { name: '/new', description: '新建桌面对话', aliases: ['/reset'], surface: action('new') },
   {
     name: '/branch',
-    description: 'Branch the latest message into a new chat',
+    description: '将最新消息分支为新对话',
     aliases: ['/fork'],
     surface: action('branch')
   },
   {
     name: '/handoff',
-    description: 'Hand off this session to a messaging platform',
+    description: '将当前会话交付到消息平台',
     surface: action('handoff'),
     args: true
   },
   { name: '/profile', description: 'Switch the active Karna profile', surface: action('profile') },
-  { name: '/skin', description: 'Switch desktop theme or cycle to the next one', surface: action('skin'), args: true },
-  { name: '/title', description: 'Rename the current session', surface: action('title') },
-  { name: '/help', description: 'Show desktop slash commands', aliases: ['/commands'], surface: action('help') },
+  { name: '/skin', description: '切换桌面主题或进入下一个主题', surface: action('skin'), args: true },
+  { name: '/title', description: '重命名当前会话', surface: action('title') },
+  { name: '/help', description: '显示桌面斜杠命令', aliases: ['/commands'], surface: action('help') },
   {
     name: '/browser',
     description: 'Manage browser CDP connection [connect|disconnect|status] (local gateway only)',
@@ -122,10 +122,10 @@ const DESKTOP_COMMAND_SPECS: readonly DesktopCommandSpec[] = [
   },
 
   // Overlay pickers
-  { name: '/model', description: 'Switch the model for this session', surface: picker('model'), hidden: true },
+  { name: '/model', description: '切换当前会话使用的模型', surface: picker('model'), hidden: true },
   {
     name: '/resume',
-    description: 'Resume a saved session',
+    description: '恢复已保存的会话',
     aliases: ['/sessions', '/switch'],
     surface: picker('session'),
     args: true
@@ -134,15 +134,15 @@ const DESKTOP_COMMAND_SPECS: readonly DesktopCommandSpec[] = [
   // Backend-executed commands that render useful inline output
   {
     name: '/agents',
-    description: 'Show active desktop sessions and running tasks',
+    description: '显示活动会话和运行中的任务',
     aliases: ['/tasks'],
     surface: exec()
   },
-  { name: '/background', description: 'Run a prompt in the background', aliases: ['/bg', '/btw'], surface: exec() },
-  { name: '/compress', description: 'Compress this conversation context', surface: exec() },
-  { name: '/debug', description: 'Create a debug report', surface: exec() },
-  { name: '/goal', description: 'Manage the standing goal for this session', surface: exec() },
-  { name: '/personality', description: 'Switch personality for this session', surface: exec(), args: true },
+  { name: '/background', description: '在后台运行提示词', aliases: ['/bg', '/btw'], surface: exec() },
+  { name: '/compress', description: '压缩当前会话上下文', surface: exec() },
+  { name: '/debug', description: '创建调试报告', surface: exec() },
+  { name: '/goal', description: '管理当前会话的持续目标', surface: exec() },
+  { name: '/personality', description: '切换当前会话的个性', surface: exec(), args: true },
   {
     name: '/pet',
     description: 'Toggle or adopt a petdex mascot (/pet, /pet list, /pet boba)',
@@ -155,16 +155,16 @@ const DESKTOP_COMMAND_SPECS: readonly DesktopCommandSpec[] = [
     aliases: ['/generate-pet'],
     surface: action('hatch')
   },
-  { name: '/queue', description: 'Queue a prompt for the next turn', aliases: ['/q'], surface: exec() },
-  { name: '/retry', description: 'Retry the last user message', surface: exec() },
-  { name: '/rollback', description: 'List or restore filesystem checkpoints', surface: exec() },
-  { name: '/save', description: 'Save the current transcript to JSON', surface: exec() },
-  { name: '/status', description: 'Show current session status', surface: exec() },
-  { name: '/steer', description: 'Steer the current run after the next tool call', surface: exec() },
-  { name: '/stop', description: 'Stop running background processes', surface: exec() },
-  { name: '/tools', description: 'List or toggle tools available to the agent', surface: exec(), args: true },
+  { name: '/queue', description: '将提示词加入下一回合队列', aliases: ['/q'], surface: exec() },
+  { name: '/retry', description: '重试上一条用户消息', surface: exec() },
+  { name: '/rollback', description: '列出或恢复文件系统检查点', surface: exec() },
+  { name: '/save', description: '将当前会话记录保存为 JSON', surface: exec() },
+  { name: '/status', description: '显示当前会话状态', surface: exec() },
+  { name: '/steer', description: '在下一次工具调用后引导当前运行', surface: exec() },
+  { name: '/stop', description: '停止运行中的后台进程', surface: exec() },
+  { name: '/tools', description: '列出或切换智能体可用工具', surface: exec(), args: true },
   { name: '/undo', description: 'Remove the last user/assistant exchange', surface: exec() },
-  { name: '/usage', description: 'Show token usage for this session', surface: exec() },
+  { name: '/usage', description: '显示当前会话的 Token 用量', surface: exec() },
   { name: '/version', description: 'Show Karna Agent version', surface: exec() },
 
   // No desktop surface, but carry an alias (underscore spelling variants).
@@ -374,12 +374,12 @@ export function desktopSkinSlashCompletions(
     {
       text: '/skin list',
       display: '/skin list',
-      meta: 'Show available desktop themes'
+      meta: '显示可用桌面主题'
     },
     {
       text: '/skin next',
       display: '/skin next',
-      meta: 'Cycle to the next desktop theme'
+      meta: '切换到下一个桌面主题'
     },
     ...themes.map(theme => ({
       text: `/skin ${theme.name}`,

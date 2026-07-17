@@ -1382,7 +1382,7 @@ function GraphView({ project, data, allData, onRun, onLoad, projectRef: ref }: a
                     {nodeTypeLabel(selectedNode.type)}
                   </span>
                 </div>
-                <button className="text-[var(--theme-foreground)]/40 hover:text-[var(--theme-foreground)]" onClick={() => handleNodeSelect(null)}>✕</button>
+                <button className="text-[var(--theme-foreground)]/40 hover:text-[var(--theme-foreground)]" onClick={() => handleNodeSelect(null)} aria-label="关闭">×</button>
               </div>
               <div>
                 <label className="block text-xs text-[var(--theme-foreground)]/60 mb-1">描述</label>
@@ -1733,7 +1733,7 @@ function NarrativeStateView({ data, onRun }: any) {
                 <div className="font-medium text-sm text-[var(--theme-foreground)]">{c.title || c.type}</div>
                 {c.description && <div className="text-xs text-[var(--theme-foreground)]/60 mt-0.5">{c.description}</div>}
               </div>
-            )) : <div className="text-[var(--theme-foreground)]/60 text-center py-8 text-sm">暂无连续性问题 ✓</div>}
+            )) : <div className="text-[var(--theme-foreground)]/60 text-center py-8 text-sm">暂无连续性问题 </div>}
           </div>
         </div>
       </div>
@@ -2271,7 +2271,7 @@ function DeliveryView({ data, onRun, project, allOsData, projectRef: ref }: any)
 
         for (const f of bibleData.foreshadows) {
           const clue = f.clue || f.title || '伏笔'
-          const statusText = f.status === 'resolved' ? '✓ 已回收' : '○ 未回收'
+          const statusText = f.status === 'resolved' ? ' 已回收' : '○ 未回收'
           lines.push(`- **${clue}** (${statusText})`)
 
           if (f.evidence) {lines.push(`  ${f.evidence}`)}
@@ -2366,11 +2366,11 @@ function DeliveryView({ data, onRun, project, allOsData, projectRef: ref }: any)
           </h4>
           <p className="text-sm text-[var(--theme-foreground)]/60 mb-4">将项目信息、故事圣经、章节大纲、人物设定、世界观、伏笔、时间线等内容导出为单个 Markdown 文件。</p>
           <div className="text-xs text-[var(--theme-foreground)]/50 space-y-1 mb-4">
-            <div>✓ 项目基本信息</div>
-            <div>✓ 章节大纲</div>
-            <div>✓ 人物表</div>
-            <div>✓ 地点 & 世界观设定</div>
-            <div>✓ 伏笔列表 & 时间线</div>
+            <div> 项目基本信息</div>
+            <div> 章节大纲</div>
+            <div> 人物表</div>
+            <div> 地点 & 世界观设定</div>
+            <div> 伏笔列表 & 时间线</div>
           </div>
           <Button className="w-full bg-[var(--theme-primary)] hover:opacity-90" disabled={exporting} onClick={exportMarkdown}>
             {exporting ? '导出中...' : '导出 Markdown 文件'}
@@ -2646,8 +2646,8 @@ function ImportModal({ project, onClose, onImported }: any) {
             </div>
             {(doneCount > 0 || errorCount > 0) && !importing && (
               <div className="px-3 py-2 border-t border-[var(--dt-border)] text-xs text-[var(--theme-foreground)]/60 flex gap-3">
-                {doneCount > 0 && <span className="text-green-500">✓ {doneCount} 个成功</span>}
-                {errorCount > 0 && <span className="text-red-500">✗ {errorCount} 个失败</span>}
+                {doneCount > 0 && <span className="text-green-500"> {doneCount} 个成功</span>}
+                {errorCount > 0 && <span className="text-red-500"> {errorCount} 个失败</span>}
                 {pendingCount > 0 && <span>{pendingCount} 个待导入</span>}
               </div>
             )}

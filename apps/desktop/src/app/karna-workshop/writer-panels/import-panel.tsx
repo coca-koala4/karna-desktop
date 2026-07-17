@@ -154,10 +154,10 @@ export function ImportPanel({ active, busy, setBusy, refreshBible }: { active: W
     try {
       const result = await api<{ ok: boolean; guard?: DraftGuardReport; error?: string }>(`/api/writer/projects/${encodeURIComponent(ref)}/draft-guard`, 'POST', { text: rewriteText, provider: 'auto' })
 
-      if (!result.ok || !result.guard) {throw new Error(result.error || 'Draft Guard failed')}
+      if (!result.ok || !result.guard) {throw new Error(result.error || '草稿守卫失败')}
       setGuard(result.guard)
-      notify({ kind: result.guard.blocked ? 'warning' : 'success', title: result.guard.blocked ? 'Draft Guard blocked' : 'Draft Guard passed', message: `${result.guard.summary?.issues || 0} issues / ${result.guard.summary?.citations || 0} citations` })
-    } catch (err) { notifyError(err, 'Draft Guard failed') } finally { setBusy('') }
+      notify({ kind: result.guard.blocked ? 'warning' : 'success', title: result.guard.blocked ? '草稿守卫已阻断' : '草稿守卫已通过', message: `${result.guard.summary?.issues || 0} issues / ${result.guard.summary?.citations || 0} citations` })
+    } catch (err) { notifyError(err, '草稿守卫失败') } finally { setBusy('') }
   }
 
   const applyDraftGuard = async () => {
@@ -167,9 +167,9 @@ export function ImportPanel({ active, busy, setBusy, refreshBible }: { active: W
     try {
       const result = await api<{ ok: boolean; writeback?: { wiki_pending?: number; narrative_threads?: number; confirmed?: number }; error?: string }>(`/api/writer/projects/${encodeURIComponent(ref)}/draft-guard`, 'POST', { action: 'apply', guard })
 
-      if (!result.ok) {throw new Error(result.error || 'Draft Guard writeback failed')}
-      notify({ kind: 'success', title: 'Draft Guard writeback saved', message: `wiki pending ${result.writeback?.wiki_pending || 0} / state threads ${result.writeback?.narrative_threads || 0}` })
-    } catch (err) { notifyError(err, 'Draft Guard writeback failed') } finally { setBusy('') }
+      if (!result.ok) {throw new Error(result.error || '草稿守卫回写失败')}
+      notify({ kind: 'success', title: '草稿守卫回写已保存', message: `百科待确认 ${result.writeback?.wiki_pending || 0} / 叙事线索 ${result.writeback?.narrative_threads || 0}` })
+    } catch (err) { notifyError(err, '草稿守卫回写失败') } finally { setBusy('') }
   }
 
   if (!active) {return <WorkshopEmpty>先在项目中心选中一个项目，再导入稿件。</WorkshopEmpty>}
@@ -256,19 +256,19 @@ export function ImportPanel({ active, busy, setBusy, refreshBible }: { active: W
             </FieldRow>
             <div className="flex flex-wrap justify-end gap-2">
               <Button disabled={!rewriteText.trim() || busy === 'draft-guard'} onClick={() => void runDraftGuard()} size="sm" variant="outline">
-                <Codicon name="shield" /> Draft Guard
+                <Codicon name="shield" /> 草稿守卫
               </Button>
               <Button disabled={!rewriteText.trim() || busy === 'rewrite'} onClick={() => void previewRewrite()} size="sm">
-                <Codicon name="wand" /> Generate diff
+                <Codicon name="wand" /> 生成差异
               </Button>
             </div>
             {guard ? (
               <div className="grid gap-2 rounded-[2px] border border-(--ui-stroke-tertiary) bg-background/70 p-2 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <WorkshopStatus tone={guard.blocked ? 'danger' : 'success'}>{guard.blocked ? 'blocked' : 'passed'}</WorkshopStatus>
-                  <span className="font-medium">Draft Guard ? {guard.context_id || 'no-context'}</span>
+                  <span className="font-medium">草稿守卫 · {guard.context_id || '无上下文'}</span>
                   <span className="text-[0.65rem] text-muted-foreground">{guard.summary?.citations || 0} citations ? {guard.summary?.graph_matches || 0} graph ? {guard.summary?.state_matches || 0} state</span>
-                  <Button disabled={busy === 'draft-guard-apply'} onClick={() => void applyDraftGuard()} size="xs" variant="outline">Write back canon</Button>
+                  <Button disabled={busy === 'draft-guard-apply'} onClick={() => void applyDraftGuard()} size="xs" variant="outline">回写设定</Button>
                 </div>
                 <div className="grid gap-1">
                   {(guard.issues || []).slice(0, 6).map(issue => (
@@ -281,7 +281,7 @@ export function ImportPanel({ active, busy, setBusy, refreshBible }: { active: W
                 </div>
                 {guard.citations?.length ? (
                   <div className="grid gap-1">
-                    <div className="text-[0.65rem] font-medium text-muted-foreground">Evidence citations</div>
+                    <div className="text-[0.65rem] font-medium text-muted-foreground">证据引用</div>
                     {guard.citations.slice(0, 4).map(c => (
                       <div className="truncate rounded-[2px] bg-background px-2 py-1 font-mono text-[0.6rem] text-muted-foreground" key={c.id}>{c.id} ? {c.source_rel}:{c.line_start}-{c.line_end} ? {c.title}</div>
                     ))}

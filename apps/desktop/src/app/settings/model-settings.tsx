@@ -111,11 +111,11 @@ function StaleAuxWarning({ applying, onReset, slots, taskLabel }: StaleAuxWarnin
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
       <AlertTriangle className="size-3.5 shrink-0" />
       <span className="grow">
-        {slots.length} auxiliary task{slots.length === 1 ? '' : 's'} ({names}) still run on{' '}
-        <span className="font-mono">{allSameProvider ? provider : 'other providers'}</span>, not your main model.
+        {slots.length} 个辅助任务（{names}）仍在使用{' '}
+        <span className="font-mono">{allSameProvider ? provider : '其他服务商'}</span>，而不是主模型。
       </span>
       <Button disabled={applying} onClick={onReset} size="sm" variant="textStrong">
-        Reset all to main
+        全部恢复为主模型
       </Button>
     </div>
   )
@@ -550,12 +550,12 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
       {!hasAnyConfiguredKey && (
         isBrowserMode ? (
           <div className="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">
-            <span>🌐</span>
+            <span aria-hidden="true">●</span>
             <span>浏览器演示模式：API密钥需在桌面版中配置，当前使用演示连接。</span>
           </div>
         ) : (
           <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-            <span>⚠️</span>
+            <span aria-hidden="true">!</span>
             <span>尚未配置API密钥，请先配置模型提供商密钥后使用AI功能。</span>
           </div>
         )
@@ -654,7 +654,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
         </div>
         {setupIsApiKey && (
           <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1">
-            <span>🔒</span>
+            <span aria-hidden="true">●</span>
             <span>密钥加密存储在本地配置目录（karna-data/），仅用于API请求，不会上传到第三方服务器。</span>
           </p>
         )}
@@ -811,7 +811,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
                         <div className="flex flex-col gap-1">
                           {meta.key === 'vision' && (
                             <span className="text-[0.65rem] text-muted-foreground">
-                              Vision models only
+                              仅限视觉模型
                             </span>
                           )}
                           <Select
@@ -870,8 +870,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
             </Button>
           </div>
           <p className="mb-2 text-xs text-muted-foreground">
-            Configure named presets that appear as models under the Mixture of Agents provider. The aggregator is the
-            acting model.
+            配置具名预设，它们会显示为“多智能体混合”服务商下的模型；聚合器是实际执行模型。
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Select onValueChange={setSelectedMoaPreset} value={selectedMoaPreset || moa.default_preset}>
@@ -899,7 +898,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
               size="sm"
               variant="text"
             >
-              Set default
+              设为默认
             </Button>
             <Button
               disabled={Object.keys(moa.presets).length <= 1 || applying}
@@ -953,7 +952,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
               size="sm"
               variant="textStrong"
             >
-              Add preset
+              添加预设
             </Button>
           </div>
           <div className="mb-2 text-xs text-muted-foreground">
@@ -1040,7 +1039,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
               size="sm"
               variant="textStrong"
             >
-              Add reference model
+              添加参考模型
             </Button>
             <ListRow
               below={

@@ -425,16 +425,16 @@ export async function generateDrafts(request: GatewayRequest, options: GenerateO
     }
 
     if (!result?.ok || !result.drafts?.length) {
-      throw new Error('generation produced no drafts')
+      throw new Error('生成过程没有返回宠物草稿')
     }
 
     $petGenToken.set(result.token)
     // Keep a concept for the hatch row prompts even on an image-only generate.
-    $petGenPrompt.set(prompt || 'a custom pet')
+    $petGenPrompt.set(prompt || '自定义宠物')
     $petGenDrafts.set(result.drafts)
     $petGenSelected.set(result.drafts[0]?.index ?? 0)
     $petGenStatus.set('ready')
-    notifyPetGenDone('Pet drafts ready', 'Your pet looks finished — pick one to hatch.', 'success')
+    notifyPetGenDone('宠物草稿已完成', '请选择一个草稿继续孵化。', 'success')
 
     return true
   } catch (e) {
@@ -446,8 +446,8 @@ export async function generateDrafts(request: GatewayRequest, options: GenerateO
       $petGenStatus.set('stale')
     } else {
       $petGenStatus.set('error')
-      $petGenError.set(e instanceof Error ? e.message : 'Could not generate pet drafts.')
-      notifyPetGenDone('Pet generation failed', 'Reopen to try again.', 'error')
+      $petGenError.set(e instanceof Error ? e.message : '无法生成宠物草稿。')
+      notifyPetGenDone('宠物生成失败', '请重新打开后再试。', 'error')
     }
 
     return false
@@ -548,12 +548,12 @@ export async function hatchSelected(request: GatewayRequest, options: HatchOptio
     }
 
     if (!result?.ok || !result.pet?.spritesheetBase64) {
-      throw new Error('hatch produced no preview')
+      throw new Error('孵化过程没有返回预览')
     }
 
     $petGenPreview.set({ ...result.pet, enabled: true })
     $petGenStatus.set('preview')
-    notifyPetGenDone('Your pet hatched', 'Reopen to name and adopt it.', 'success')
+    notifyPetGenDone('宠物已孵化', '请重新打开，为它命名并领养。', 'success')
 
     return true
   } catch (e) {
@@ -562,8 +562,8 @@ export async function hatchSelected(request: GatewayRequest, options: HatchOptio
     }
 
     $petGenStatus.set('error')
-    $petGenError.set(e instanceof Error ? e.message : 'Could not hatch the pet.')
-    notifyPetGenDone('Hatching failed', 'Reopen to try again.', 'error')
+    $petGenError.set(e instanceof Error ? e.message : '无法孵化宠物。')
+    notifyPetGenDone('孵化失败', '请重新打开后再试。', 'error')
 
     return false
   } finally {

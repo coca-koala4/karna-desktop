@@ -881,7 +881,7 @@ export function WriterIDEView({ workspaceId, projectName, rootPath, onHasUnsaved
                       type="button"
                     >
                       <Codicon name="hubot" size="0.75rem" />
-                      <span>Agent</span>
+                      <span>智能体</span>
                     </button>
                     <button
                       className={cn(

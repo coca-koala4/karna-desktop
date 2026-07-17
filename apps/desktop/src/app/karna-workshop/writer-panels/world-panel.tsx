@@ -126,8 +126,8 @@ export function WorldPanel({ active, busy, setBusy }: { active: WriterProject | 
       setWiki(result.wiki || null)
 
       if (result.graph) {setGraph(result.graph)}
-      notify({ kind: 'success', title: 'Living Wiki confirmed', message: `${targetIds.length} updates; Graph ${result.refresh?.graph ? 'refreshed' : 'not refreshed'}; Memory ${result.refresh?.creative_memory ? 'refreshed' : 'not refreshed'}` })
-    } catch (err) { notifyError(err, 'Confirm Wiki failed') } finally { setBusy('') }
+      notify({ kind: 'success', title: '动态百科更新已确认', message: `${targetIds.length} updates; Graph ${result.refresh?.graph ? '已刷新' : '未刷新'}; Memory ${result.refresh?.creative_memory ? '已刷新' : '未刷新'}` })
+    } catch (err) { notifyError(err, '确认百科更新失败') } finally { setBusy('') }
   }
 
   const rejectWiki = async (ids: string[]) => {
@@ -135,11 +135,11 @@ export function WorldPanel({ active, busy, setBusy }: { active: WriterProject | 
     setBusy('living-wiki-reject')
 
     try {
-      const result = await api<LivingWikiResponse>(`/api/writer/projects/${encodeURIComponent(ref)}/living-wiki`, 'POST', { action: 'reject', ids, reason: 'Rejected from Canon Review Queue' })
+      const result = await api<LivingWikiResponse>(`/api/writer/projects/${encodeURIComponent(ref)}/living-wiki`, 'POST', { action: 'reject', ids, reason: '从设定审核队列拒绝' })
       setWiki(result.wiki || null)
-      notify({ kind: 'success', title: 'Canon updates rejected', message: `${result.rejected || ids.length} updates removed from queue` })
+      notify({ kind: 'success', title: '设定更新已拒绝', message: `${result.rejected || ids.length} updates removed from queue` })
       await refresh()
-    } catch (err) { notifyError(err, 'Reject Wiki failed') } finally { setBusy('') }
+    } catch (err) { notifyError(err, '拒绝百科更新失败') } finally { setBusy('') }
   }
 
   const confirmWikiKind = async (kind: string) => {
@@ -151,7 +151,7 @@ export function WorldPanel({ active, busy, setBusy }: { active: WriterProject | 
       setWiki(result.wiki || null)
 
       if (result.graph) {setGraph(result.graph)}
-      notify({ kind: 'success', title: `Accepted ${kind}`, message: `${result.confirmed || 0} updates; Graph ${result.refresh?.graph ? 'refreshed' : 'not refreshed'}` })
+      notify({ kind: 'success', title: `Accepted ${kind}`, message: `${result.confirmed || 0} updates; Graph ${result.refresh?.graph ? '已刷新' : '未刷新'}` })
       await refresh()
     } catch (err) { notifyError(err, `Accept ${kind} failed`) } finally { setBusy('') }
   }

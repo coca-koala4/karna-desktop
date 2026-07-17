@@ -49,30 +49,30 @@ const LOOP_CHECK_HELP: Record<string, string> = {
 }
 
 const CHECK_REPAIR_HINTS: Record<string, { panel: string; action: string }> = {
-  schema_ready: { panel: 'Project / Schema', action: 'Repair project schema' },
-  documents_indexed: { panel: 'Knowledge', action: 'Sync documents or import manuscript files' },
-  story_bible: { panel: 'World', action: 'Build Story Bible from source documents' },
-  creative_search: { panel: 'Knowledge', action: 'Run creative search indexing' },
-  living_wiki: { panel: 'World', action: 'Generate Living Wiki candidates' },
-  knowledge_graph: { panel: 'World', action: 'Rebuild knowledge graph' },
-  narrative_state: { panel: 'World', action: 'Build narrative state' },
-  critic_council: { panel: 'Quality', action: 'Run Critic Council' },
-  creative_memory: { panel: 'Quality', action: 'Rebuild Creative Memory' },
-  artifact_registry: { panel: 'Quality', action: 'Sync artifacts' },
-  data_model: { panel: 'Quality', action: 'Inspect data model' },
-  writer_os_guide: { panel: 'Project', action: 'Generate Writer OS guide' },
-  rag_index: { panel: 'Knowledge', action: 'Build RAG index' },
-  vector_store: { panel: 'Knowledge', action: 'Build vector store' },
-  rag_context_pack: { panel: 'Quality / Knowledge', action: 'Run Closed Loop or assemble context pack' },
-  workflow_ready: { panel: 'Agents', action: 'Create an agent workflow' },
-  workflow_rag_injection: { panel: 'Quality / Agents', action: 'Run Closed Loop or run workflow with RAG enabled' },
-  workflow_writeback: { panel: 'Quality / Agents', action: 'Run workflow and persist writeback' },
-  wiki_confirm_refresh: { panel: 'Quality / World', action: 'Run Closed Loop or confirm workflow wiki updates' },
-  canon_review_queue: { panel: 'World', action: 'Review / accept / reject canon queue' },
-  draft_guard_input_gate: { panel: 'Agents', action: 'Run workflow with Draft Guard preflight' },
-  draft_guard_output_gate: { panel: 'Agents', action: 'Run workflow with output Draft Guard' },
-  capability_packs: { panel: 'Skills', action: 'Sync capability packs' },
-  safety_report: { panel: 'Quality', action: 'Run Safety & Copyright check' }
+  schema_ready: { panel: '项目 / 数据结构', action: '修复项目数据结构' },
+  documents_indexed: { panel: '知识', action: '同步文档或导入稿件' },
+  story_bible: { panel: '世界设定', action: '从源文档构建故事圣经' },
+  creative_search: { panel: '知识', action: '执行创意检索索引' },
+  living_wiki: { panel: '世界设定', action: '生成动态百科候选项' },
+  knowledge_graph: { panel: '世界设定', action: '重建知识图谱' },
+  narrative_state: { panel: '世界设定', action: '构建叙事状态' },
+  critic_council: { panel: '质量', action: '运行评审委员会' },
+  creative_memory: { panel: '质量', action: '重建创意记忆' },
+  artifact_registry: { panel: '质量', action: '同步交付物' },
+  data_model: { panel: '质量', action: '检查数据模型' },
+  writer_os_guide: { panel: '项目', action: '生成 Writer OS 指南' },
+  rag_index: { panel: '知识', action: '构建 RAG 索引' },
+  vector_store: { panel: '知识', action: '构建向量库' },
+  rag_context_pack: { panel: '质量 / 知识', action: '运行闭环或组装上下文包' },
+  workflow_ready: { panel: '智能体', action: '创建智能体工作流' },
+  workflow_rag_injection: { panel: '质量 / 智能体', action: '运行闭环或启用 RAG 的工作流' },
+  workflow_writeback: { panel: '质量 / 智能体', action: '运行工作流并持久化回写' },
+  wiki_confirm_refresh: { panel: '质量 / 世界设定', action: '运行闭环或确认工作流百科更新' },
+  canon_review_queue: { panel: '世界设定', action: 'Review / accept / reject canon queue' },
+  draft_guard_input_gate: { panel: '智能体', action: '运行带草稿守卫预检的工作流' },
+  draft_guard_output_gate: { panel: '智能体', action: '运行带输出草稿守卫的工作流' },
+  capability_packs: { panel: '技能', action: '同步能力包' },
+  safety_report: { panel: '质量', action: 'Run Safety & Copyright check' }
 }
 
 const GAP_GUIDE_STEPS: Record<string, string> = {
@@ -225,9 +225,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
       const result = await api<ProjectArtifactsResponse>(`/api/writer/projects/${encodeURIComponent(ref)}/artifacts`, 'POST', { action: 'delivery', zip: true })
       setDeliveryPackage(result.delivery || null)
       setArtifacts(result.artifacts || artifacts)
-      notify({ kind: result.ok === false ? 'warning' : 'success', title: 'Delivery package created', message: result.delivery?.zip_rel || result.delivery?.rel || 'done' })
+      notify({ kind: result.ok === false ? 'warning' : 'success', title: '交付包已创建', message: result.delivery?.zip_rel || result.delivery?.rel || 'done' })
       await refresh()
-    } catch (err) { notifyError(err, 'Delivery package failed') } finally { setBusy('') }
+    } catch (err) { notifyError(err, '创建交付包失败') } finally { setBusy('') }
   }
 
   const verifyDeliveryPackage = async () => {
@@ -237,9 +237,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
     try {
       const result = await api<ProjectArtifactsResponse>(`/api/writer/projects/${encodeURIComponent(ref)}/artifacts`, 'POST', { action: 'verify-delivery' })
       setDeliveryVerification(result.verification || result.report || null)
-      notify({ kind: result.ok === false ? 'warning' : 'success', title: result.ok === false ? 'Delivery verify failed' : 'Delivery verified', message: `${result.verification?.passed || result.report?.passed || 0}/${result.verification?.files || result.report?.files || 0}` })
+      notify({ kind: result.ok === false ? 'warning' : 'success', title: result.ok === false ? '交付包校验失败' : '交付包已校验', message: `${result.verification?.passed || result.report?.passed || 0}/${result.verification?.files || result.report?.files || 0}` })
       await refresh()
-    } catch (err) { notifyError(err, 'Delivery verification failed') } finally { setBusy('') }
+    } catch (err) { notifyError(err, '交付包校验失败') } finally { setBusy('') }
   }
 
   const inspectDataModel = async () => {
@@ -262,8 +262,8 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
       setBenchmarks(result.runs || (result.run ? [result.run] : []))
       setMilestones(result.milestones || [])
       const run = result.run || result.runs?.[0]
-      notify({ kind: 'success', title: 'Benchmark complete', message: run ? `readiness ${(run.readiness_score ?? run.score).toFixed(2)} / maturity ${(run.maturity_score ?? run.score).toFixed(2)}` : 'done' })
-    } catch (err) { notifyError(err, 'Benchmark failed') } finally { setBusy('') }
+      notify({ kind: 'success', title: '基准测试完成', message: run ? `readiness ${(run.readiness_score ?? run.score).toFixed(2)} / maturity ${(run.maturity_score ?? run.score).toFixed(2)}` : 'done' })
+    } catch (err) { notifyError(err, '基准测试失败') } finally { setBusy('') }
   }
 
   const runAcceptanceAudit = async () => {
@@ -275,8 +275,8 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
       setAcceptanceAudit(result.audit || result.report || null)
       setAcceptanceAuditPath(result.markdown_rel || '')
       const audit = result.audit || result.report
-      notify({ kind: audit?.score === 1 ? 'success' : 'warning', title: 'Acceptance audit complete', message: audit ? `${audit.passed}/${audit.total} - ${audit.status}` : 'done' })
-    } catch (err) { notifyError(err, 'Acceptance audit failed') } finally { setBusy('') }
+      notify({ kind: audit?.score === 1 ? 'success' : 'warning', title: '验收审计完成', message: audit ? `${audit.passed}/${audit.total} - ${audit.status}` : 'done' })
+    } catch (err) { notifyError(err, '验收审计失败') } finally { setBusy('') }
   }
 
   const verifyClosedLoop = async () => {
@@ -288,8 +288,8 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
       setLoopVerifySteps(result.steps || [])
       setBenchmarks(result.runs || (result.benchmark ? [result.benchmark] : result.run ? [result.run] : []))
       setMilestones(result.milestones || milestones)
-      notify({ kind: result.ok ? 'success' : 'warning', title: result.ok ? 'Closed loop verified' : 'Closed loop needs work', message: `${(result.steps || []).filter(s => s.ok).length}/${result.steps?.length || 0}` })
-    } catch (err) { notifyError(err, 'Closed loop verification failed') } finally { setBusy('') }
+      notify({ kind: result.ok ? 'success' : 'warning', title: result.ok ? '闭环已验证' : '闭环仍需修复', message: `${(result.steps || []).filter(s => s.ok).length}/${result.steps?.length || 0}` })
+    } catch (err) { notifyError(err, '闭环验证失败') } finally { setBusy('') }
   }
 
 
@@ -319,9 +319,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
 
       const bench = await api<BenchmarkResponse>(`/api/writer/projects/${encodeURIComponent(ref)}/benchmarks`, 'POST', {})
       setBenchmarks(bench.runs || (bench.run ? [bench.run] : []))
-      notify({ kind: 'success', title: 'Maturity action complete', message: `${gap.title} -> ${step}` })
+      notify({ kind: 'success', title: '成熟度修复操作完成', message: `${gap.title} -> ${step}` })
       await refresh()
-    } catch (err) { notifyError(err, 'Maturity action failed') } finally { setBusy('') }
+    } catch (err) { notifyError(err, '成熟度修复操作失败') } finally { setBusy('') }
   }
 
   if (!active) {return <WorkshopEmpty>先在项目中心选中项目，再进入质量 / 评审面板。</WorkshopEmpty>}
@@ -457,10 +457,10 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
         <WorkshopPanel
           actions={
             <div className="flex items-center gap-2">
-              <Button disabled={busy === 'delivery-package'} onClick={() => void createDeliveryPackage()} size="sm" variant="outline"><Codicon name="package" /> Delivery</Button>
-              <Button disabled={busy === 'verify-delivery'} onClick={() => void verifyDeliveryPackage()} size="sm" variant="outline"><Codicon name="verified" /> Verify</Button>
-              <Button disabled={busy === 'artifacts'} onClick={() => void syncArtifacts()} size="sm" variant="outline"><Codicon name="sync" /> Sync artifacts</Button>
-              <Button disabled={busy === 'data-model'} onClick={() => void inspectDataModel()} size="sm" variant="outline"><Codicon name="data" /> Data model</Button>
+              <Button disabled={busy === 'delivery-package'} onClick={() => void createDeliveryPackage()} size="sm" variant="outline"><Codicon name="package" /> 生成交付包</Button>
+              <Button disabled={busy === 'verify-delivery'} onClick={() => void verifyDeliveryPackage()} size="sm" variant="outline"><Codicon name="verified" /> 校验</Button>
+              <Button disabled={busy === 'artifacts'} onClick={() => void syncArtifacts()} size="sm" variant="outline"><Codicon name="sync" /> 同步交付物</Button>
+              <Button disabled={busy === 'data-model'} onClick={() => void inspectDataModel()} size="sm" variant="outline"><Codicon name="data" /> 数据模型</Button>
             </div>
           }
           description="扫描 exports / workflow_artifacts / drafts / safety / critics 目录；展示项目 JSON 数据库健康。"
@@ -512,9 +512,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
       <WorkshopPanel
         actions={
           <div className="flex items-center gap-2">
-            <Button disabled={busy === 'acceptance-audit'} onClick={() => void runAcceptanceAudit()} size="sm" variant="outline"><Codicon name="checklist" /> Acceptance audit</Button>
-            <Button disabled={busy === 'closed-loop'} onClick={() => void verifyClosedLoop()} size="sm" variant="outline"><Codicon name="circuit-board" /> Closed loop</Button>
-            <Button disabled={busy === 'benchmark'} onClick={() => void runBenchmark()} size="sm"><Codicon name="rocket" /> Benchmark</Button>
+            <Button disabled={busy === 'acceptance-audit'} onClick={() => void runAcceptanceAudit()} size="sm" variant="outline"><Codicon name="checklist" /> 验收审计</Button>
+            <Button disabled={busy === 'closed-loop'} onClick={() => void verifyClosedLoop()} size="sm" variant="outline"><Codicon name="circuit-board" /> 闭环验证</Button>
+            <Button disabled={busy === 'benchmark'} onClick={() => void runBenchmark()} size="sm"><Codicon name="rocket" /> 基准测试</Button>
           </div>
         }
         description="端到端自检：schema / documents / story_bible / creative_search / living_wiki / knowledge_graph / narrative_state / critic / memory / artifact / data_model / writer_os_guide / rag / workflow / capability_packs / safety。"
@@ -523,7 +523,7 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
         {acceptanceAudit ? (
           <div className="mb-3 rounded-[2px] border border-emerald-500/25 bg-emerald-500/5 p-2 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">Acceptance audit</span>
+              <span className="font-medium">验收审计</span>
               <WorkshopStatus tone={acceptanceAudit.score >= 0.95 ? 'success' : acceptanceAudit.score >= 0.8 ? 'info' : 'warning'}>{acceptanceAudit.status}</WorkshopStatus>
               <span className="font-mono text-muted-foreground">{acceptanceAudit.passed}/{acceptanceAudit.total} - {acceptanceAudit.score.toFixed(2)}</span>
               {acceptanceAuditPath ? <span className="font-mono text-[0.65rem] text-muted-foreground">{acceptanceAuditPath}</span> : null}
@@ -551,9 +551,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
             {lastBench.maturity_gaps?.length ? (
               <div className="rounded-[2px] border border-amber-500/25 bg-amber-500/5 p-2">
                 <div className="mb-1 flex items-center gap-2 text-xs">
-                  <span className="font-medium">Maturity roadmap</span>
+                  <span className="font-medium">成熟度路线图</span>
                   <WorkshopStatus tone="warning">{lastBench.maturity_gaps.length} gaps</WorkshopStatus>
-                  <span className="text-muted-foreground">Raise maturity toward 0.85+ without confusing it with readiness.</span>
+                  <span className="text-muted-foreground">逐步将成熟度提升到 0.85 以上，同时不要与就绪度混淆。</span>
                 </div>
                 <div className="grid gap-1 md:grid-cols-2">
                   {lastBench.maturity_gaps.slice(0, 6).map(gap => (
@@ -565,7 +565,7 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
                       <p className="mt-0.5 text-[0.68rem] text-muted-foreground">Target: {gap.target}</p>
                       <p className="mt-0.5 text-[0.68rem] text-muted-foreground">Action: {gap.action}</p>
                       <div className="mt-1 flex justify-end">
-                        <Button disabled={busy === `maturity-${gap.id}`} onClick={() => void runMaturityGap(gap)} size="xs" variant="outline"><Codicon name="play" /> Run action</Button>
+                        <Button disabled={busy === `maturity-${gap.id}`} onClick={() => void runMaturityGap(gap)} size="xs" variant="outline"><Codicon name="play" /> 执行操作</Button>
                       </div>
                     </div>
                   ))}
@@ -574,9 +574,9 @@ export function QualityPanel({ active, busy, setBusy }: { active: WriterProject 
             ) : null}
             <div className="rounded-[2px] border border-emerald-500/25 bg-emerald-500/5 p-2">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-medium">Writer OS closed loop</span>
+                <span className="font-medium">Writer OS 创作闭环</span>
                 <WorkshopStatus tone={loopPassed === loopTotal ? 'success' : loopPassed > 0 ? 'warning' : 'danger'}>{loopPassed}/{loopTotal}</WorkshopStatus>
-                <span className="text-muted-foreground">RAG -&gt; Context -&gt; Workflow -&gt; Writeback -&gt; Wiki/Graph/Memory</span>
+                <span className="text-muted-foreground">RAG → 上下文 → 工作流 → 回写 → 百科 / 图谱 / 记忆</span>
               </div>
               {loopVerifySteps.length ? (
                 <div className="mt-2 grid gap-1 rounded-[2px] border border-(--ui-stroke-tertiary) bg-background/50 p-1">

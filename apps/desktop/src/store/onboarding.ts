@@ -196,18 +196,18 @@ function shouldPreserveConfiguredOnFallback(runtime: RuntimeReadinessResult, sta
 }
 
 function notifyReady(provider: string) {
-  notify({ kind: 'success', title: 'Hermes is ready', message: `${provider} connected.` })
+  notify({ kind: 'success', title: 'Karna 已就绪', message: `${provider} 已连接。` })
 }
 
 // Human-friendly labels for tools auto-routed through the Nous Tool Gateway,
 // mirroring hermes_cli/nous_subscription._GATEWAY_TOOL_LABELS so the GUI and
 // CLI describe the same thing.
 const GATEWAY_TOOL_LABELS: Record<string, string> = {
-  browser: 'browser automation',
-  image_gen: 'image generation',
-  tts: 'text-to-speech',
-  video_gen: 'video generation',
-  web: 'web search & extract'
+  browser: '浏览器自动化',
+  image_gen: '图像生成',
+  tts: '文字转语音',
+  video_gen: '视频生成',
+  web: '网络检索与提取'
 }
 
 // When switching to Nous auto-routes unconfigured tools through the Tool
@@ -219,13 +219,13 @@ function notifyGatewayTools(tools: string[] | undefined) {
   }
 
   const labels = tools.map(t => GATEWAY_TOOL_LABELS[t] ?? t)
-  const list = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+  const list = labels.join('、')
 
   notify({
     durationMs: 8000,
     kind: 'info',
-    message: `${list} now run through your Nous subscription — no separate API keys needed.`,
-    title: 'Tool Gateway enabled'
+    message: `${list} 现在通过你的 Nous 订阅运行，无需单独配置 API Key。`,
+    title: '工具网关已启用'
   })
 }
 

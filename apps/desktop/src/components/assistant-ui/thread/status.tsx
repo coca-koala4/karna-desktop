@@ -30,7 +30,7 @@ const StatusRow: FC<{ children: ReactNode; label: string } & React.ComponentProp
 )
 
 // Fixed label while auto-compaction runs — decoupled from backend status text.
-const COMPACTION_LABEL = 'Summarizing thread'
+const COMPACTION_LABEL = '正在总结会话'
 
 const CompactionHint: FC = () => (
   <span className="shimmer min-w-0 truncate text-muted-foreground/55">{COMPACTION_LABEL}</span>

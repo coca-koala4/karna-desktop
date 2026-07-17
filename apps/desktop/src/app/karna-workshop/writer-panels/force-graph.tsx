@@ -108,9 +108,9 @@ const DefaultNodeEditor: React.FC<NodeEditorProps> = ({ node, edge, onSave, onDe
     <div className="absolute top-4 right-4 w-80 bg-slate-800 rounded-lg border border-slate-600 shadow-2xl z-20 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/50 border-b border-slate-600">
         <h3 className="font-semibold text-sm text-slate-200">
-          {isEdge ? '🔗 编辑关系' : '🟢 编辑节点'}
+          {isEdge ? ' 编辑关系' : ' 编辑节点'}
         </h3>
-        <button className="text-slate-400 hover:text-white transition-colors" onClick={onClose}>✕</button>
+        <button className="text-slate-400 hover:text-white transition-colors" onClick={onClose} aria-label="关闭">×</button>
       </div>
       <div className="p-4 space-y-3">
         <div>
@@ -200,8 +200,8 @@ const AddEdgePanel: React.FC<{
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-96 bg-slate-800 rounded-lg border border-amber-500/50 shadow-2xl z-20 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-amber-600/20 border-b border-amber-500/30">
-        <h3 className="font-semibold text-sm text-amber-300">🔗 添加关系连接</h3>
-        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel}>✕</button>
+        <h3 className="font-semibold text-sm text-amber-300"> 添加关系连接</h3>
+        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel} aria-label="关闭">×</button>
       </div>
       <div className="p-4 space-y-3">
         <div className="text-xs text-slate-400">从节点: <span className="text-amber-300">{nodes.find(n => n.id === sourceId)?.name || sourceId}</span></div>
@@ -269,8 +269,8 @@ const AddNodePanel: React.FC<{
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-80 bg-slate-800 rounded-lg border border-emerald-500/50 shadow-2xl z-20 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-emerald-600/20 border-b border-emerald-500/30">
-        <h3 className="font-semibold text-sm text-emerald-300">➕ 添加新节点</h3>
-        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel}>✕</button>
+        <h3 className="font-semibold text-sm text-emerald-300"> 添加新节点</h3>
+        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel} aria-label="关闭">×</button>
       </div>
       <div className="p-4 space-y-3">
         <div>
@@ -290,15 +290,15 @@ const AddNodePanel: React.FC<{
             onChange={e => setType(e.target.value)}
             value={type}
           >
-            <option value="character">👤 人物</option>
-            <option value="location">📍 地点</option>
-            <option value="event">⚡ 事件</option>
-            <option value="object">🔮 物品</option>
-            <option value="concept">💡 概念/主题</option>
-            <option value="faction">🏛️ 组织/势力</option>
-            <option value="plot_point">📌 情节点</option>
-            <option value="foreshadow">🔮 伏笔</option>
-            <option value="entity">📦 其他实体</option>
+            <option value="character"> 人物</option>
+            <option value="location"> 地点</option>
+            <option value="event"> 事件</option>
+            <option value="object"> 物品</option>
+            <option value="concept"> 概念/主题</option>
+            <option value="faction"> 组织/势力</option>
+            <option value="plot_point"> 情节点</option>
+            <option value="foreshadow"> 伏笔</option>
+            <option value="entity"> 其他实体</option>
           </select>
         </div>
         <div>
@@ -954,13 +954,13 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addMode === 'node' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
               onClick={() => { setAddMode(addMode === 'node' ? null : 'node'); setEdgeSource(null); setInternalSelectedNode(null); setSelectedEdge(null); onNodeSelect?.(null) }}
             >
-              ➕ 添加节点
+               添加节点
             </button>
             <button
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${addMode === 'edge' ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
               onClick={() => { setAddMode(addMode === 'edge' ? null : 'edge'); setEdgeSource(null); setInternalSelectedNode(null); setSelectedEdge(null); onNodeSelect?.(null) }}
             >
-              🔗 连接节点
+               连接节点
             </button>
           </>
         )}
@@ -969,31 +969,31 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({
           onClick={fitToView}
           title="适应视图"
         >
-          🔍 适应视图
+           适应视图
         </button>
         {onRefresh && (
           <button
             className="px-3 py-1.5 bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs font-medium rounded-md transition-colors"
             onClick={onRefresh}
           >
-            🔄 重新布局
+             重新布局
           </button>
         )}
       </div>
 
       <div className="absolute bottom-3 left-3 flex items-center gap-3 text-xs text-slate-400 bg-slate-800/80 backdrop-blur px-3 py-1.5 rounded-md">
-        <span>🖱️ 拖拽移动（自动保存） · 滚轮缩放 · 双击编辑 · 点击节点选中{addMode === 'edge' ? ' · 选择起点后再点终点' : ''}</span>
+        <span> 拖拽移动（自动保存） · 滚轮缩放 · 双击编辑 · 点击节点选中{addMode === 'edge' ? ' · 选择起点后再点终点' : ''}</span>
       </div>
 
       <div className="absolute top-3 right-3 flex flex-col gap-1 text-xs bg-slate-800/80 backdrop-blur px-3 py-2 rounded-md">
         <div className="text-slate-400 font-medium mb-1">图例</div>
         {[
-          ['character', '👤 人物'],
-          ['location', '📍 地点'],
-          ['event', '⚡ 事件'],
-          ['object', '🔮 物品'],
-          ['concept', '💡 概念'],
-          ['faction', '🏛️ 组织'],
+          ['character', ' 人物'],
+          ['location', ' 地点'],
+          ['event', ' 事件'],
+          ['object', ' 物品'],
+          ['concept', ' 概念'],
+          ['faction', ' 组织'],
         ].map(([type, label]) => (
           <div className="flex items-center gap-2" key={type}>
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getNodeColor(type) }} />
@@ -1036,7 +1036,7 @@ export const ForceGraph: React.FC<ForceGraphProps> = ({
 
       {nodesRef.current.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none">
-          <div className="text-5xl mb-3">🌐</div>
+          <div className="text-5xl mb-3"></div>
           <div className="text-lg font-medium text-slate-400">暂无图谱数据</div>
           <div className="text-sm mt-1">点击「分析构建」生成图谱，或手动添加节点</div>
         </div>

@@ -134,9 +134,9 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
 
       if (result.run) {setRuns(rows => [result.run!, ...rows.filter(row => row.run_id !== result.run!.run_id)].slice(0, 20))}
       const ok = result.steps?.filter(step => step.ok).length || 0
-      notify({ kind: result.ok === false ? 'warning' : 'success', title: 'Writer Loop finished', message: `${ok}/${result.steps?.length || 0} steps` })
+      notify({ kind: result.ok === false ? 'warning' : 'success', title: '写作循环已完成', message: `${ok}/${result.steps?.length || 0} steps` })
       await refresh()
-    } catch (err) { notifyError(err, 'Writer Loop failed') } finally { setBusy('') }
+    } catch (err) { notifyError(err, '写作循环失败') } finally { setBusy('') }
   }
 
   const syncPacks = async () => {
@@ -172,7 +172,7 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
             <div className="flex items-center gap-2">
               <Button disabled={busy === 'workflow-create'} onClick={() => void ensureDefault()} size="sm" variant="outline"><Codicon name="add" /> 创建标准</Button>
               <Button disabled={!workflows.length || busy === 'workflow-run'} onClick={() => void runSelected()} size="sm"><Codicon name="play" /> 运行</Button>
-              <Button disabled={busy === 'writing-loop'} onClick={() => void runWritingLoop()} size="sm" variant="outline"><Codicon name="rocket" /> Writer Loop</Button>
+              <Button disabled={busy === 'writing-loop'} onClick={() => void runWritingLoop()} size="sm" variant="outline"><Codicon name="rocket" /> 写作循环</Button>
             </div>
           }
           description="用主控 Agent 串起 outline / 写作 / 校对 / 风险 / 归档。需要复杂分支时去「多 Agent 工坊」画布。"
@@ -203,7 +203,7 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
             </FieldRow>
             <FieldRow label="Soul Method">
               <select className="rounded-[2px] border border-[var(--dt-border)] bg-[var(--theme-card-seed)] px-2 py-1.5 text-sm" onChange={e => setSelectedSoulPackId(e.target.value)} value={selectedSoulPackId}>
-                <option value="">Auto / no selected Soul pack</option>
+                <option value="">自动 / 未选择 Soul 方法包</option>
                 {packs.filter(pack => pack.source === 'soul_workshop').map(pack => <option key={pack.id} value={pack.id}>{pack.name}</option>)}
               </select>
             </FieldRow>
@@ -212,10 +212,10 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
 
         <div className="grid gap-4">
           {lastWritingLoop ? (
-            <WorkshopPanel description="One-click path: input snapshot, RAG/vector context, Draft Guard, Agent workflow, writeback, safety and benchmark." title="Writer Loop">
+            <WorkshopPanel description="一键完成输入快照、RAG / 向量上下文、草稿守卫、智能体工作流、回写、安全检查和基准测试。" title="写作循环">
               <div className="grid gap-1.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
+                  <span className="text-muted-foreground">状态</span>
                   <WorkshopStatus tone={lastWritingLoop.ok === false ? 'warning' : 'success'}>{lastWritingLoop.ok === false ? 'needs review' : 'passed'}</WorkshopStatus>
                 </div>
                 <div className="font-mono text-[0.65rem] text-muted-foreground">
@@ -255,17 +255,17 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
                 </div>
                 {lastRun.soul_method_packs?.length ? (
                   <div className="mt-2 rounded-[2px] border border-[var(--theme-primary)]/20 bg-[var(--theme-primary)]/5 px-2 py-1.5 text-[0.65rem]">
-                    <div className="font-medium text-[var(--theme-primary)]">Soul Method Packs used</div>
+                    <div className="font-medium text-[var(--theme-primary)]">已使用的 Soul 方法包</div>
                     <div className="mt-0.5 text-muted-foreground">{lastRun.soul_method_packs.map(pack => pack.name || pack.id).join(' / ')}</div>
                   </div>
                 ) : null}
                 {lastRun.draft_guard_outputs?.length ? (
                   <div className="mt-2 grid gap-1">
-                    <div className="text-[0.65rem] font-medium text-muted-foreground">Draft Guard output gates</div>
+                    <div className="text-[0.65rem] font-medium text-muted-foreground">草稿守卫输出门禁</div>
                     {lastRun.draft_guard_outputs.slice(0, 4).map(g => (
                       <div className="rounded-[2px] border border-[var(--dt-border)] bg-[var(--theme-card-seed)]/70 px-2 py-1 text-[0.65rem]" key={`${g.node_id}-${g.id}`}>
                         <div className="truncate font-mono text-muted-foreground">{g.id} ? {g.blocked ? 'blocked' : 'passed'} ? {g.summary?.issues || 0} issues ? {g.summary?.citations || 0} cites</div>
-                        {g.writeback ? <div className="text-muted-foreground">wiki pending {g.writeback.wiki_pending || 0} ? state threads {g.writeback.narrative_threads || 0}</div> : null}
+                        {g.writeback ? <div className="text-muted-foreground">百科待确认 {g.writeback.wiki_pending || 0} · 叙事线索 {g.writeback.narrative_threads || 0}</div> : null}
                       </div>
                     ))}
                   </div>
@@ -285,7 +285,7 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
                   <div className="mt-2 rounded-[2px] border border-[var(--dt-border)] bg-[var(--theme-card-seed)]/70 px-2 py-1.5 text-[0.65rem]">
                     <div className="font-medium text-muted-foreground">长期记忆回写</div>
                     <div className="mt-0.5 font-mono text-muted-foreground">
-                      artifacts {lastRun.writeback.artifacts || 0} · wiki pending {lastRun.writeback.wiki_pending || 0} · state threads {lastRun.writeback.narrative_threads || 0}
+                      交付物 {lastRun.writeback.artifacts || 0} · 百科待确认 {lastRun.writeback.wiki_pending || 0} · 叙事线索 {lastRun.writeback.narrative_threads || 0}
                     </div>
                     {lastRun.writeback.errors?.length ? <div className="mt-0.5 text-destructive">{lastRun.writeback.errors.join('; ')}</div> : null}
                   </div>
@@ -310,7 +310,7 @@ export function AgentsPanel({ active, busy, setBusy }: { active: WriterProject |
                   {p.purpose ? <p className="mt-0.5 line-clamp-2 text-[0.7rem] text-muted-foreground">{p.purpose}</p> : null}
                   {p.source === 'soul_workshop' ? (
                     <div className="mt-1 rounded-[2px] border border-[var(--theme-primary)]/20 bg-[var(--theme-primary)]/5 px-2 py-1 text-[0.62rem] text-muted-foreground">
-                      <div className="font-medium text-[var(--theme-primary)]">Soul safe transfer · no style clone</div>
+                      <div className="font-medium text-[var(--theme-primary)]">Soul 安全迁移 · 不克隆写作风格</div>
                       {p.safe_transfer_principles?.length ? <div className="mt-0.5 line-clamp-2">{p.safe_transfer_principles.slice(0, 2).join(' / ')}</div> : null}
                     </div>
                   ) : null}

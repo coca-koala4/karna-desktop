@@ -112,10 +112,10 @@ function AttachmentPill({ attachment, onRemove, onParse }: {
     }
   }
 
-  const statusTip = isParsing ? (attachment.parseMessage || 'Parsing...')
-    : isParsed ? (parseDetailText || 'Parsed') + (attachment.parseWarnings?.length ? `\n${attachment.parseWarnings.join('; ')}` : '')
-    : parseFailed ? (attachment.parseMessage || 'Parse failed')
-    : isParseable ? 'Read content'
+  const statusTip = isParsing ? (attachment.parseMessage || '解析中…')
+    : isParsed ? (parseDetailText || '解析完成') + (attachment.parseWarnings?.length ? `\n${attachment.parseWarnings.join('; ')}` : '')
+    : parseFailed ? (attachment.parseMessage || '解析失败')
+    : isParseable ? '读取内容'
     : ''
 
   return (

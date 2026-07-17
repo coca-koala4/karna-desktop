@@ -106,7 +106,7 @@ export async function createIngestJob(params: {
     body: params
   })
   if (!res.ok || !res.job_id) {
-    throw new Error(res.error || 'Failed to create ingest job')
+    throw new Error(res.error || '创建导入任务失败')
   }
   return { job_id: res.job_id, status: res.status }
 }
@@ -114,7 +114,7 @@ export async function createIngestJob(params: {
 export async function getIngestJob(jobId: string): Promise<IngestJob> {
   const res = await api<IngestJob>(`/api/ingest/jobs/${encodeURIComponent(jobId)}`)
   if (!res.ok) {
-    throw new Error(res.error || 'Failed to get ingest job')
+    throw new Error(res.error || '获取导入任务失败')
   }
   return res
 }
@@ -122,7 +122,7 @@ export async function getIngestJob(jobId: string): Promise<IngestJob> {
 export async function getIngestResult(id: string): Promise<IngestResult> {
   const res = await api<IngestResult>(`/api/ingest/results/${encodeURIComponent(id)}`)
   if (!res.ok) {
-    throw new Error(res.error || 'Failed to get ingest result')
+    throw new Error(res.error || '获取导入结果失败')
   }
   return res
 }

@@ -179,7 +179,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded transition-colors"
               onClick={() => setShowAddForm(true)}
             >
-              ➕ 添加事件
+               添加事件
             </button>
           )}
         </div>
@@ -232,7 +232,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                     {time && (
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">{time}</span>
-                        {isMajor && <span className="text-xs text-red-400 font-medium">🔥 关键事件</span>}
+                        {isMajor && <span className="text-xs text-red-400 font-medium"> 关键事件</span>}
                       </div>
                     )}
                     <div
@@ -252,12 +252,12 @@ export const Timeline: React.FC<TimelineProps> = ({
                             <div className="flex flex-wrap gap-1 mt-2">
                               {event.characters && event.characters.length > 0 && event.characters.slice(0, 5).map((c: any, i: number) => (
                                 <span className="inline-flex items-center gap-1 text-xs bg-amber-500/10 text-amber-300/80 px-2 py-0.5 rounded-full border border-amber-500/20" key={i}>
-                                  👤 {typeof c === 'string' ? c : c?.name || '?'}
+                                   {typeof c === 'string' ? c : c?.name || '?'}
                                 </span>
                               ))}
                               {event.location && (
                                 <span className="inline-flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-300/80 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                  📍 {typeof event.location === 'string' ? event.location : (event.location as any)?.name || ''}
+                                   {typeof event.location === 'string' ? event.location : (event.location as any)?.name || ''}
                                 </span>
                               )}
                               {event.tags && event.tags.map((t, i) => (
@@ -320,8 +320,8 @@ const EventEditor: React.FC<{
   return (
     <div className="absolute top-16 right-4 w-96 bg-slate-800 rounded-lg border border-slate-600 shadow-2xl z-20 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-slate-700/50 border-b border-slate-600">
-        <h3 className="font-semibold text-sm text-slate-200">📝 编辑事件</h3>
-        <button className="text-slate-400 hover:text-white transition-colors" onClick={onClose}>✕</button>
+        <h3 className="font-semibold text-sm text-slate-200"> 编辑事件</h3>
+        <button className="text-slate-400 hover:text-white transition-colors" onClick={onClose} aria-label="关闭">×</button>
       </div>
       <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
         <div>
@@ -349,9 +349,9 @@ const EventEditor: React.FC<{
               onChange={e => setForm({ ...form, importance: e.target.value as any })}
               value={form.importance}
             >
-              <option value="major">🔥 重大</option>
-              <option value="minor">📌 次要</option>
-              <option value="background">📎 背景</option>
+              <option value="major"> 重大</option>
+              <option value="minor"> 次要</option>
+              <option value="background"> 背景</option>
             </select>
           </div>
         </div>
@@ -362,19 +362,19 @@ const EventEditor: React.FC<{
             onChange={e => setForm({ ...form, type: e.target.value })}
             value={form.type}
           >
-            <option value="plot">🔥 情节推进</option>
-            <option value="conflict">⚔️ 冲突</option>
-            <option value="revelation">💡 揭秘/发现</option>
-            <option value="meeting">💞 相遇/会面</option>
-            <option value="battle">⚔️ 战斗</option>
-            <option value="death">💀 死亡</option>
-            <option value="birth">🌱 诞生/起始</option>
-            <option value="journey">🚶 旅程</option>
-            <option value="romance">💕 感情</option>
-            <option value="mystery">🔍 悬疑</option>
-            <option value="discovery">🔎 发现</option>
-            <option value="transition">🔄 转折</option>
-            <option value="event">📖 一般事件</option>
+            <option value="plot"> 情节推进</option>
+            <option value="conflict"> 冲突</option>
+            <option value="revelation"> 揭秘/发现</option>
+            <option value="meeting"> 相遇/会面</option>
+            <option value="battle"> 战斗</option>
+            <option value="death"> 死亡</option>
+            <option value="birth"> 诞生/起始</option>
+            <option value="journey"> 旅程</option>
+            <option value="romance"> 感情</option>
+            <option value="mystery"> 悬疑</option>
+            <option value="discovery"> 发现</option>
+            <option value="transition"> 转折</option>
+            <option value="event"> 一般事件</option>
           </select>
         </div>
         <div>
@@ -462,8 +462,8 @@ const AddEventForm: React.FC<{
   return (
     <div className="absolute top-16 left-1/2 -translate-x-1/2 w-96 bg-slate-800 rounded-lg border border-emerald-500/50 shadow-2xl z-20 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-emerald-600/20 border-b border-emerald-500/30">
-        <h3 className="font-semibold text-sm text-emerald-300">➕ 添加时间轴事件</h3>
-        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel}>✕</button>
+        <h3 className="font-semibold text-sm text-emerald-300"> 添加时间轴事件</h3>
+        <button className="text-slate-400 hover:text-white transition-colors" onClick={onCancel} aria-label="关闭">×</button>
       </div>
       <div className="p-4 space-y-3">
         <div>
@@ -493,8 +493,8 @@ const AddEventForm: React.FC<{
               onChange={e => setForm({ ...form, importance: e.target.value as any })}
               value={form.importance}
             >
-              <option value="minor">📌 次要</option>
-              <option value="major">🔥 重大</option>
+              <option value="minor"> 次要</option>
+              <option value="major"> 重大</option>
             </select>
           </div>
         </div>
@@ -505,15 +505,15 @@ const AddEventForm: React.FC<{
             onChange={e => setForm({ ...form, type: e.target.value })}
             value={form.type}
           >
-            <option value="event">📖 一般事件</option>
-            <option value="plot">🔥 情节推进</option>
-            <option value="conflict">⚔️ 冲突</option>
-            <option value="revelation">💡 揭秘/发现</option>
-            <option value="meeting">💞 相遇</option>
-            <option value="battle">⚔️ 战斗</option>
-            <option value="romance">💕 感情</option>
-            <option value="journey">🚶 旅程</option>
-            <option value="transition">🔄 转折</option>
+            <option value="event"> 一般事件</option>
+            <option value="plot"> 情节推进</option>
+            <option value="conflict"> 冲突</option>
+            <option value="revelation"> 揭秘/发现</option>
+            <option value="meeting"> 相遇</option>
+            <option value="battle"> 战斗</option>
+            <option value="romance"> 感情</option>
+            <option value="journey"> 旅程</option>
+            <option value="transition"> 转折</option>
           </select>
         </div>
         <div>

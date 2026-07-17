@@ -505,14 +505,14 @@ function InstallWizard({ onClose, onInstalled }: InstallWizardProps) {
 
           {step === 'done' && (
             <div className="py-8 text-center">
-              <div className="mb-4 text-4xl text-emerald-500">✓</div>
+              <div className="mb-4 text-4xl text-emerald-500"></div>
               <p className="text-sm font-medium">安装成功！</p>
             </div>
           )}
 
           {step === 'error' && (
             <div className="py-8 text-center">
-              <div className="mb-4 text-4xl text-red-500">✕</div>
+              <div className="mb-4 text-4xl text-red-500"></div>
               <p className="text-sm font-medium text-red-600">{error}</p>
             </div>
           )}
@@ -772,7 +772,7 @@ export function PluginsView() {
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">{selectedPlugin.description}</p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedPlugin(null)}>✕</Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedPlugin(null)}></Button>
               </div>
             </div>
             <div className="p-6 space-y-4">
@@ -815,7 +815,7 @@ export function PluginsView() {
                           check.status === 'pass' ? 'text-emerald-500' :
                           check.status === 'warn' ? 'text-amber-500' : 'text-red-500'
                         }>
-                          {check.status === 'pass' ? '✓' : check.status === 'warn' ? '⚠' : '✕'}
+                          {check.status === 'pass' ? '' : check.status === 'warn' ? '' : ''}
                         </span>
                         <span>{check.name}</span>
                         {check.message && <span className="text-muted-foreground">- {check.message}</span>}

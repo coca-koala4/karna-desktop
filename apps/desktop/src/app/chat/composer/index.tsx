@@ -1374,7 +1374,7 @@ export function ChatBar({
                                 {row.iconImage ? (
                                   <img alt="" className="h-full w-full object-cover" src={row.iconImage} />
                                 ) : (
-                                  <span className="select-none text-[11px]">{row.icon || '🔧'}</span>
+                                  <span className="select-none text-[11px]">{row.icon || '•'}</span>
                                 )}
                               </div>
                               <button

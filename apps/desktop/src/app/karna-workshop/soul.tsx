@@ -1367,7 +1367,7 @@ function Toolbar({ authors, busy, camera, mode, reduceMotion, onCreate, onRefres
   return (
     <header className="absolute left-5 right-5 top-5 z-30 flex items-center justify-between gap-4 rounded-3xl border border-[var(--dt-border)] bg-[var(--theme-card-seed)]/80 px-6 py-4 shadow-xl backdrop-blur-2xl">
       <div>
-        <div className="text-[0.6rem] uppercase tracking-[0.32em] text-[var(--theme-foreground)]/60">Karna · Soul Nebula · {mode}</div>
+        <div className="text-[0.6rem] uppercase tracking-[0.32em] text-[var(--theme-foreground)]/60">Karna · Soul 星云 · {mode}</div>
         <h1 className="mt-1 text-xl font-semibold tracking-tight bg-gradient-to-r from-[var(--theme-primary)] via-[var(--theme-accent-soft)] to-[var(--theme-primary)] bg-clip-text text-transparent">Soul工坊</h1>
         <p className="mt-1 text-xs text-[var(--theme-foreground)]/60">无界泡泡工作台 · 点击 Soul 聚焦，展开属性，左键查看，编辑需确认</p>
       </div>
@@ -1633,12 +1633,12 @@ function WebResearchEvidence({ queries, sources }: { queries: SoulWebQuery[]; so
 
 function CitationEvidence({ citations }: { citations: NonNullable<SoulDetail['citations']> }) {
   if (citations.length === 0) {
-    return <div className="rounded-xl border border-dashed border-[var(--dt-border)] px-3 py-2 text-xs text-[var(--theme-foreground)]/60">No citation evidence has been generated for this Soul yet.</div>
+    return <div className="rounded-xl border border-dashed border-[var(--dt-border)] px-3 py-2 text-xs text-[var(--theme-foreground)]/60">这个 Soul 尚未生成引用证据。</div>
   }
 
   return (
-    <section aria-label="Citation evidence" className="rounded-xl border border-[var(--dt-border)] bg-[var(--dt-muted)] p-4">
-      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-[var(--theme-foreground)]"><Codicon name="references" size={14} />Citation evidence ({citations.length})</h3>
+    <section aria-label="引用证据" className="rounded-xl border border-[var(--dt-border)] bg-[var(--dt-muted)] p-4">
+      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-[var(--theme-foreground)]"><Codicon name="references" size={14} />引用证据（{citations.length}）</h3>
       <div className="grid gap-2">
         {citations.slice(0, 12).map((citation, index) => {
           const label = citation.title || citation.source_file || citation.source_url || citation.ref || `Evidence ${index + 1}`

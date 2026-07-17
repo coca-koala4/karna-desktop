@@ -616,7 +616,7 @@ function WorkflowsCanvas() {
   const saveWorkflow = async (): Promise<string> => {
     if (!validation.valid) {
       const firstError = validation.errors[0]
-      notify({ kind: 'error', title: 'Workflow validation failed', message: firstError?.userMessage || firstError?.message || 'Validation failed' })
+      notify({ kind: 'error', title: '工作流校验失败', message: firstError?.userMessage || firstError?.message || '校验失败' })
 
  return ''
     }
@@ -677,7 +677,7 @@ function WorkflowsCanvas() {
     try {
       const result = await api<{ ok: boolean; run?: WorkflowRun; error?: string }>(`/api/writer/workflows/${encodeURIComponent(selectedWorkflowId)}/continue`, 'POST', { runId: run.run_id, humanInput: humanReviewText })
 
-      if (!result.ok || !result.run) {throw new Error(result.error || 'Continue failed')}
+      if (!result.ok || !result.run) {throw new Error(result.error || '继续运行失败')}
       setLastRun(result.run)
       setHumanReviewText('')
       setNodes(current => current.map(node => ({ ...node, data: { ...node.data, runStatus: result.run?.node_statuses?.[node.id]?.status, summary: result.run?.node_statuses?.[node.id]?.summary } })))
@@ -692,7 +692,7 @@ function WorkflowsCanvas() {
     try {
       const result = await api<{ ok: boolean; run?: WorkflowRun; error?: string }>(`/api/writer/workflows/${encodeURIComponent(selectedWorkflowId)}/runs/${encodeURIComponent(lastRun.run_id)}/nodes/${encodeURIComponent(nodeId)}/${action}`, 'POST')
 
-      if (!result.ok || !result.run) {throw new Error(result.error || 'Update failed')}
+      if (!result.ok || !result.run) {throw new Error(result.error || '更新失败')}
       setLastRun(result.run)
       setNodes(current => current.map(node => node.id === nodeId ? { ...node, data: { ...node.data, runStatus: result.run?.node_statuses?.[node.id]?.status, summary: result.run?.node_statuses?.[node.id]?.summary } } : node))
     } catch (err) { notifyError(err, '更新节点状态失败') }
@@ -970,8 +970,8 @@ function WorkflowsCanvas() {
 
           <Section title="运行记录">
             {lastRun ? <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between"><Badge>{lastRun.status}</Badge><span className="text-xs font-medium text-[var(--theme-foreground)]/50">{lastRun.cost_estimate?.calls || 0} calls · {lastRun.cost_estimate?.tokens || 0} tokens 估算</span></div>
-              {lastRun.token_plan ? <div className="rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary)]/5 p-2 text-[0.68rem] text-[var(--theme-foreground)]/60"><strong className="text-[var(--theme-primary)]">Token Plan</strong> · {lastRun.token_plan.estimated_calls || 0} calls · {((lastRun.token_plan.estimated_input_tokens || 0) + (lastRun.token_plan.estimated_output_tokens || 0)).toLocaleString()} tokens{typeof lastRun.token_plan.estimated_cost_usd === 'number' ? ` · $${lastRun.token_plan.estimated_cost_usd.toFixed(4)}` : ''}{lastRun.token_plan.reusable_nodes?.length ? ` · ${lastRun.token_plan.reusable_nodes.length} reusable` : ''}</div> : null}
+              <div className="flex items-center justify-between"><Badge>{lastRun.status}</Badge><span className="text-xs font-medium text-[var(--theme-foreground)]/50">{lastRun.cost_estimate?.calls || 0} 次调用 · {lastRun.cost_estimate?.tokens || 0} Token 估算</span></div>
+              {lastRun.token_plan ? <div className="rounded-lg border border-[var(--theme-primary)]/20 bg-[var(--theme-primary)]/5 p-2 text-[0.68rem] text-[var(--theme-foreground)]/60"><strong className="text-[var(--theme-primary)]">Token 计划</strong> · {lastRun.token_plan.estimated_calls || 0} 次调用 · {((lastRun.token_plan.estimated_input_tokens || 0) + (lastRun.token_plan.estimated_output_tokens || 0)).toLocaleString()} Token{typeof lastRun.token_plan.estimated_cost_usd === 'number' ? ` · $${lastRun.token_plan.estimated_cost_usd.toFixed(4)}` : ''}{lastRun.token_plan.reusable_nodes?.length ? ` · ${lastRun.token_plan.reusable_nodes.length} 个可复用节点` : ''}</div> : null}
               {Object.entries(lastRun.node_statuses || {}).map(([id, row]) => <div className="rounded-lg border border-[var(--dt-border)] bg-[var(--theme-card-seed)] p-2" key={id}><div className="flex items-center justify-between gap-2"><strong className="text-xs">{row.label || id}</strong><span className={cn('text-[0.68rem]', row.status === 'running' && 'animate-pulse text-[var(--theme-primary)]')}>{statusLabel(row.status)}</span></div>{row.branch ? <div className="mt-1 text-[0.68rem] text-[var(--theme-secondary)]">{UI.branch}：{row.branch}{typeof row.score === 'number' ? ` · ${UI.score} ${row.score}/${row.threshold ?? 60}` : ''}</div> : null}<p className="mt-1 line-clamp-5 text-xs leading-relaxed text-[var(--theme-foreground)]/50">{row.summary}</p>{(() => { const node = workflowNodeById.get(id); const needsReview = row.status === 'paused' || node?.data?.nodeType === 'human_review' || Boolean(node?.data?.requiresReview);
 
  return needsReview ? <div className="mt-2 flex flex-wrap gap-1"><button className="rounded border border-[var(--theme-primary)]/40 px-1.5 py-0.5 text-[0.66rem] text-[var(--theme-primary)]" onClick={() => void markNodeAction(id, 'accept')} type="button">{UI.accept}</button><button className="rounded border border-[var(--dt-destructive)]/40 px-1.5 py-0.5 text-[0.66rem] text-[var(--dt-destructive)]" onClick={() => void markNodeAction(id, 'reject')} type="button">{UI.reject}</button><button className="rounded border border-[var(--dt-border)] px-1.5 py-0.5 text-[0.66rem] text-[var(--theme-foreground)]/60" onClick={() => void markNodeAction(id, 'skip')} type="button">{UI.skip}</button><button className="rounded border border-[var(--theme-primary)]/40 bg-[var(--theme-primary)]/8 px-1.5 py-0.5 text-[0.66rem] text-[var(--theme-primary)]" onClick={() => void runWorkflow(id)} type="button">{UI.rerun}</button></div> : null })()}</div>)}

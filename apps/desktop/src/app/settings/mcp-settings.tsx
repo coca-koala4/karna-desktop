@@ -198,7 +198,7 @@ export function McpSettings({ gateway, onConfigSaved }: McpSettingsProps) {
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
           <Globe className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
           <div className="flex-1 text-amber-700 dark:text-amber-200">
-            🌐 浏览器演示模式：当前仅显示 3 个示例连接器。安装桌面版可管理真实 MCP 服务器、配置认证和权限。
+            浏览器演示模式：当前仅显示 3 个示例连接器。安装桌面版可管理真实 MCP 服务器、配置认证和权限。
           </div>
           <button
             className="flex-shrink-0 rounded-md p-1 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"

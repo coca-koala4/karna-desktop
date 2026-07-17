@@ -26,7 +26,7 @@ interface ZoomableProps {
  * (see useZoomPan) and optionally copied. Content-agnostic — wrap a diagram,
  * image, or any node.
  */
-export function Zoomable({ children, overlay, onCopy, label = 'Open full view', className }: ZoomableProps) {
+export function Zoomable({ children, overlay, onCopy, label = '打开完整视图', className }: ZoomableProps) {
   const [open, setOpen] = useState(false)
 
   return (

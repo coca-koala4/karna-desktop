@@ -118,7 +118,7 @@ function ChatHeader({
   const activeStoredSession =
     sessions.find(session => session.id === selectedSessionId || session._lineage_root_id === selectedSessionId) || null
 
-  const title = activeStoredSession ? sessionTitle(activeStoredSession) : 'New session'
+  const title = activeStoredSession ? sessionTitle(activeStoredSession) : '新建会话'
 
   // Pins live on the durable lineage-root id, but selectedSessionId is the live
   // (tip) id — resolve through the loaded row so the menu reflects the pin
@@ -389,7 +389,7 @@ export function ChatView({
       }
 
       if (!gateway) {
-        throw new Error('Hermes gateway unavailable')
+        throw new Error('Karna 后台服务不可用')
       }
 
       return gateway.request<ModelOptionsResponse>('model.options', { session_id: activeSessionId })
@@ -414,7 +414,7 @@ export function ChatView({
       },
       tools: {
         enabled: true,
-        label: 'Add context',
+        label: '添加上下文',
         suggestions: contextSuggestions
       },
       voice: {

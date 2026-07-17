@@ -23,7 +23,7 @@ const MODE_META: Record<AgentModeId, { label: string; icon: string; color: strin
   living_work: {
     label: '作品演化', icon: 'edit', color: 'text-purple-400',
     desc: 'Creative作品持续演化，保护留白、尊重不可违背约束',
-    capabilities: ['Blackboard黑板模型', '8维Impact Analysis', 'NonNegotiables保护', 'Protected Ambiguities留白', 'Proposal审批写回', 'Handoff to Author', '三档自治级别']
+    capabilities: ['黑板协作模型', '8 维影响分析', '不可妥协约束保护', '受保护的歧义留白', '提案审批写回', '交还作者', '三档自治级别']
   }
 }
 

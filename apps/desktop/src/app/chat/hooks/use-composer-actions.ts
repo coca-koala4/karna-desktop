@@ -283,7 +283,7 @@ export function useComposerActions({ activeSessionId, currentCwd, requestGateway
   const pickContextPaths = useCallback(
     async (kind: 'file' | 'folder') => {
       const paths = await selectDesktopPaths({
-        title: kind === 'file' ? 'Add files as context' : 'Add folders as context',
+        title: kind === 'file' ? '将文件加入上下文' : '将文件夹加入上下文',
         defaultPath: currentCwd || undefined,
         directories: kind === 'folder'
       })

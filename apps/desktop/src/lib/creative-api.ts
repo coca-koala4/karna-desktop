@@ -29,7 +29,7 @@ interface HermesDesktop {
 
 function getDesktopApi(): HermesDesktop['api'] {
   if (typeof window === 'undefined') {
-    throw new Error('Window not available')
+    throw new Error('当前窗口不可用')
   }
   const desktop = (window as unknown as { hermesDesktop?: HermesDesktop; karnaDesktop?: HermesDesktop }).karnaDesktop
     || (window as unknown as { hermesDesktop?: HermesDesktop }).hermesDesktop

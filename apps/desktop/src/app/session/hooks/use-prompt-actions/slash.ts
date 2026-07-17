@@ -167,7 +167,7 @@ export function useSlashCommand(deps: SlashCommandDeps) {
           }
 
           if (dispatch.type === 'skill') {
-            renderSlashOutput(`⚡ loading skill: ${dispatch.name}`)
+            renderSlashOutput(`正在加载技能：${dispatch.name}`)
           }
 
           if (busyRef.current) {

@@ -77,7 +77,7 @@ describe('buildCommitChangelog', () => {
   it('falls back to a neutral placeholder when every commit is filtered or empty', () => {
     const groups = buildCommitChangelog([{ summary: 'chore: bump' }, { summary: 'ci: stuff' }])
 
-    expect(groups).toEqual([{ id: 'other', items: ['Improvements and fixes'], label: 'In this update' }])
+    expect(groups).toEqual([{ id: 'other', items: ['改进与修复'], label: '本次更新' }])
   })
 
   it('dedupes identical subjects and caps the items per group', () => {

@@ -31,7 +31,7 @@ export async function writeClipboardText(text: string) {
     return
   }
 
-  throw new Error('Clipboard API is unavailable')
+  throw new Error('剪贴板 API 不可用')
 }
 
 export interface CopyButtonProps {
