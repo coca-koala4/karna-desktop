@@ -240,7 +240,7 @@
                                              "to":  "release-manifest.json"
                                          },
                                          {
-                                             "from":  "scripts/install.ps1",
+                                             "from":  "../../scripts/install.ps1",
                                              "to":  "karna-runtime/install.ps1"
                                          }
                                      ],
