@@ -62,7 +62,12 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
     lastCheckedAt = Date.now()
     error = null
     const result = await autoUpdater.checkForUpdates()
-    if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) available = result.updateInfo
+    if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) {
+      available = result.updateInfo
+    } else {
+      available = null
+      downloaded = null
+    }
     return status()
   }
 

@@ -574,6 +574,7 @@ function ingestProgress(payload: DesktopUpdateProgress): void {
 
   const terminal =
     payload.stage === 'error' ||
+    payload.stage === 'done' ||
     payload.stage === 'restart' ||
     payload.stage === 'manual' ||
     payload.stage === 'guiSkew'
@@ -611,6 +612,7 @@ export function startUpdatePoller(): void {
   }
 
   pollerStarted = true
+  resetUpdateApplyState()
   void checkBackendUpdates()
   void refreshDesktopVersion()
   bridge.onProgress(ingestProgress)

@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { BrandMark } from '@/components/brand-mark'
 import { Button } from '@/components/ui/button'
@@ -51,16 +51,26 @@ export function AboutSettings() {
   const apply = useStore($updateApply)
   const checking = useStore($updateChecking)
   const [justChecked, setJustChecked] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const [mountedAt] = useState(() => Date.now())
 
   useEffect(() => {
     void refreshDesktopVersion()
   }, [])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const behind = status?.behind ?? 0
   const supported = status?.supported !== false
-  const applying = apply.applying || apply.stage === 'restart'
+  const latestApplyAt = useMemo(() => apply.log.at(-1)?.at ?? 0, [apply.log])
+  const staleInstalling = (apply.applying || apply.stage === 'restart')
+    && now - (latestApplyAt || mountedAt) > 2 * 60 * 1000
+  const applying = (apply.applying || apply.stage === 'restart') && !staleInstalling
   const updateHint = status?.branch === 'stable'
-    ? `???? ? ???? ${version?.appVersion || '??'}`
+    ? `\u7a33\u5b9a\u901a\u9053 \u00b7 \u5f53\u524d ${version?.appVersion || '\u672a\u77e5'}`
     : a.branchCommit(status?.branch ?? 'unknown', status?.currentSha?.slice(0, 7) ?? 'unknown')
 
   const handleCheck = async () => {

@@ -2,7 +2,7 @@
   "name": "karna",
   "productName": "Karna",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Karna desktop-first AI writing workspace.",
   "author": "Karna",
   "type": "module",
