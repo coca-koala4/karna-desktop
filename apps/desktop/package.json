@@ -2,7 +2,7 @@
   "name": "karna",
   "productName": "Karna",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Karna 桌面优先的 AI 创作工作空间。",
   "author": "Karna",
   "type": "module",

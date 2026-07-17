@@ -315,16 +315,80 @@ const notConfigured = (capability, error, extra = {}) => ({ ok: false, capabilit
 
 const normalizeApiKey = value => String(value || '').trim().replace(/^Bearer\s+/i, '')
 
+const getModelSelectionPath = () => backendDataPath('model_selection.json')
+const readPersistedModelSelection = () => {
+  try {
+    const file = getModelSelectionPath()
+    if (!fs.existsSync(file)) return { provider: '', model: '' }
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'))
+    return { provider: String(data?.provider || ''), model: String(data?.model || '') }
+  } catch {
+    return { provider: '', model: '' }
+  }
+}
+const persistCurrentModelSelection = () => {
+  try {
+    if (!currentModelProvider || !currentModel) return
+    writeBackendJsonAtomic('model_selection.json', {
+      provider: currentModelProvider,
+      model: currentModel,
+      updated_at: new Date().toISOString()
+    })
+  } catch (err) {
+    rememberLog(`Could not persist model selection: ${err?.message || err}`)
+  }
+}
+const restorePersistedModelSelection = () => {
+  const stored = readPersistedModelSelection()
+  if (!stored.provider || !stored.model) return false
+  const provider = findProvider(stored.provider)
+  if (!provider || !isProviderConfigured(provider)) return false
+  currentModelProvider = provider.slug
+  currentModel = provider.models.includes(stored.model) ? stored.model : (provider.models[0] || stored.model)
+  if (!karnaConfig.models) karnaConfig.models = {}
+  karnaConfig.models.default = currentModel
+  return true
+}
+
 const ensureCurrentConfiguredProvider = () => {
   const current = findProvider(currentModelProvider)
-  if (current && isProviderConfigured(current)) return
+  if (current && isProviderConfigured(current) && currentModel) return
+  if (restorePersistedModelSelection()) return
   const configured = MODEL_PROVIDERS.find(isProviderConfigured) || getCustomProviders()[0] || getCustomProvider()
   if (configured) {
     currentModelProvider = configured.slug
     currentModel = configured.models.includes(currentModel) ? currentModel : configured.models[0]
     if (!karnaConfig.models) karnaConfig.models = {}
     karnaConfig.models.default = currentModel
+    persistCurrentModelSelection()
   }
+}
+
+const resolveUsableModelSelection = input => {
+  const requestedProviderSlug = String(input?.provider || '').trim()
+  const requestedModel = String(input?.model || '').trim()
+  const requestedProvider = findProvider(requestedProviderSlug)
+  if (requestedProvider && isProviderConfigured(requestedProvider) && requestedModel) {
+    return { provider: requestedProvider, model: requestedModel }
+  }
+
+  ensureCurrentConfiguredProvider()
+  const currentProvider = findProvider(currentModelProvider)
+  if (currentProvider && isProviderConfigured(currentProvider) && currentModel) {
+    return { provider: currentProvider, model: currentModel }
+  }
+
+  const configured = MODEL_PROVIDERS.find(isProviderConfigured) || getCustomProviders()[0] || getCustomProvider()
+  if (configured) {
+    currentModelProvider = configured.slug
+    currentModel = configured.models.includes(requestedModel) ? requestedModel : (configured.models[0] || requestedModel)
+    if (!karnaConfig.models) karnaConfig.models = {}
+    karnaConfig.models.default = currentModel
+    persistCurrentModelSelection()
+    if (currentModel) return { provider: configured, model: currentModel }
+  }
+
+  return { provider: null, model: '' }
 }
 
 const getConfiguredProviders = () => {
@@ -3711,12 +3775,11 @@ const enhancePromptText = async input => {
     } catch (e) { /* ignore */ }
   }
 
-  ensureCurrentConfiguredProvider()
-  const providerSlug = String(input?.provider || currentModelProvider || '').trim()
-  const modelName = String(input?.model || currentModel || '').trim()
-  const selectedProvider = findProvider(providerSlug)
+  const resolvedModel = resolveUsableModelSelection(input)
+  const selectedProvider = resolvedModel.provider
+  const modelName = resolvedModel.model
   if (!selectedProvider || !isProviderConfigured(selectedProvider) || !modelName) {
-    return { ok: false, error: '请先配置可用的模型提供方，才能使用智能提示词增强。' }
+    return { ok: false, error: '\u8bf7\u5148\u5728\u8bbe\u7f6e\u4e2d\u4fdd\u5b58 DeepSeek\u3001Qwen\u3001GLM \u6216\u81ea\u5b9a\u4e49\u6a21\u578b\u7684 API Key\uff0c\u5e76\u9009\u62e9\u4e00\u4e2a\u9ed8\u8ba4\u6a21\u578b\u540e\u518d\u4f7f\u7528\u667a\u80fd\u63d0\u793a\u8bcd\u589e\u5f3a\u3002' }
   }
 
   const allProtected = [...new Set([
@@ -7291,6 +7354,7 @@ async function handleKarnaApiRequestImpl(request) {
     currentModelProvider = provider.slug
     currentModel = model
     karnaConfig.models.default = model
+    persistCurrentModelSelection()
     return { ok: true, model, provider: provider.slug, stale_aux: [], gateway_tools: [] }
   }
 
@@ -9511,6 +9575,7 @@ async function handleKarnaApiRequestImpl(request) {
           currentModel = provider.models[0] || currentModel
           if (!karnaConfig.models) karnaConfig.models = {}
           karnaConfig.models.default = currentModel
+          persistCurrentModelSelection()
         }
       }
       return { ok: true }
