@@ -6779,6 +6779,9 @@ function shouldRouteToKarnaAdapter(request) {
     pathname.startsWith('/api/soul/') ||
     pathname.startsWith('/api/connectors/') ||
     pathname.startsWith('/api/skills') ||
+    pathname.startsWith('/api/karna/plugins') ||
+    pathname.startsWith('/api/karna/skills') ||
+    pathname.startsWith('/api/karna/skill-packs') ||
     pathname.startsWith('/api/ingest/') ||
     pathname === '/api/prompt/enhance' ||
     pathname === '/api/artifacts' ||

@@ -888,6 +888,229 @@ const setToolsetProvider = capabilitiesService.setToolsetProvider
 const scanPlugins = capabilitiesService.scanPlugins
 const setPluginEnabled = capabilitiesService.setPluginEnabled
 
+const KARNA_PLUGIN_NAME_ZH = {
+  'karna.calendar': '日历',
+  'karna.chrome': '浏览器',
+  'karna.computer-use': '桌面控制',
+  'karna.documents': '文档',
+  'karna.email': '邮件',
+  'karna.local-files': '本地文件',
+  'karna.ocr': 'OCR 识别',
+  'karna.pdf': 'PDF',
+  'karna.presentations': '演示文稿',
+  'karna.spreadsheets': '电子表格',
+  'karna.web-research': '网页研究',
+  'karna.zotero': 'Zotero 文献'
+}
+
+const KARNA_PLUGIN_DESC_ZH = {
+  'karna.calendar': '连接 Google Calendar 和 Microsoft 365 日历，管理日程、会议与提醒。',
+  'karna.chrome': '使用隔离浏览器或已登录 Chrome 会话浏览网页、读取资料与执行网页任务。',
+  'karna.computer-use': '通过鼠标、键盘、截图和拖拽控制桌面应用。',
+  'karna.documents': '读取、创建、编辑、批注并验证 DOCX 文档。',
+  'karna.email': '连接 Gmail 和 Outlook/Microsoft 365，读取、整理和发送邮件。',
+  'karna.local-files': '在项目目录中读取、写入、搜索、预览和管理本地文件。',
+  'karna.ocr': '从图片和扫描 PDF 中识别文字，并保留页码与区域引用。',
+  'karna.pdf': '读取、提取、OCR、创建、合并、拆分和渲染 PDF，并进行结果验证。',
+  'karna.presentations': '读取、创建、编辑和渲染 PPTX 演示文稿，并进行视觉验证。',
+  'karna.spreadsheets': '读取、创建和编辑 XLSX/CSV 表格，保留公式与格式。',
+  'karna.web-research': '搜索、抓取、引用来源、去重资料，并生成证据包。',
+  'karna.zotero': '连接本地 Zotero，检索文献、读取元数据并导入引用。'
+}
+
+const PERMISSION_ZH = {
+  'browser:isolated': '隔离浏览器',
+  'browser:login-session': '登录浏览器会话',
+  'calendar:read': '读取日历',
+  'calendar:write': '写入日历',
+  'clipboard': '剪贴板访问',
+  'desktop:control': '桌面控制',
+  'email:modify': '修改邮件',
+  'email:read': '读取邮件',
+  'email:send': '发送邮件',
+  'filesystem:project': '项目文件读写',
+  'filesystem:read': '读取文件',
+  'filesystem:write': '写入文件',
+  'network:local': '本地网络访问',
+  'network:request': '网络访问',
+  'oauth:desktop': '桌面 OAuth 授权',
+  'process:bundled-runtime': '内置运行时进程',
+  'screen:capture': '屏幕截图',
+  'zotero:local': '本地 Zotero'
+}
+
+function releaseResourceCandidates(name) {
+  return [
+    process.resourcesPath ? path.join(process.resourcesPath, name) : null,
+    path.resolve(__dirname, '..', '..', '..', 'karna-builtin', name.replace(/^builtin-/, '')),
+    path.resolve(__dirname, '..', '..', '..', name)
+  ].filter(Boolean)
+}
+
+function firstExistingDir(candidates) {
+  return candidates.find(dir => {
+    try {
+      return fs.existsSync(dir) && fs.statSync(dir).isDirectory()
+    } catch {
+      return false
+    }
+  }) || candidates[0]
+}
+
+function listDirs(root) {
+  try {
+    return fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => path.join(root, entry.name))
+  } catch {
+    return []
+  }
+}
+
+function readReleaseJsonFile(file, fallback = null) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch (err) {
+    rememberLog(`[release-resources] failed to read ${file}: ${err.message}`)
+    return fallback
+  }
+}
+
+function extractSkillDescription(text) {
+  const fm = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---/m)?.[1] || ''
+  const desc = fm.match(/^description:\s*(.+)$/mi)?.[1] || text.match(/^description:\s*(.+)$/mi)?.[1] || ''
+  return String(desc).trim().replace(/^['"]|['"]$/g, '')
+}
+
+function scanReleaseSkills() {
+  const root = firstExistingDir(releaseResourceCandidates('builtin-skills'))
+  const state = readBackendJson('skills_state.json', { version: 1, enabled: {} })
+  const enabledMap = normalizeStateMap(state.enabled)
+  return listDirs(root).map(dir => {
+    const id = path.basename(dir)
+    const skillPath = path.join(dir, 'SKILL.md')
+    const text = fs.existsSync(skillPath) ? fs.readFileSync(skillPath, 'utf8') : ''
+    const description = skillI18n.translateSkillDescription(id, extractSkillDescription(text))
+    const category = id.startsWith('karna-') ? 'writing' : 'productivity'
+    return {
+      id,
+      name: skillI18n.translateSkillName(id),
+      version: '1.0.0',
+      description,
+      category: skillI18n.translateCategory(category),
+      domains: id.startsWith('karna-') ? ['写作', 'Karna 官方'] : ['效率', '内置'],
+      tags: id.startsWith('karna-') ? ['Karna 官方', 'Writer OS'] : ['内置 Skill'],
+      language: 'zh-CN',
+      risk_level: 'low',
+      license: 'MIT',
+      is_enabled: enabledMap[id] !== false,
+      is_builtin: true,
+      source_pack: 'Karna 官方内置',
+      source_plugin: '',
+      plugin_id: 'karna.official-skills',
+      install_path: skillPath,
+      variants: ['内置版本'],
+      active_variant: '内置版本',
+      confidence: id.startsWith('karna-') ? 1 : 0.92
+    }
+  }).sort((a, b) => Number(b.id.startsWith('karna-')) - Number(a.id.startsWith('karna-')) || a.id.localeCompare(b.id))
+}
+
+function scanReleasePlugins() {
+  const root = firstExistingDir(releaseResourceCandidates('builtin-plugins'))
+  const state = readBackendJson('plugins.json', { version: 1, enabled: {} })
+  const enabledMap = normalizeStateMap(state.enabled)
+  return listDirs(root).map(dir => {
+    const manifest = readReleaseJsonFile(path.join(dir, 'karna-plugin.json'), {}) || {}
+    const id = String(manifest.id || path.basename(dir))
+    const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : []
+    return {
+      id,
+      name: KARNA_PLUGIN_NAME_ZH[id] || manifest.name || id,
+      version: manifest.version || '1.0.0',
+      publisher_id: 'karna',
+      publisher_name: 'Karna 官方',
+      description: KARNA_PLUGIN_DESC_ZH[id] || manifest.description || 'Karna 官方内置插件。',
+      category: '内置插件',
+      status: enabledMap[id] === false ? 'disabled' : 'active',
+      health_status: 'ready',
+      is_builtin: true,
+      is_active: enabledMap[id] !== false,
+      permissions,
+      permissions_granted: permissions,
+      permission_labels: permissions.map(permission => PERMISSION_ZH[permission] || permission),
+      platforms: ['windows'],
+      source_type: 'bundled',
+      source_url: 'karna://builtin',
+      sha256: '',
+      rollback_version: manifest.version || '1.0.0',
+      capabilities: Array.isArray(manifest.capabilities) ? manifest.capabilities : [],
+      entrypoints: manifest.entrypoints || {},
+      install_path: dir,
+      skills: [],
+      mcp_servers: [],
+      has_update: false
+    }
+  }).sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+}
+
+function releaseSkillPacks() {
+  const skills = scanReleaseSkills()
+  return [{
+    id: 'karna.official-skills',
+    version: '1.0.0',
+    category: 'Karna 官方',
+    name: 'Karna 官方内置 Skill 包',
+    description: 'Karna 随安装包离线提供的官方写作、研究、文档、浏览器和创作 Skill。',
+    skills_count: skills.length,
+    size_bytes: 0,
+    source_type: 'bundled',
+    source_url: 'karna://builtin-skills',
+    is_active: true,
+    skills
+  }]
+}
+
+function handleKarnaPluginPlatform(reqPath, method, body) {
+  if ((reqPath === '/api/karna/plugins' || reqPath.startsWith('/api/karna/plugins?')) && method === 'GET') {
+    return { ok: true, plugins: scanReleasePlugins() }
+  }
+  const pluginEnableMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/enable(?:\?|$)/)
+  if (pluginEnableMatch && method === 'POST') {
+    const id = decodeURIComponent(pluginEnableMatch[1])
+    const enabled = body?.enabled !== false
+    const state = readBackendJson('plugins.json', { version: 1, enabled: {} })
+    state.enabled = normalizeStateMap(state.enabled)
+    state.enabled[id] = enabled
+    writeBackendJson('plugins.json', state)
+    return { ok: true, plugin_id: id, enabled }
+  }
+  const pluginMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)$/)
+  if (pluginMatch && method === 'GET') {
+    const id = decodeURIComponent(pluginMatch[1])
+    const plugin = scanReleasePlugins().find(row => row.id === id)
+    return plugin || notConfigured('plugins', `插件不存在：${id}`)
+  }
+  if ((reqPath === '/api/karna/skills' || reqPath.startsWith('/api/karna/skills?')) && method === 'GET') {
+    return { ok: true, skills: scanReleaseSkills() }
+  }
+  const skillEnableMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/enable(?:\?|$)/)
+  if (skillEnableMatch && method === 'POST') {
+    const id = decodeURIComponent(skillEnableMatch[1])
+    const enabled = !reqPath.includes('enabled=false') && body?.enabled !== false
+    const state = readBackendJson('skills_state.json', { version: 1, enabled: {} })
+    state.enabled = normalizeStateMap(state.enabled)
+    state.enabled[id] = enabled
+    writeBackendJson('skills_state.json', state)
+    return { ok: true, skill_id: id, enabled }
+  }
+  if ((reqPath === '/api/karna/skill-packs' || reqPath.startsWith('/api/karna/skill-packs?')) && method === 'GET') {
+    return { ok: true, skill_packs: releaseSkillPacks() }
+  }
+  if (reqPath.includes('/preflight') || reqPath.includes('/install') || reqPath.includes('/update') || reqPath.includes('/rollback')) {
+    return notConfigured('plugins', '当前发行版仅支持离线内置插件和 Skill，在线扩展安装将在后续版本开放。')
+  }
+  return null
+}
+
 const resolveExecutable = command => {
   const cmd = String(command || '').trim()
   if (!cmd) return null
@@ -6864,6 +7087,15 @@ async function handleKarnaApiRequestImpl(request) {
   const method = (request?.method || 'GET').toUpperCase()
   const body = request?.body
   const timeoutMs = request?.timeoutMs || 30_000
+
+  if (
+    reqPath.startsWith('/api/karna/plugins') ||
+    reqPath.startsWith('/api/karna/skills') ||
+    reqPath.startsWith('/api/karna/skill-packs')
+  ) {
+    const result = handleKarnaPluginPlatform(reqPath, method, body)
+    if (result) return result
+  }
 
   // ---- Session endpoints (mock) ----
   if (reqPath.startsWith('/api/sessions/search')) {

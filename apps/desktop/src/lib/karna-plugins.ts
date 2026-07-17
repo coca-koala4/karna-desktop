@@ -280,12 +280,14 @@ export const CATEGORY_LABELS: Record<string, string> = {
   productivity: '生产力',
   'knowledge-management': '知识管理',
   'browser-automation': '浏览器自动化',
-  communication: '通讯',
+  communication: '通信',
   creative: '创意',
   data: '数据',
   development: '开发',
   system: '系统',
-  uncategorized: '未分类'
+  uncategorized: '未分类',
+  '内置插件': '内置插件',
+  'Karna 官方': 'Karna 官方'
 }
 
 export const HEALTH_STATUS_LABELS: Record<PluginHealthStatus, string> = {
@@ -310,15 +312,25 @@ export const HEALTH_STATUS_COLORS: Record<PluginHealthStatus, string> = {
 
 export const PERMISSION_LABELS: Record<string, string> = {
   'filesystem:project': '项目文件读写',
-  'process:bundled-runtime': '运行时进程',
+  'filesystem:read': '读取文件',
+  'filesystem:write': '写入文件',
+  'process:bundled-runtime': '内置运行时进程',
   'desktop:control': '桌面控制',
-  'browser:login': '浏览器登录态',
-  'email:read': '邮件读取',
-  'email:send': '邮件发送',
-  'calendar:read': '日历读取',
-  'calendar:write': '日历写入',
+  'screen:capture': '屏幕截图',
+  'browser:login': '浏览器登录会话',
+  'browser:isolated': '隔离浏览器',
+  'browser:login-session': '登录浏览器会话',
+  'email:read': '读取邮件',
+  'email:send': '发送邮件',
+  'email:modify': '修改邮件',
+  'calendar:read': '读取日历',
+  'calendar:write': '写入日历',
+  'network:request': '网络访问',
+  'network:local': '本地网络访问',
+  'oauth:desktop': '桌面 OAuth 授权',
+  'zotero:local': '本地 Zotero',
   network: '网络访问',
-  shell: 'Shell执行',
-  ocr: 'OCR识别',
+  shell: 'Shell 执行',
+  ocr: 'OCR 识别',
   clipboard: '剪贴板访问'
 }

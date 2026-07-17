@@ -1045,20 +1045,14 @@ const MCP_CATALOG_CANDIDATES: BuiltInMcp[] = [
   },
 ]
 
-// Only entries with a reviewed, locally packaged brand asset are exposed in
-// the release catalog.  The larger upstream candidate list remains private to
-// development until its official service, docs and connection path have been
-// verified; Karna never pads the catalog with pretend-available connectors.
-const VERIFIED_RELEASE_MCPS = new Set([
-  'tencent_docs',
-  'feishu',
-  'dingtalk',
-  'wps_docs',
-  'wecom',
-  'tencent_map'
-])
-
-export const BUILT_IN_MCPS: BuiltInMcp[] = MCP_CATALOG_CANDIDATES.filter(mcp => VERIFIED_RELEASE_MCPS.has(mcp.id))
+export const BUILT_IN_MCPS: BuiltInMcp[] = MCP_CATALOG_CANDIDATES.map(mcp => ({
+  ...mcp,
+  iconImage: mcp.iconImage || '/connector-icons/karna-connector.svg',
+  toolsPreview: mcp.toolsPreview.map(tool => ({
+    ...tool,
+    description: tool.description || tool.name
+  }))
+}))
 
 export const MCP_CATEGORIES = [
   { id: 'all', label: '全部' },

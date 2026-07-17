@@ -135,6 +135,31 @@ const CATEGORY_LABELS: Record<string, string> = {
   publishing: '发布平台',
 }
 
+const TOOL_LABEL_ZH: Record<string, string> = {
+  'tools/list': '列出工具',
+  'tools/call': '调用工具',
+  create_doc: '创建文档',
+  edit_doc: '编辑文档',
+  query_sheet: '查询表格',
+  search_doc: '搜索文档',
+  send_message: '发送消息',
+  calendar_event: '日程事件',
+  attendance_query: '考勤查询',
+  place_search: '地点搜索',
+  route_plan: '路线规划',
+  geocoding: '地址解析',
+  stock_quote: '行情查询',
+  stock_screen: '条件选股',
+  research_report: '研究报告',
+  portfolio_query: '自选股查询',
+  price_alert: '价格提醒',
+  simulate_trade: '模拟交易'
+}
+
+function toolDisplayName(name: string) {
+  return TOOL_LABEL_ZH[name] || name.replace(/_/g, ' ')
+}
+
 type ConnectorAvatarIconKind = 'writer' | 'story' | 'state' | 'wiki' | 'search' | 'soul' | 'obsidian' | 'zotero' | 'arxiv' | 'wechat' | 'wps' | 'baidu_netdisk' | 'web' | 'browser' | 'mcp' | 'location'
 type ConnectorAvatarConfig = {
   label: string
@@ -549,8 +574,8 @@ function ConnectorCard({ definition, instances, onAdd, onDetail }: { definition:
         {visibleTools.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {visibleTools.map(tool => (
-            <span className="max-w-[140px] truncate rounded-[2px] bg-[var(--theme-secondary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/60" key={tool.name}>
-              {tool.name}
+            <span className="max-w-[140px] truncate rounded-[2px] bg-[var(--theme-secondary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/60" key={tool.name} title={`${toolDisplayName(tool.name)} · ${tool.name}`}>
+              {toolDisplayName(tool.name)}
             </span>
           ))}
           {extraTools > 0 ? <span className="rounded-[2px] bg-[var(--theme-secondary)]/25 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/55">+{extraTools}</span> : null}
