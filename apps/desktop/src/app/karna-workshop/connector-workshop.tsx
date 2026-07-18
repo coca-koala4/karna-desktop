@@ -156,8 +156,12 @@ const TOOL_LABEL_ZH: Record<string, string> = {
   simulate_trade: '模拟交易'
 }
 
-function toolDisplayName(name: string) {
-  return TOOL_LABEL_ZH[name] || name.replace(/_/g, ' ')
+function toolDisplayName(name: string, description?: string) {
+  const localizedDescription = /[\u3400-\u9fff]/.test(description || '')
+    ? String(description).split(/[。；，]/)[0].trim()
+    : ''
+
+  return TOOL_LABEL_ZH[name] || localizedDescription || name.replace(/_/g, ' ')
 }
 
 const TOOL_DESC_ZH: Record<string, string> = {
@@ -194,28 +198,28 @@ const CONNECTOR_AVATARS: Record<string, ConnectorAvatarConfig> = {
   creative_search: { label: '创意检索', icon: 'search', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)', glow: 'rgba(245, 158, 11, 0.22)' },
   soul_workshop: { label: 'Soul 工坊', icon: 'soul', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)', glow: 'rgba(236, 72, 153, 0.22)' },
   obsidian_vault: { label: 'Obsidian', icon: 'obsidian', gradient: 'linear-gradient(135deg, #4c1d95, #8b5cf6)', glow: 'rgba(109, 40, 217, 0.24)', sourceUrl: 'https://obsidian.md/' },
-  wps_docs: { label: 'WPS Office', icon: 'wps', imageSrc: '/connector-icons/wps-office.webp', gradient: 'linear-gradient(135deg, #dc2626, #f97316)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=cn.wps.moffice_eng' },
-  baidu_netdisk: { label: 'Baidu Netdisk', icon: 'baidu_netdisk', imageSrc: '/connector-icons/baidu-netdisk.webp', gradient: 'linear-gradient(135deg, #1d4ed8, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.drive.app' },
+  wps_docs: { label: 'WPS Office', icon: 'wps', imageSrc: './connector-icons/wps-office.webp', gradient: 'linear-gradient(135deg, #dc2626, #f97316)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=cn.wps.moffice_eng' },
+  baidu_netdisk: { label: 'Baidu Netdisk', icon: 'baidu_netdisk', imageSrc: './connector-icons/baidu-netdisk.webp', gradient: 'linear-gradient(135deg, #1d4ed8, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.drive.app' },
   web_search: { label: '网页检索', icon: 'web', gradient: 'linear-gradient(135deg, #0ea5e9, #22c55e)', glow: 'rgba(14, 165, 233, 0.20)' },
-  browser_reader: { label: '浏览器阅读器', icon: 'browser', imageSrc: '/connector-icons/chrome.png', gradient: 'linear-gradient(135deg, #f97316, #f59e0b)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.android.chrome' },
-  feishu_docs: { label: '飞书文档', icon: 'browser', imageSrc: '/connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
-  tencent_docs: { label: '腾讯文档', icon: 'browser', imageSrc: '/connector-icons/tencent-docs.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1370780836' },
-  wechat_reading: { label: '微信读书', icon: 'browser', imageSrc: '/connector-icons/wechat-reading.jpg', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://apps.apple.com/app/id952059546' },
+  browser_reader: { label: '浏览器阅读器', icon: 'browser', imageSrc: './connector-icons/chrome.png', gradient: 'linear-gradient(135deg, #f97316, #f59e0b)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.android.chrome' },
+  feishu_docs: { label: '飞书文档', icon: 'browser', imageSrc: './connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
+  tencent_docs: { label: '腾讯文档', icon: 'browser', imageSrc: './connector-icons/tencent-docs.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1370780836' },
+  wechat_reading: { label: '微信读书', icon: 'browser', imageSrc: './connector-icons/wechat-reading.jpg', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://apps.apple.com/app/id952059546' },
   zotero_library: { label: 'Zotero', icon: 'zotero', gradient: 'linear-gradient(135deg, #b91c1c, #ef4444)', glow: 'rgba(185, 28, 28, 0.20)', sourceUrl: 'https://www.zotero.org/' },
   arxiv_search: { label: 'arXiv', icon: 'arxiv', gradient: 'linear-gradient(135deg, #991b1b, #7f1d1d)', glow: 'rgba(153, 27, 27, 0.20)', sourceUrl: 'https://arxiv.org/' },
-  feishu: { label: 'Feishu', icon: 'browser', imageSrc: '/connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
-  dingtalk: { label: 'DingTalk', icon: 'browser', imageSrc: '/connector-icons/dingtalk.png', gradient: 'linear-gradient(135deg, #0ea5e9, #2563eb)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.alibaba.android.rimet' },
-  wechat_work_bot: { label: 'WeCom', icon: 'browser', imageSrc: '/connector-icons/wecom.png', gradient: 'linear-gradient(135deg, #0ea5e9, #22c55e)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.tencent.wework' },
-  mail: { label: 'Mail', icon: 'browser', imageSrc: '/connector-icons/gmail.png', gradient: 'linear-gradient(135deg, #dc2626, #f97316)', glow: 'rgba(220, 38, 38, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.google.android.gm' },
-  calendar: { label: 'Calendar', icon: 'browser', imageSrc: '/connector-icons/google-calendar.png', gradient: 'linear-gradient(135deg, #2563eb, #22c55e)', glow: 'rgba(37, 99, 235, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.google.android.calendar' },
-  baidu_map: { label: 'Baidu Map', icon: 'browser', imageSrc: '/connector-icons/baidu-map.png', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.BaiduMap' },
-  amap: { label: 'Amap', icon: 'browser', imageSrc: '/connector-icons/amap.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.autonavi.minimap' },
+  feishu: { label: 'Feishu', icon: 'browser', imageSrc: './connector-icons/feishu.jpg', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://apps.apple.com/app/id1401729613' },
+  dingtalk: { label: 'DingTalk', icon: 'browser', imageSrc: './connector-icons/dingtalk.png', gradient: 'linear-gradient(135deg, #0ea5e9, #2563eb)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.alibaba.android.rimet' },
+  wechat_work_bot: { label: 'WeCom', icon: 'browser', imageSrc: './connector-icons/wecom.png', gradient: 'linear-gradient(135deg, #0ea5e9, #22c55e)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.tencent.wework' },
+  mail: { label: 'Mail', icon: 'browser', imageSrc: './connector-icons/gmail.png', gradient: 'linear-gradient(135deg, #dc2626, #f97316)', glow: 'rgba(220, 38, 38, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.google.android.gm' },
+  calendar: { label: 'Calendar', icon: 'browser', imageSrc: './connector-icons/google-calendar.png', gradient: 'linear-gradient(135deg, #2563eb, #22c55e)', glow: 'rgba(37, 99, 235, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.google.android.calendar' },
+  baidu_map: { label: 'Baidu Map', icon: 'browser', imageSrc: './connector-icons/baidu-map.png', gradient: 'linear-gradient(135deg, #2563eb, #60a5fa)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.baidu.BaiduMap' },
+  amap: { label: 'Amap', icon: 'browser', imageSrc: './connector-icons/amap.jpg', gradient: 'linear-gradient(135deg, #2563eb, #38bdf8)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.autonavi.minimap' },
   tencent_location: { label: '腾讯位置服务', icon: 'location', gradient: 'linear-gradient(135deg, #0ea5e9, #2563eb)', glow: 'rgba(14, 165, 233, 0.20)', sourceUrl: 'https://sj.qq.com/appdetail/com.tencent.map' },
   wechat_official: { label: '微信公众号', icon: 'wechat', gradient: 'linear-gradient(135deg, #16a34a, #22c55e)', glow: 'rgba(34, 197, 94, 0.20)', sourceUrl: 'https://weixin.qq.com/' },
-  zhihu: { label: 'Zhihu', icon: 'browser', imageSrc: '/connector-icons/zhihu.png', gradient: 'linear-gradient(135deg, #2563eb, #0ea5e9)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.zhihu.android' },
-  xiaohongshu: { label: 'Xiaohongshu', icon: 'browser', imageSrc: '/connector-icons/xiaohongshu.png', gradient: 'linear-gradient(135deg, #dc2626, #ef4444)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.xingin.xhs' },
-  wordpress: { label: 'WordPress', icon: 'browser', imageSrc: '/connector-icons/wordpress.png', gradient: 'linear-gradient(135deg, #1e40af, #0f172a)', glow: 'rgba(30, 64, 175, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=org.wordpress.android' },
-  substack: { label: 'Substack', icon: 'browser', imageSrc: '/connector-icons/substack.png', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.substack.app' },
+  zhihu: { label: 'Zhihu', icon: 'browser', imageSrc: './connector-icons/zhihu.png', gradient: 'linear-gradient(135deg, #2563eb, #0ea5e9)', glow: 'rgba(37, 99, 235, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.zhihu.android' },
+  xiaohongshu: { label: 'Xiaohongshu', icon: 'browser', imageSrc: './connector-icons/xiaohongshu.png', gradient: 'linear-gradient(135deg, #dc2626, #ef4444)', glow: 'rgba(220, 38, 38, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.xingin.xhs' },
+  wordpress: { label: 'WordPress', icon: 'browser', imageSrc: './connector-icons/wordpress.png', gradient: 'linear-gradient(135deg, #1e40af, #0f172a)', glow: 'rgba(30, 64, 175, 0.18)', sourceUrl: 'https://play.google.com/store/apps/details?id=org.wordpress.android' },
+  substack: { label: 'Substack', icon: 'browser', imageSrc: './connector-icons/substack.png', gradient: 'linear-gradient(135deg, #f97316, #ea580c)', glow: 'rgba(249, 115, 22, 0.20)', sourceUrl: 'https://play.google.com/store/apps/details?id=com.substack.app' },
   custom_mcp: { label: 'Custom MCP', icon: 'mcp', gradient: 'linear-gradient(135deg, #111827, #4b5563)', glow: 'rgba(17, 24, 39, 0.16)' },
 }
 
@@ -457,6 +461,11 @@ export function ConnectorWorkshopView() {
       <div className="grid gap-5 px-6 py-5">
         {error ? <div className="rounded-[3px] border border-[var(--dt-destructive)]/30 bg-[var(--dt-destructive)]/8 px-3 py-2 text-xs text-[var(--dt-destructive)]">加载失败：{error}</div> : null}
 
+        <div className="flex items-start gap-2 rounded-[3px] border border-amber-500/25 bg-amber-500/8 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          <Codicon className="mt-0.5 shrink-0 text-amber-600" name="info" size={14} />
+          <span>打开服务商接入页不代表已经授权。只有完成 OAuth 或凭据配置，并通过连接测试与 tools/list 工具发现后，连接器才会显示“已连接”。</span>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-4">
           <WorkshopMetric accent="emerald" label="已连接" value={stats.connected} />
           <WorkshopMetric accent="sky" label="启用工具" value={stats.enabledTools} />
@@ -507,7 +516,7 @@ export function ConnectorWorkshopView() {
               <div className="mt-2 rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/70 p-2 text-xs">
                 <div className="mb-1 text-muted-foreground">Intent: <span className="font-mono text-foreground">{routerResult.intent}</span></div>
                 <div className="flex flex-wrap gap-1">
-                  {(routerResult.tools || []).length === 0 ? <span className="text-muted-foreground">暂无候选工具；先连接对应连接器。</span> : routerResult.tools.map(tool => <WorkshopStatus key={tool.id || tool.name} tone="info">{toolDisplayName(tool.name)}</WorkshopStatus>)}
+                  {(routerResult.tools || []).length === 0 ? <span className="text-muted-foreground">暂无候选工具；先连接对应连接器。</span> : routerResult.tools.map(tool => <WorkshopStatus key={tool.id || tool.name} tone="info">{toolDisplayName(tool.name, tool.description)}</WorkshopStatus>)}
                 </div>
               </div>
             ) : null}
@@ -583,15 +592,16 @@ function ConnectorCard({ definition, instances, onAdd, onDetail }: { definition:
         <div className="flex flex-wrap gap-1">
           <span className="rounded-[2px] bg-[var(--theme-secondary)]/30 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/70 ring-1 ring-[var(--dt-border)]">{CATEGORY_LABELS[definition.category] || CATEGORY_LABEL[definition.category]}</span>
           <WorkshopStatus tone={RISK_TONE[risk]}>{RISK_LABEL[risk]}</WorkshopStatus>
-          {builtInMcp?.authMode === 'oauth' && <WorkshopStatus tone="success">一键授权</WorkshopStatus>}
+          {builtInMcp?.authMode === 'oauth' && <WorkshopStatus tone="warning">需服务商授权</WorkshopStatus>}
+          {builtInMcp?.authMode === 'api_key' && <WorkshopStatus tone="info">需配置凭据</WorkshopStatus>}
           {primary?.enabled === false ? <WorkshopStatus tone="warning">已禁用</WorkshopStatus> : null}
         </div>
 
         {visibleTools.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {visibleTools.map(tool => (
-            <span className="max-w-[140px] truncate rounded-[2px] bg-[var(--theme-secondary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/60" key={tool.name} title={`${toolDisplayName(tool.name)} · ${tool.name}`}>
-              {toolDisplayName(tool.name)}
+            <span className="max-w-[140px] truncate rounded-[2px] bg-[var(--theme-secondary)]/20 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/60" key={tool.name} title={`${toolDisplayName(tool.name, tool.description)} · ${tool.name}`}>
+              {toolDisplayName(tool.name, tool.description)}
             </span>
           ))}
           {extraTools > 0 ? <span className="rounded-[2px] bg-[var(--theme-secondary)]/25 px-1.5 py-0.5 text-[10px] font-medium text-[var(--theme-foreground)]/55">+{extraTools}</span> : null}
@@ -605,7 +615,7 @@ function ConnectorCard({ definition, instances, onAdd, onDetail }: { definition:
         onAdd={handleConnect}
         onDetail={primary ? () => onDetail(primary) : undefined}
         toolCount={toolCount}
-        isOauthBuiltIn={builtInMcp?.authMode === 'oauth'}
+        actionLabel={builtInMcp?.authMode === 'oauth' ? '打开接入页' : builtInMcp?.authMode === 'api_key' ? '配置凭据' : '连接'}
       />
     </article>
   )
@@ -628,13 +638,13 @@ function BuiltInMcpAvatar({ mcp }: { mcp: BuiltInMcp }) {
       {showImage ? (
         <img
           alt=""
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           draggable={false}
           onError={() => setImgError(true)}
           src={mcp.iconImage}
         />
       ) : (
-        <img alt="" className="h-full w-full object-cover" draggable={false} src="/connector-icons/karna-connector.svg" />
+        <img alt="" className="h-full w-full object-contain" draggable={false} src="./connector-icons/karna-connector.svg" />
       )}
     </div>
   )
@@ -695,7 +705,7 @@ function ConnectorAvatarIcon({ icon }: { icon: ConnectorAvatarIconKind }) {
   return <Codicon className="text-[19px]" name="server" />
 }
 
-function ConnectorCardFooter({ isConnected, needsCheck, onAdd, onDetail, toolCount, isOauthBuiltIn }: { isConnected: boolean; needsCheck: boolean; onAdd: () => void; onDetail?: () => void; toolCount: number; isOauthBuiltIn?: boolean }) {
+function ConnectorCardFooter({ isConnected, needsCheck, onAdd, onDetail, toolCount, actionLabel = '连接' }: { isConnected: boolean; needsCheck: boolean; onAdd: () => void; onDetail?: () => void; toolCount: number; actionLabel?: string }) {
 // Static UI copy sample: 工具 · 未连接
   const statusText = isConnected ? '已连接' : needsCheck ? '需检查' : '未连接'
 
@@ -708,7 +718,7 @@ function ConnectorCardFooter({ isConnected, needsCheck, onAdd, onDetail, toolCou
         </button>
       ) : (
         <button className="shrink-0 rounded-[2px] border border-[var(--theme-primary)]/40 bg-[var(--theme-primary)]/8 px-3.5 py-1.5 text-[11px] font-medium text-[var(--theme-primary)] transition-colors hover:bg-[var(--theme-primary)]/15 hover:border-[var(--theme-primary)]/60 focus:outline-none" onClick={onAdd} type="button">
-          {isOauthBuiltIn ? '一键授权' : '连接'}
+          {actionLabel}
         </button>
       )}
     </div>
@@ -957,7 +967,7 @@ function ConnectorDetailDrawer({ instance, onChanged, onClose }: { instance: Con
               <div className="grid gap-2">
                 {(current.discoveredTools || []).length === 0 ? <WorkshopEmpty>还没有发现工具。</WorkshopEmpty> : current.discoveredTools.map(tool => (
                   <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/70 p-2 text-xs" key={tool.id || tool.name}>
-                    <div><div className="font-medium text-foreground">{toolDisplayName(tool.name)} <span className="font-mono text-[10px] text-muted-foreground">{tool.name}</span></div><p className="mt-0.5 text-muted-foreground">{toolDisplayDescription(tool)}</p></div>
+                    <div><div className="font-medium text-foreground">{toolDisplayName(tool.name, tool.description)} <span className="font-mono text-[10px] text-muted-foreground">{tool.name}</span></div><p className="mt-0.5 text-muted-foreground">{toolDisplayDescription(tool)}</p></div>
                     <div className="flex items-center gap-2">
                       <WorkshopStatus tone={RISK_TONE[tool.riskLevel || 'low']}>{RISK_LABEL[tool.riskLevel || 'low']}</WorkshopStatus>
                       <Button disabled={!tool.id || tool.enabled === false} onClick={() => setCallTarget(tool)} size="xs" variant="outline">调用</Button>
@@ -1090,7 +1100,7 @@ function ToolCallModal({ tool, projects, onCalled, onClose }: { tool: ConnectorT
       <div className="grid gap-3">
         <div className="rounded-[3px] border border-(--ui-stroke-tertiary) bg-background/60 p-3 text-xs text-muted-foreground">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{toolDisplayName(tool.name)} <span className="font-mono text-[11px] text-muted-foreground">{tool.name}</span></span>
+            <span className="font-medium text-foreground">{toolDisplayName(tool.name, tool.description)} <span className="font-mono text-[11px] text-muted-foreground">{tool.name}</span></span>
             <WorkshopStatus tone={RISK_TONE[tool.riskLevel || 'low']}>{RISK_LABEL[tool.riskLevel || 'low']}</WorkshopStatus>
             <WorkshopStatus tone="info">{tool.source || 'connector'}</WorkshopStatus>
           </div>

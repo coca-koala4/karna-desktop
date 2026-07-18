@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 1,
+  "policy": "Official site icon when retrievable; otherwise Karna neutral connector icon. No runtime hotlinks.",
+  "items": [
+    {
+      "id": "tongdaxin",
+      "pageUrl": "https://www.tdx.com.cn/",
+      "assetUrl": "https://www.tdx.com.cn/templates/tdxOfficial/images/favicon.ico",
+      "localPath": "/connector-icons/mcp/tongdaxin.png",
+      "status": "official",
+      "sha256": "0cf152735c36e21fdd7f8f7313abc79499072cffe871f2a3ffedae391f8f82e9",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_zixuan",
+      "pageUrl": "https://stockapp.finance.qq.com/",
+      "assetUrl": "https://st.gtimg.com/quotes_center/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_zixuan.png",
+      "status": "official",
+      "sha256": "9806da4a7d4923a9c6527a1e100170dc1ab1faec953c4c0e44b9faec2a9dc4c8",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "hengshengyuan",
+      "pageUrl": "https://website.gildata.com/about/about-us.html",
+      "assetUrl": "https://website.gildata.com/assets/logo-DSZmfQOO.png",
+      "localPath": "/connector-icons/mcp/hengshengyuan.png",
+      "status": "official",
+      "sha256": "8b9f82d4d59eee915d172af0c0f1be222920d8f8c1c4cf42ec974452b0c5a124",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "qq_mail",
+      "pageUrl": "https://service.mail.qq.com/",
+      "assetUrl": "https://mail.qq.com/zh_CN/htmledition/images/favicon/qqmail_favicon_32h.png",
+      "localPath": "/connector-icons/mcp/qq_mail.png",
+      "status": "official",
+      "sha256": "3b0be2f50caa1525eac12322d43725aa2f7c6eccea8b2b315b02cd6172c97b45",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "netease_mail",
+      "pageUrl": "https://mail.163.com/",
+      "assetUrl": "https://mail.163.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/netease_mail.png",
+      "status": "official",
+      "sha256": "2509a22b24d1e9efa500dc4f133257f8a3cbeba0e6f7385e90528a6ad3fff226",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "ima_kb",
+      "pageUrl": "https://ima.qq.com/",
+      "assetUrl": "https://static.ima.qq.com/ima/assets/chat/favicon.svg",
+      "localPath": "/connector-icons/mcp/ima_kb.svg",
+      "status": "official",
+      "sha256": "79f5f565ad0d31c2b3a0f61f3647756abe43bb6a264c7b229f212734662bc1f8",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "lexiang_kb",
+      "pageUrl": "https://lexiang.tencent.com/",
+      "assetUrl": "https://lexiang.tencent.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/lexiang_kb.png",
+      "status": "official",
+      "sha256": "75304021c0ebcca8281592feeb7e1430463701281f597f244c29e0c4fd7547fd",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_docs",
+      "pageUrl": "https://docs.qq.com/",
+      "assetUrl": "https://docs.idqqimg.com/tim/docs/desktop/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_docs.png",
+      "status": "official",
+      "sha256": "e0e31153895e0978308b012c9f7a56c0896aa10acff5c1902d1fb282735aefc6",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "feishu",
+      "pageUrl": "https://open.feishu.cn/",
+      "assetUrl": "https://lf-package-cn.feishucdn.com/obj/feishu-static/lark/open/website/favicon.png",
+      "localPath": "/connector-icons/mcp/feishu.png",
+      "status": "official",
+      "sha256": "9ace9ec7fa7b4f6e1b48fae1e6435f7f8ae041043a5d4dca725e592a559a9432",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "dingtalk",
+      "pageUrl": "https://open.dingtalk.com/",
+      "assetUrl": "https://open.dingtalk.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/dingtalk.png",
+      "status": "official",
+      "sha256": "745f3faad6ead9d8c384cb8c6f5af0841e2596b1b7a715ea99b2daaac12ca1ba",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "wps_docs",
+      "pageUrl": "https://www.kdocs.cn/newDownload",
+      "assetUrl": "https://qn.cache.wpscdn.cn/kdocs/mobile/touch/apple-180.png",
+      "localPath": "/connector-icons/mcp/wps_docs.png",
+      "status": "official",
+      "sha256": "ca010ee12ab3231ac90b26880775630b7689e1a95115e5f54b7b51c68f94a244",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "notion",
+      "pageUrl": "https://developers.notion.com/guides/get-started/overview",
+      "assetUrl": "https://developers.notion.com/mintlify-assets/_mintlify/favicons/notion-demo/1PaJq9z3waub4TpE/_generated/favicon/apple-touch-icon.png",
+      "localPath": "/connector-icons/mcp/notion.png",
+      "status": "official",
+      "sha256": "4ed2c017f0f381a57ea9c0a275dfb70b855e93044923ae637869c442511d0373",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "zhishixingqiu",
+      "pageUrl": "https://www.zsxq.com/",
+      "assetUrl": "https://www.zsxq.com/favicon_32.ico",
+      "localPath": "/connector-icons/mcp/zhishixingqiu.png",
+      "status": "official",
+      "sha256": "0352a56dfb836f9d9f29495212b832438466286ff178f84b9cd34c462183d35c",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_meeting",
+      "pageUrl": "https://meeting.tencent.com/",
+      "assetUrl": "https://cdn.meeting.tencent.com/assets/next-website/logo128.png",
+      "localPath": "/connector-icons/mcp/tencent_meeting.png",
+      "status": "official",
+      "sha256": "db6ecabde5d45095807b516f65f9d0a503ac0ab5a245f22ecd8201e69ab05691",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "wecom",
+      "pageUrl": "https://developer.work.weixin.qq.com/",
+      "assetUrl": "https://developer.work.weixin.qq.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/wecom.png",
+      "status": "official",
+      "sha256": "732cb3739c0ebd1ae895ec9022f6717e08e5e96bdcad3edc63839ece0e1e6867",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_wenjuan",
+      "pageUrl": "https://wj.qq.com/",
+      "assetUrl": "https://wj-assets.gtimg.com/apple-touch-icon.png",
+      "localPath": "/connector-icons/mcp/tencent_wenjuan.png",
+      "status": "official",
+      "sha256": "855093db2a8b9cdf4c9eab465b6abba09c21b3ef7cbd9707529c71344239eafa",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tapd",
+      "pageUrl": "https://www.tapd.cn/",
+      "assetUrl": "https://www.tapd.cn/favicon_new.png",
+      "localPath": "/connector-icons/mcp/tapd.png",
+      "status": "official",
+      "sha256": "fcb27902a1ffdd5b1fe047b83746df3286d7e70f669ab8826d77069c7be63352",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "cnb",
+      "pageUrl": "https://cnb.cool/",
+      "assetUrl": "https://cnb.cool/images/favicon.png",
+      "localPath": "/connector-icons/mcp/cnb.png",
+      "status": "official",
+      "sha256": "126b53e4bfb6fdb9634c867485a59848e96f3b2af54f1ab0960f84038f8e9e8e",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "github",
+      "pageUrl": "https://docs.github.com/en/rest",
+      "assetUrl": "https://docs.github.com/assets/cb-345/images/site/favicon.png",
+      "localPath": "/connector-icons/mcp/github.png",
+      "status": "official",
+      "sha256": "eaa0a637b5fcc7deeca6355a92254fbde05bb216616b8659a00bfc31498f7924",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_cloudbase",
+      "pageUrl": "https://cloud.tencent.com/product/tcb",
+      "assetUrl": "https://cloudcache.tencent-cloud.com/qcloud/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_cloudbase.png",
+      "status": "official",
+      "sha256": "7bf3445086dda3848f98bcf37aa0229f105d5564bc551a2579eb1464081b1e1e",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "edgeone_makers",
+      "pageUrl": "https://edgeone.ai/",
+      "assetUrl": "https://edgeone.ai/128.png",
+      "localPath": "/connector-icons/mcp/edgeone_makers.png",
+      "status": "official",
+      "sha256": "1442019f53a0b5c0efdb53d4262d87c6443ebf0b8e5b64c9989a3d421da51571",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "bugly",
+      "pageUrl": "https://bugly.qq.com/v2/",
+      "assetUrl": "https://bugly.qq.com/v2/images/bugly_b.ico?v=20260710192159",
+      "localPath": "/connector-icons/mcp/bugly.png",
+      "status": "official",
+      "sha256": "c32d42d532a5b09e5b541a874e1ac652c6b22ddce09613cd5cd9f4d44920db07",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "weiyun",
+      "pageUrl": "https://www.weiyun.com/",
+      "assetUrl": "https://img.weiyun.com/vipstyle/nr/box/img/favicon.ico?max_age=31536000",
+      "localPath": "/connector-icons/mcp/weiyun.png",
+      "status": "official",
+      "sha256": "d94ef9c482968b137792b70eb9ceafef7f6145b1351599fb617f9bd63fe29956",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "beidafabao",
+      "pageUrl": "https://www.pkulaw.com/",
+      "assetUrl": "https://www.pkulaw.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/beidafabao.png",
+      "status": "official",
+      "sha256": "58af747a5fd161e735396dab088170393aa6dff204938689f4fc02e02f676be3",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "qichacha",
+      "pageUrl": "https://www.qcc.com/",
+      "assetUrl": "https://qcc-static.qcc.com/resources/web/omaterial/favicon.png",
+      "localPath": "/connector-icons/mcp/qichacha.png",
+      "status": "official",
+      "sha256": "9f2a2180fd0ad95e03ae309fc2807b8921b67f4df1571169b04af62207461e5d",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tianyancha",
+      "pageUrl": "https://www.tianyancha.com/",
+      "assetUrl": "https://cdn.tianyancha.com/wap/images/18blue/weixinlogo.png",
+      "localPath": "/connector-icons/mcp/tianyancha.png",
+      "status": "official",
+      "sha256": "d2bbd3cf1ff1fe9f90dafe05fe8e6dca85424e7c951f379b46a71062641350be",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "huayuyuandian",
+      "pageUrl": "https://yuandian.ailaw.cn/LearnAboutTheMetaClassic/index.html",
+      "assetUrl": "https://yuandian.ailaw.cn/favicon.ico",
+      "localPath": "/connector-icons/mcp/huayuyuandian.png",
+      "status": "official",
+      "sha256": "b4e2632ea8dc9f5ccf69b0438194d5189c8ea5ca98332769c61767a7ffac1de8",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "weikeyansuo",
+      "pageUrl": "https://law.wkinfo.com.cn/",
+      "assetUrl": "https://law.wkinfo.com.cn/assets/icon/android-icon-192x192.png",
+      "localPath": "/connector-icons/mcp/weikeyansuo.png",
+      "status": "official",
+      "sha256": "094ab99caf70c53219a85d3672423ac552f026bd8ef12e49b601a6a6ca92270e",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "fayan",
+      "pageUrl": "https://www.faxin.cn/",
+      "assetUrl": "https://www.faxin.cn/favicon.ico",
+      "localPath": "/connector-icons/mcp/fayan.png",
+      "status": "official",
+      "sha256": "8ee9c367c8ed36432f2d84391b7b9bb6e2d350b8a240cbcb977661f39581b819",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_qidian",
+      "pageUrl": "https://qidian.qq.com/",
+      "assetUrl": "https://bqq.gtimg.com/qidian/src/themes/blue/common/images/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_qidian.png",
+      "status": "official",
+      "sha256": "e8c707315ea26f45565ddc9ec6c1525961b2042d38310a4885e080eac67a817d",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "xiaoshouyi",
+      "pageUrl": "https://www.xiaoshouyi.com/",
+      "assetUrl": "https://www.xiaoshouyi.com/wp-content/uploads/2021/09/logo_32_32.png",
+      "localPath": "/connector-icons/mcp/xiaoshouyi.png",
+      "status": "official",
+      "sha256": "bbb34a0071253001a321c3feec2238ec628988751abbf9669e9a6b07bc7d1124",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "xiaoe_tong",
+      "pageUrl": "https://www.xiaoe-tech.com/",
+      "assetUrl": "https://commonresource-1252524126.cdn.xiaoeknow.com/image/lhyaurs50zil.ico",
+      "localPath": "/connector-icons/mcp/xiaoe_tong.png",
+      "status": "official",
+      "sha256": "db34216b77f7113ac49bb8ec033998b193cd76401fad06f4ad5af91ae97005fa",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "weisheng_qiweiguanjia",
+      "pageUrl": "https://www.wshoto.com/",
+      "assetUrl": "official-page-element:img[alt=\"??????\"]",
+      "localPath": "/connector-icons/mcp/weisheng_qiweiguanjia.png",
+      "status": "official-capture",
+      "sha256": "ba6eafe16854bdde46febc3dac19e9e96f453a9be54b939c6c4c4118ed151a2a",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_marketing",
+      "pageUrl": "https://developers.e.qq.com/",
+      "assetUrl": "https://developers.e.qq.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_marketing.png",
+      "status": "official",
+      "sha256": "8f22c108bf455009fbccf7835be45b31774e5df1239331420333c22f4d240ab5",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "canva",
+      "pageUrl": "https://www.canva.cn/developers/",
+      "assetUrl": "https://static.canva.cn/domain-assets/canva/static/images/android-192x192-2.png",
+      "localPath": "/connector-icons/mcp/canva.png",
+      "status": "official",
+      "sha256": "cea3293f857040fc41bf8af906777ccd1f45955378f4cd42631aea73cdd8d469",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "mastergo",
+      "pageUrl": "https://mastergo.com/",
+      "assetUrl": "https://mastergo.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/mastergo.png",
+      "status": "official",
+      "sha256": "f4c20826a1d42db9f55a776fcc31a5a21be7281fdae5f68311dfc27bef9d2856",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_map",
+      "pageUrl": "https://lbs.qq.com/",
+      "assetUrl": "https://industry.map.qq.com/cloud/lbs/logo/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_map.png",
+      "status": "official",
+      "sha256": "a690f540f537eb0541ea327316987e70b7b23388e99547a8908878fdebbc2414",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "quyu_dongcha",
+      "pageUrl": "https://lbs.qq.com/",
+      "assetUrl": "https://industry.map.qq.com/cloud/lbs/logo/favicon.ico",
+      "localPath": "/connector-icons/mcp/quyu_dongcha.png",
+      "status": "official",
+      "sha256": "a690f540f537eb0541ea327316987e70b7b23388e99547a8908878fdebbc2414",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "ctrip_wendao",
+      "pageUrl": "https://www.ctrip.com/",
+      "assetUrl": "https://www.ctrip.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/ctrip_wendao.png",
+      "status": "official",
+      "sha256": "47de78fcfb6879af854764e08374ebd571d6229dd5b218877d562f7ddcadc6fc",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tongchengxin",
+      "pageUrl": "https://www.ly.com/",
+      "assetUrl": "https://www.ly.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/tongchengxin.png",
+      "status": "official",
+      "sha256": "a65960ec5c830393871eeb1f9e15abc24539e427df28c02919f135c65e47e044",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "agentkey",
+      "pageUrl": "https://agentkey.app/",
+      "assetUrl": "https://agentkey.app/local-assets/site/apple-touch-icon.png?v=b4e61ebe",
+      "localPath": "/connector-icons/mcp/agentkey.png",
+      "status": "official",
+      "sha256": "edfe867cfe8eac47bdbacda4bee6c283758a16b35f6cf1fd7d3e4f5b8fd4a50c",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "qixinhuiyan",
+      "pageUrl": "https://www.qixin.com/",
+      "assetUrl": "https://c-cdn.qixin.com/web/favicon.ico",
+      "localPath": "/connector-icons/mcp/qixinhuiyan.png",
+      "status": "official",
+      "sha256": "908de0ce86fcbafc40a7bb5b0e06c5981b1d38cf5b8d5194046a6d15672fb596",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "zhuiya",
+      "pageUrl": "https://www.zhihuiya.com/",
+      "assetUrl": "https://static-official.zhihuiya.com/assets/home/images/2024/favicon.ico",
+      "localPath": "/connector-icons/mcp/zhuiya.png",
+      "status": "official",
+      "sha256": "e56439d83f899efd4935039036b4fc9e8deae999e70a5d9db276a12186793a92",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "tencent_health",
+      "pageUrl": "https://healthcare.tencent.com/production/3",
+      "assetUrl": "https://healthcare.tencent.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/tencent_health.png",
+      "status": "official",
+      "sha256": "8b6bcbc13c5eecdb8902a2dcb1fed7211d2c939b632768f4f5b262d967da4089",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "sunflower_remote",
+      "pageUrl": "https://sunlogin.oray.com/",
+      "assetUrl": "https://sunlogin.oray.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/sunflower_remote.png",
+      "status": "official",
+      "sha256": "865e97812acccd5dfd184b03c5b01ed2d9bde836bf4f4f2b819de4f6691d64ed",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "qingliu",
+      "pageUrl": "https://qingflow.com/",
+      "assetUrl": "https://qingflow.com/favicon.ico",
+      "localPath": "/connector-icons/mcp/qingliu.png",
+      "status": "official",
+      "sha256": "50fcd76666ef2b1b07d5ac9432e524f10caecc7ab1412a8068c5f53474abffd6",
+      "checkedAt": "2026-07-18"
+    },
+    {
+      "id": "zhongxingxinyun",
+      "pageUrl": "https://www.ztccloud.com.cn/",
+      "assetUrl": "https://qty83k.creatby.com/sites/33005/favicon/75db27acb8a648d4c0d3edd854890760.ico",
+      "localPath": "/connector-icons/mcp/zhongxingxinyun.png",
+      "status": "official",
+      "sha256": "3234132062a85cffbaef3a51f733e4a93b8d7baed6f25de9204dd4ad789d509a",
+      "checkedAt": "2026-07-18"
+    }
+  ]
+}

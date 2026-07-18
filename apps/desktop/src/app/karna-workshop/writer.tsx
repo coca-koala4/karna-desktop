@@ -331,7 +331,7 @@ export function WriterWorkshopFullView() {
     { key: 'graph', label: '知识图谱', icon: 'git-branch' },
     { key: 'character-graph', label: '人物关系图', icon: 'git-pull-request' },
     { key: 'timeline', label: '时间轴', icon: 'clock' },
-    { key: 'state', label: '叙事状态', icon: 'activity' },
+    { key: 'state', label: '叙事状态', icon: 'pulse' },
     { key: 'critic', label: '评审委员会', icon: 'checklist' },
     { key: 'safety', label: '安全与版权', icon: 'shield' },
     { key: 'memory', label: '创作记忆', icon: 'database' },
@@ -1691,7 +1691,7 @@ function NarrativeStateView({ data, onRun }: any) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold flex items-center gap-2 text-[var(--theme-foreground)]">
-          <Codicon className="text-[var(--theme-primary)]" name="activity" size={20} />
+          <Codicon className="text-[var(--theme-primary)]" name="pulse" size={20} />
           叙事状态引擎
         </h3>
         <Button className="bg-[var(--theme-primary)] hover:opacity-90" onClick={() => onRun('state')} size="sm"><Codicon className="mr-1" name="refresh" size={14} /> 构建叙事状态</Button>
