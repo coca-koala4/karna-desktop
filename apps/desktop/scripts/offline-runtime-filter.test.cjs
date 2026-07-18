@@ -24,3 +24,9 @@ test('offline runtime still rejects tests, caches, user data and source control'
   assert.equal(shouldIncludeOfflineRuntimePath('karna-data/config.json'), false)
   assert.equal(shouldIncludeOfflineRuntimePath('.git/config'), false)
 })
+
+test('offline runtime rejects generated metadata from an earlier staged bundle', () => {
+  assert.equal(shouldIncludeOfflineRuntimePath('runtime-manifest.json'), false)
+  assert.equal(shouldIncludeOfflineRuntimePath('.karna-offline-runtime.json'), false)
+  assert.equal(shouldIncludeOfflineRuntimePath('active-version'), false)
+})

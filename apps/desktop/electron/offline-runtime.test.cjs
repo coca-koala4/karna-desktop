@@ -62,3 +62,17 @@ test('offline runtime async worker installs without blocking caller API', async 
   const installed = await installOfflineRuntimeAsync({ bundleRoot: bundle, runtimeHome: path.join(root, 'runtime'), version: '1' })
   assert.equal(fs.existsSync(path.join(installed, 'hermes-agent', 'hermes_cli', '__init__.py')), true)
 })
+
+test('offline runtime rejects a manifest that includes itself', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'karna-offline-runtime-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  fs.writeFileSync(
+    path.join(root, 'runtime-manifest.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      desktopVersion: '1',
+      files: [{ path: 'runtime-manifest.json', sha256: '0'.repeat(64) }]
+    })
+  )
+  assert.throws(() => verifyBundle(root, '1'))
+})

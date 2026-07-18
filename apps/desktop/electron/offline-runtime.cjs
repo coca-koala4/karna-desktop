@@ -32,7 +32,9 @@ function verifyBundle(bundleRoot, expectedVersion) {
   }
   for (const item of manifest.files) {
     const relative = String(item.path || '').replaceAll('\\', '/')
-    if (!relative || relative.startsWith('/') || relative.includes('../')) throw new Error('离线运行时清单包含非法路径。')
+    if (!relative || relative.startsWith('/') || relative.includes('../') || relative === 'runtime-manifest.json') {
+      throw new Error('离线运行时清单包含非法路径。')
+    }
     const file = path.join(bundleRoot, ...relative.split('/'))
     if (!fs.statSync(file).isFile() || sha256(file) !== item.sha256) {
       throw new Error(`离线运行时校验失败：${relative}`)

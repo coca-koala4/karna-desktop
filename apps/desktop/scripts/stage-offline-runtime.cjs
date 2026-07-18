@@ -76,6 +76,7 @@ function collectManifestFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name)
     const relative = path.relative(target, absolute).replaceAll('\\', '/')
+    if (!shouldIncludeOfflineRuntimePath(relative)) continue
     if (entry.isDirectory()) collectManifestFiles(absolute)
     else if (entry.isFile()) {
       const stat = fs.statSync(absolute)
