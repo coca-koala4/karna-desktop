@@ -32,9 +32,25 @@ Var KarnaRemoveUserData
   StrCpy $KarnaAutostart ${BST_UNCHECKED}
   StrCpy $KarnaDesktopShortcut ${BST_CHECKED}
   StrCpy $KarnaIsUpdate ""
-  ${GetOptions} "$CMDLINE" "--updated" $KarnaIsUpdate
-  ${If} $KarnaIsUpdate == ""
-    ${GetOptions} "$CMDLINE" "/updated" $KarnaIsUpdate
+  ${If} ${isUpdated}
+    StrCpy $KarnaIsUpdate "1"
+  ${EndIf}
+
+  ${If} ${FileExists} "$INSTDIR\runtime\*.*"
+    ; electron-builder's update uninstaller atomically removes the complete
+    ; old $INSTDIR, including the legacy runtime folder that Karna <= 1.1.1
+    ; used for mutable user data. Migrate before that uninstaller runs. The
+    ; path check also protects users who manually run the installer without
+    ; electron-updater's --updated flag.
+    InitPluginsDir
+    File /oname=$PLUGINSDIR\karna-migrate-user-data.ps1 "${PROJECT_DIR}\assets\migrate-user-data.ps1"
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\karna-migrate-user-data.ps1" -LegacyRoot "$INSTDIR\runtime" -TargetRoot "$APPDATA\Karna\agent-data"'
+    Pop $0
+    Pop $1
+    ${If} $0 != 0
+      MessageBox MB_ICONSTOP "Karna 无法在更新前安全迁移用户数据。为避免数据丢失，更新已停止。请保留当前版本并联系支持。错误代码：$0"
+      Abort
+    ${EndIf}
   ${EndIf}
 !macroend
 
@@ -182,6 +198,10 @@ Function un.KarnaUninstallOptionsLeave
   ${If} $KarnaRemovePlugins == ${BST_CHECKED}
     RMDir /r "$APPDATA\Karna\plugins"
     RMDir /r "$APPDATA\Karna\karna-data\plugins"
+    RMDir /r "$APPDATA\Karna\karna-data\user-skills"
+    RMDir /r "$APPDATA\Karna\agent-data\plugins"
+    RMDir /r "$APPDATA\Karna\agent-data\mcp-installs"
+    RMDir /r "$APPDATA\Karna\agent-data\skill-bundles"
     RMDir /r "$LOCALAPPDATA\Karna\plugins"
   ${EndIf}
 

@@ -75,6 +75,7 @@ const { fetchMarketplaceThemes, searchMarketplaceThemes } = require('./vscode-ma
 const { buildDesktopBackendEnv, normalizeHermesHomeRoot } = require('./backend-env.cjs')
 const { readWindowsUserEnvVar } = require('./windows-user-env.cjs')
 const { resolveKarnaRuntimeHome } = require('./karna-runtime-home.cjs')
+const { migrateLegacyRuntimeUserData, resolveKarnaAgentDataHome } = require('./karna-user-data.cjs')
 const { installOfflineRuntimeAsync } = require('./offline-runtime.cjs')
 const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
@@ -341,8 +342,9 @@ if (INSTALL_STAMP) {
   )
 }
 
-// HERMES_HOME — the user-facing root for everything Hermes-related. Mirrors
-// scripts/install.ps1's $HermesHome and scripts/install.sh's $HERMES_HOME.
+// RUNTIME_HOME is replaceable application code. HERMES_HOME below is mutable
+// per-user agent state. Development keeps the historical single-root layout;
+// packaged Karna deliberately separates the two.
 //
 // Defaults:
 //   Windows: %LOCALAPPDATA%\hermes (matches install.ps1)
@@ -353,10 +355,10 @@ if (INSTALL_STAMP) {
 // %LOCALAPPDATA%\hermes yet, prefer the legacy path so we don't orphan their
 // existing config / sessions / .env. New installs go to %LOCALAPPDATA%.
 //
-// HERMES_DESKTOP_USER_DATA_DIR (used by test:desktop:fresh) puts the sandbox
-// HERMES_HOME beneath the throwaway userData dir so a fresh-install run never
+// HERMES_DESKTOP_USER_DATA_DIR (used by test:desktop:fresh) puts both roots
+// beneath the throwaway userData dir so a fresh-install run never
 // touches the user's real ~/.hermes / %LOCALAPPDATA%\hermes.
-function resolveHermesHome() {
+function resolveRuntimeHome() {
   return resolveKarnaRuntimeHome({
     env: process.env,
     isPackaged: IS_PACKAGED,
@@ -370,30 +372,61 @@ function resolveHermesHome() {
   })
 }
 
-const HERMES_HOME = resolveHermesHome()
+// Keep replaceable binaries beside the user-selected installation, while all
+// mutable agent state lives under %APPDATA%/Karna. Before 1.1.2 these were the
+// same directory, so an NSIS reinstall could remove sessions/config alongside
+// application files.
+const RUNTIME_HOME = resolveRuntimeHome()
+const HERMES_HOME = resolveKarnaAgentDataHome({
+  env: process.env,
+  isPackaged: IS_PACKAGED,
+  userDataPath: app.getPath('userData'),
+  userDataOverride: USER_DATA_OVERRIDE,
+  legacyHome: RUNTIME_HOME,
+  normalize: normalizeHermesHomeRoot
+})
+if (IS_PACKAGED) {
+  try {
+    const migration = migrateLegacyRuntimeUserData({ legacyRuntimeHome: RUNTIME_HOME, targetHome: HERMES_HOME })
+    if (migration.files) console.log(`[karna] preserved ${migration.files} legacy user-data files before runtime update`)
+  } catch (error) {
+    // Data migration is safety-critical: continuing with an empty home would
+    // look like data loss and could lead the user to overwrite their setup.
+    throw new Error(`Karna user-data migration failed: ${error.message}`)
+  }
+}
 
 function migratePlaintextModelCredentials() {
   if (!IS_PACKAGED || !safeStorage?.isEncryptionAvailable()) return { migrated: 0 }
-  const envFile = path.join(HERMES_HOME, '.env')
-  if (!fs.existsSync(envFile)) return { migrated: 0 }
-  const source = fs.readFileSync(envFile, 'utf8')
-  const lines = source.split(/\r?\n/)
-  const kept = []
+  const envFiles = [...new Set([path.join(HERMES_HOME, '.env'), path.join(RUNTIME_HOME, '.env')])]
   let migrated = 0
-  for (const line of lines) {
-    const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
-    const key = match?.[1] || ''
-    if (!/^[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN)$/.test(key)) {
-      kept.push(line)
-      continue
+  for (const envFile of envFiles) {
+    if (!fs.existsSync(envFile)) continue
+    const source = fs.readFileSync(envFile, 'utf8')
+    const lines = source.split(/\r?\n/)
+    const kept = []
+    let fileHadCredentials = false
+    for (const line of lines) {
+      const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
+      const key = match?.[1] || ''
+      if (!/^[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN)$/.test(key)) {
+        kept.push(line)
+        continue
+      }
+      let value = String(match?.[2] || '').trim()
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1)
+      if (value && !modelCredentialStore.get(key)) modelCredentialStore.set(key, value)
+      if (value) migrated += 1
+      fileHadCredentials = true
     }
-    let value = String(match?.[2] || '').trim()
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1)
-    if (value && !modelCredentialStore.get(key)) modelCredentialStore.set(key, value)
-    migrated += value ? 1 : 0
+    // Scrub both the new stable copy and the legacy install-root copy. Leaving
+    // the latter behind would keep a plaintext secret under $INSTDIR until a
+    // later installer happened to remove it.
+    if (fileHadCredentials) {
+      fs.writeFileSync(envFile, `${kept.join('\n').replace(/\n+$/, '')}\n`, { encoding: 'utf8', mode: 0o600 })
+    }
   }
   if (migrated) {
-    fs.writeFileSync(envFile, `${kept.join('\n').replace(/\n+$/, '')}\n`, { encoding: 'utf8', mode: 0o600 })
     fs.writeFileSync(
       path.join(path.dirname(modelCredentialStore.file), 'migration.json'),
       `${JSON.stringify({ schemaVersion: 1, migratedAt: new Date().toISOString(), count: migrated }, null, 2)}\n`,
@@ -405,14 +438,14 @@ function migratePlaintextModelCredentials() {
 
 const RUNTIME_VERSION = app.getVersion()
 const ACTIVE_RUNTIME_VERSION_ROOT = IS_PACKAGED
-  ? path.join(HERMES_HOME, 'versions', RUNTIME_VERSION)
+  ? path.join(RUNTIME_HOME, 'versions', RUNTIME_VERSION)
   : HERMES_HOME
 
 function hermesManagedNodePathEntries() {
   // NOTE: keep this ordering in sync with iter_hermes_node_dirs() in
   // hermes_constants.py — this Node main process cannot import the Python
   // module, so the platform-ordering rule is mirrored here.
-  const root = path.join(HERMES_HOME, 'node')
+  const root = path.join(RUNTIME_HOME, 'node')
   const bin = path.join(root, 'bin')
   const entries = IS_WINDOWS ? [root, bin] : [bin, root]
   return entries.filter(directoryExists)
@@ -1373,7 +1406,7 @@ function directoryExists(filePath) {
 }
 
 // --- in-app update mutual exclusion (#50238) -------------------------------
-// The Tauri updater writes HERMES_HOME/.hermes-update-in-progress for the whole
+// Legacy source updaters write this marker beside the replaceable runtime.
 // duration of an `--update` run (see update.rs UpdateMarkerGuard). If the user
 // relaunches the desktop mid-update — because the window vanished with no
 // progress and looks crashed — a fresh instance must NOT spawn its own local
@@ -1403,7 +1436,7 @@ const UPDATE_HANDOFF_DWELL_MS = 2500
 // Emits a boot-progress phase so the renderer shows "Update in progress…"
 // rather than a frozen splash. Returns true if it parked at all.
 async function waitForUpdateToFinish() {
-  let marker = readLiveUpdateMarker(HERMES_HOME)
+  let marker = readLiveUpdateMarker(RUNTIME_HOME)
   if (!marker) return false
 
   rememberLog(`[updates] update in progress (pid=${marker.pid}); deferring backend start until it finishes`)
@@ -1415,7 +1448,7 @@ async function waitForUpdateToFinish() {
       12
     )
     await new Promise(r => setTimeout(r, UPDATE_WAIT_POLL_MS))
-    marker = readLiveUpdateMarker(HERMES_HOME)
+    marker = readLiveUpdateMarker(RUNTIME_HOME)
   }
   if (marker) {
     rememberLog('[updates] update still in progress after wait timeout; starting backend anyway')
@@ -2174,7 +2207,7 @@ let isQuittingForHandoff = false
 // installer); callers degrade gracefully.
 function resolveUpdaterBinary() {
   const name = IS_WINDOWS ? 'hermes-setup.exe' : 'hermes-setup'
-  const candidate = path.join(HERMES_HOME, name)
+  const candidate = path.join(RUNTIME_HOME, name)
   return fileExists(candidate) ? candidate : null
 }
 
@@ -2401,7 +2434,7 @@ async function applyUpdates(opts = {}) {
     // Detached so the updater outlives this process — it needs us GONE before
     // `hermes update` will run (the venv shim is locked while we live).
     const child = spawn(updater, updaterArgs, {
-      cwd: HERMES_HOME,
+      cwd: RUNTIME_HOME,
       env: {
         ...process.env,
         HERMES_HOME,
@@ -2460,7 +2493,7 @@ async function handOffWindowsBootstrapRecovery(reason) {
   await releaseBackendLockForUpdate(updateRoot)
 
   const child = spawn(updater, updaterArgs, {
-    cwd: HERMES_HOME,
+    cwd: RUNTIME_HOME,
     env: {
       ...process.env,
       HERMES_HOME,
@@ -3244,7 +3277,7 @@ async function ensureRuntime(backend) {
         throw missing
       }
       try {
-        await installOfflineRuntimeAsync({ bundleRoot, runtimeHome: HERMES_HOME, version: RUNTIME_VERSION })
+        await installOfflineRuntimeAsync({ bundleRoot, runtimeHome: RUNTIME_HOME, version: RUNTIME_VERSION })
         writeBootstrapMarker({ pinnedCommit: `offline-${RUNTIME_VERSION}`, pinnedBranch: 'offline-release' })
         rememberLog(`[runtime] installed verified offline runtime ${RUNTIME_VERSION} at ${ACTIVE_RUNTIME_VERSION_ROOT}`)
         return ensureRuntime(resolveHermesBackend(backend.args))
