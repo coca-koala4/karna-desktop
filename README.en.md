@@ -1,8 +1,10 @@
 # Karna
 
+[Official site](https://karna-writer-os.xujiakang75.chatgpt.site) · [3-minute guide](https://karna-writer-os.xujiakang75.chatgpt.site/start) · [Examples](https://karna-writer-os.xujiakang75.chatgpt.site/examples) · [Latest release](https://github.com/coca-koala4/karna-desktop/releases/latest) · [Discussions](https://github.com/coca-koala4/karna-desktop/discussions)
+
 Karna is a desktop-first AI workspace for long-form writing, research and delivery. It organizes conversations, project files, knowledge, versions, skills, tools and inspectable multi-agent workflows around durable projects rather than isolated chat turns.
 
-The public `0.17.x` releases were withdrawn and must not be installed or redistributed. The next prerelease will ship only after offline-runtime, credential-isolation, clean-install, Simplified-Chinese UI, branding and package-content gates pass.
+The recommended public build is **Karna 1.1.0**. The old `0.17.x` releases were withdrawn and must not be installed or redistributed.
 
 ## Product direction
 
@@ -20,7 +22,7 @@ The redesigned installer contains a complete, versioned offline runtime. It does
 
 ## Downloads
 
-Download the unsigned [Karna 1.0.7 fixed acceptance build](https://github.com/coca-koala4/karna-desktop/releases/download/v1.0.7/Karna-1.0.7-win-x64.exe), or review its [release notes and checksums](https://github.com/coca-koala4/karna-desktop/releases/tag/v1.0.7). The broken 1.0.0, 1.0.1, 1.0.2, 1.0.3, 1.0.4, 1.0.5, and 1.0.6 releases have been withdrawn. A signed stable build will follow clean-machine acceptance testing.
+Use only [official GitHub Releases](https://github.com/coca-koala4/karna-desktop/releases). The current recommended build is Karna 1.1.0 for Windows 10/11 x64.
 
 ## License and attribution
 
