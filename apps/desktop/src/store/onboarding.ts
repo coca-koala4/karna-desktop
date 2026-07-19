@@ -771,7 +771,7 @@ export async function saveOnboardingApiKey(
   const trimmed = value.trim()
 
   if (!trimmed) {
-    return { ok: false, message: 'Enter a value first.' }
+    return { ok: false, message: '请先输入配置值。' }
   }
 
   // The "Local / custom endpoint" option carries a base URL (in `value`) plus
@@ -782,12 +782,14 @@ export async function saveOnboardingApiKey(
     return saveOnboardingLocalEndpoint(trimmed, endpointApiKey?.trim() ?? '', ctx)
   }
 
-  // No key validation here on purpose: we previously live-probed the key and
-  // hard-blocked on a runtime check after saving, which rejected too many
-  // legitimate users (corporate proxies, regional blocks, flaky/rate-limited
-  // provider probes, self-hosted endpoints). We now save the value as-is and
-  // let the user proceed; an actually-bad key surfaces later at chat time.
   try {
+    // Read-only verification happens before persistence. Invalid credentials
+    // are blocked; a network outage is recorded as "pending" and may proceed
+    // so offline/corporate-proxy users are not locked out without explanation.
+    const probe = await validateProviderCredential(envKey, trimmed)
+    if (!probe.ok && probe.reachable) {
+      return { ok: false, message: probe.message || 'API Key 验证失败，请检查后重试。' }
+    }
     await setEnvVar(envKey, trimmed)
     // For API-key flows we don't have a definitive provider id (the
     // user picked which API key they're entering, but the corresponding

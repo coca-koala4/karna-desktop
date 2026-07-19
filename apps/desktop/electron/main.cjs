@@ -372,6 +372,37 @@ function resolveHermesHome() {
 
 const HERMES_HOME = resolveHermesHome()
 
+function migratePlaintextModelCredentials() {
+  if (!IS_PACKAGED || !safeStorage?.isEncryptionAvailable()) return { migrated: 0 }
+  const envFile = path.join(HERMES_HOME, '.env')
+  if (!fs.existsSync(envFile)) return { migrated: 0 }
+  const source = fs.readFileSync(envFile, 'utf8')
+  const lines = source.split(/\r?\n/)
+  const kept = []
+  let migrated = 0
+  for (const line of lines) {
+    const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
+    const key = match?.[1] || ''
+    if (!/^[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN)$/.test(key)) {
+      kept.push(line)
+      continue
+    }
+    let value = String(match?.[2] || '').trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1)
+    if (value && !modelCredentialStore.get(key)) modelCredentialStore.set(key, value)
+    migrated += value ? 1 : 0
+  }
+  if (migrated) {
+    fs.writeFileSync(envFile, `${kept.join('\n').replace(/\n+$/, '')}\n`, { encoding: 'utf8', mode: 0o600 })
+    fs.writeFileSync(
+      path.join(path.dirname(modelCredentialStore.file), 'migration.json'),
+      `${JSON.stringify({ schemaVersion: 1, migratedAt: new Date().toISOString(), count: migrated }, null, 2)}\n`,
+      { encoding: 'utf8', mode: 0o600 }
+    )
+  }
+  return { migrated }
+}
+
 const RUNTIME_VERSION = app.getVersion()
 const ACTIVE_RUNTIME_VERSION_ROOT = IS_PACKAGED
   ? path.join(HERMES_HOME, 'versions', RUNTIME_VERSION)
@@ -6839,7 +6870,23 @@ async function handleKarnaDesktopApiIpc(_event, request) {
     return rerouted
   }
 
-  return requestPrimaryHermesApi(request)
+  const result = await requestPrimaryHermesApi(request)
+
+  // Keep packaged credentials in Electron safeStorage as the durable source
+  // used to seed the isolated Python backend on the next launch. The Python
+  // backend remains the only provider gateway and still performs validation;
+  // this mirror prevents a key saved during this run from disappearing after
+  // restart without exposing it in ordinary settings JSON.
+  if (IS_PACKAGED && String(request?.path || '').split('?')[0] === '/api/env') {
+    const method = String(request?.method || 'GET').toUpperCase()
+    const key = String(request?.body?.key || '').trim()
+    if (/^[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN)$/.test(key)) {
+      if (method === 'PUT') modelCredentialStore.set(key, String(request?.body?.value || ''))
+      if (method === 'DELETE') modelCredentialStore.remove(key)
+    }
+  }
+
+  return result
 }
 
 ipcMain.handle('karna:api', handleKarnaDesktopApiIpc)
@@ -8115,6 +8162,12 @@ ipcMain.handle('hermes:writerPreview:release', (_event, previewId) => {
 })
 
 app.whenReady().then(() => {
+  try {
+    const migration = migratePlaintextModelCredentials()
+    if (migration.migrated) rememberLog(`[model] migrated ${migration.migrated} credential(s) to Windows encrypted storage`)
+  } catch (error) {
+    rememberLog(`[model] credential migration failed: ${error.message}`)
+  }
   writerPreviewService.initialize()
   try {
     const applied = desktopPreferences.applyInstallerOptions(writeDefaultProjectDir)

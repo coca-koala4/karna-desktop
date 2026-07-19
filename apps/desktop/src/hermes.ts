@@ -404,13 +404,62 @@ export function setEnvVar(key: string, value: string): Promise<{ ok: boolean }> 
 export function validateProviderCredential(
   key: string,
   value: string,
-  apiKey?: string
-): Promise<{ ok: boolean; reachable: boolean; message: string; models?: string[] }> {
-  return window.hermesDesktop.api<{ ok: boolean; reachable: boolean; message: string; models?: string[] }>({
+  apiKey?: string,
+  options?: { provider?: string; model?: string; baseUrl?: string; allowMinimalTest?: boolean }
+): Promise<{ ok: boolean; reachable: boolean; message: string; models?: string[]; validation_status?: string; confirmation_required?: boolean; error_code?: string }> {
+  return window.hermesDesktop.api({
     ...profileScoped(),
     path: '/api/providers/validate',
     method: 'POST',
-    body: { key, value, api_key: apiKey ?? '' }
+    body: {
+      key,
+      value,
+      api_key: apiKey ?? '',
+      provider: options?.provider ?? '',
+      model: options?.model ?? '',
+      base_url: options?.baseUrl ?? '',
+      allow_minimal_test: options?.allowMinimalTest ?? false
+    }
+  })
+}
+
+export interface ModelDiagnostics {
+  gateway: string
+  provider: string
+  model: string
+  base_url?: string
+  credential_key?: string
+  credential: {
+    configured?: boolean
+    validated?: boolean
+    validation_status?: string
+    last_validated_at?: string | null
+    masked_preview?: string
+  }
+  stale_auxiliary: Array<{ task: string; provider: string; model: string }>
+  provider_registered: boolean
+  catalog_size: number
+}
+
+export function getModelDiagnostics(): Promise<ModelDiagnostics> {
+  return window.hermesDesktop.api<ModelDiagnostics>({
+    ...profileScoped(),
+    path: '/api/model/diagnostics'
+  })
+}
+
+export function testModelConnection(body: {
+  provider: string
+  model: string
+  base_url?: string
+  api_key?: string
+  env_key?: string
+}): Promise<{ ok: boolean; reachable: boolean; validation_status: string; message?: string; provider?: string; model?: string; error?: { code: string; message: string; detail?: string } }> {
+  return window.hermesDesktop.api({
+    ...profileScoped(),
+    path: '/api/model/test',
+    method: 'POST',
+    body
   })
 }
 

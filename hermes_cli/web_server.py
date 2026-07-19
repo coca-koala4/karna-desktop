@@ -834,6 +834,10 @@ class EnvVarUpdate(BaseModel):
     # the key lets the probe enumerate the served models. Ignored for the
     # regular PUT /api/env path (which only reads key/value).
     api_key: str = ""
+    provider: str = ""
+    model: str = ""
+    base_url: str = ""
+    allow_minimal_test: bool = False
 
 
 class EnvVarDelete(BaseModel):
@@ -937,6 +941,27 @@ class ModelAssignment(BaseModel):
     api_key: str = ""
     confirm_expensive_model: bool = False
     profile: Optional[str] = None
+
+
+class ModelTestRequest(BaseModel):
+    provider: str = ""
+    model: str = ""
+    base_url: str = ""
+    api_key: str = ""
+    env_key: str = ""
+    profile: Optional[str] = None
+
+
+class ModelCompletionRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    provider: str = ""
+    model: str = ""
+    base_url: str = ""
+    api_key: str = ""
+    max_tokens: int = 1024
+    temperature: Optional[float] = None
+    timeout_seconds: float = 60.0
+    task: str = "desktop"
 
 
 class MoaModelSlot(BaseModel):
@@ -4145,6 +4170,79 @@ def get_model_info(profile: Optional[str] = None):
         return dict(_EMPTY_MODEL_INFO)
 
 
+@app.get("/api/model/diagnostics")
+def get_model_diagnostics(request: Request, profile: Optional[str] = None):
+    """Return non-secret diagnostics for the effective model route."""
+    _require_token(request)
+    from hermes_cli.model_gateway import build_diagnostics
+
+    with _profile_scope(profile):
+        return build_diagnostics()
+
+
+@app.post("/api/model/complete")
+async def model_complete(body: ModelCompletionRequest, request: Request, profile: Optional[str] = None):
+    """Internal desktop completion endpoint backed only by the Python gateway."""
+    _require_token(request)
+    if not body.messages:
+        raise HTTPException(status_code=400, detail="messages 不能为空")
+
+    def _run():
+        from hermes_cli.model_gateway import complete_model_request
+        with _profile_scope(profile):
+            return complete_model_request(
+                messages=body.messages,
+                provider=body.provider,
+                model=body.model,
+                base_url=body.base_url,
+                api_key=body.api_key,
+                max_tokens=body.max_tokens,
+                temperature=body.temperature,
+                timeout=max(1.0, min(body.timeout_seconds, 300.0)),
+                task=body.task,
+            )
+
+    try:
+        return await asyncio.to_thread(_run)
+    except Exception as exc:
+        from hermes_cli.model_gateway import classify_provider_error
+        error = classify_provider_error(exc)
+        raise HTTPException(status_code=502, detail={"message": error["message"], "error": error}) from exc
+
+
+@app.post("/api/model/test")
+async def test_model_connection(body: ModelTestRequest, request: Request, profile: Optional[str] = None):
+    """Strong Provider + Key + Model + Base URL test with structured errors."""
+    _require_token(request)
+    from hermes_cli.model_gateway import classify_provider_error, complete_model_request, record_credential_status
+
+    def _run():
+        with _profile_scope(body.profile or profile):
+            return complete_model_request(
+                messages=[{"role": "user", "content": "Reply OK"}],
+                provider=body.provider,
+                model=body.model,
+                base_url=body.base_url,
+                api_key=body.api_key,
+                max_tokens=2,
+                temperature=0,
+                timeout=20,
+                task="connection_test",
+            )
+
+    try:
+        result = await asyncio.to_thread(_run)
+        if body.env_key and body.api_key:
+            record_credential_status(body.env_key, body.api_key, status="valid")
+        return {"ok": True, "reachable": True, "validation_status": "valid", **result}
+    except Exception as exc:
+        error = classify_provider_error(exc)
+        state = "pending" if error["code"] == "network" else "invalid"
+        if body.env_key and body.api_key:
+            record_credential_status(body.env_key, body.api_key, status=state, message=error["message"])
+        return {"ok": False, "reachable": error["code"] != "network", "validation_status": state, "error": error, "message": error["message"]}
+
+
 # ---------------------------------------------------------------------------
 # Model assignment — pick provider+model for main slot or auxiliary slots.
 # Mirrors the model.options JSON-RPC from tui_gateway but uses REST so the
@@ -4471,6 +4569,20 @@ def _apply_model_assignment_sync(
     if scope == "main":
         if not provider or not model:
             raise HTTPException(status_code=400, detail="provider and model required for main")
+        from hermes_cli.model_gateway import canonical_model, canonical_provider, provider_descriptor
+        provider = canonical_provider(provider)
+        model = canonical_model(provider, model)
+        descriptor = provider_descriptor(provider)
+        if descriptor is None and provider not in {"custom", "local"} and not provider.startswith("custom:"):
+            raise HTTPException(status_code=400, detail=f"Unknown model provider: {provider}")
+        if base_url:
+            parsed = urllib.parse.urlparse(base_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise HTTPException(status_code=400, detail="base_url must be an absolute HTTP(S) URL")
+        if descriptor and descriptor.auth_type == "api_key" and descriptor.api_key_env_vars:
+            configured = any(bool(load_env().get(name) or os.environ.get(name)) for name in descriptor.api_key_env_vars)
+            if not configured and not api_key:
+                raise HTTPException(status_code=400, detail=f"{provider} requires a configured API key")
         provider, model = _normalize_main_model_assignment(provider, model)
         model_cfg = _apply_main_model_assignment(
             cfg.get("model", {}), provider, model, base_url, api_key
@@ -4885,6 +4997,8 @@ async def get_env_vars(profile: Optional[str] = None):
     def _row(var_name: str, info: dict, *, custom: bool = False) -> dict:
         value = env_on_disk.get(var_name)
         cat_meta = catalog_meta.get(var_name) or {}
+        from hermes_cli.model_gateway import credential_status
+        validation = credential_status(var_name, value or "")
         # Hand OPTIONAL_ENV_VARS prose wins where present; the catalog fills any
         # gaps (description/url) and always supplies provider grouping hints.
         return {
@@ -4911,6 +5025,11 @@ async def get_env_vars(profile: Optional[str] = None):
             # Keys page can list (and let the user manage) them instead of
             # hiding everything it doesn't recognise.
             "custom": custom,
+            "credential_source": validation.get("source", "karna_store"),
+            "validated": bool(validation.get("validated")),
+            "validation_status": validation.get("validation_status", "missing"),
+            "last_validated_at": validation.get("last_validated_at"),
+            "masked_preview": validation.get("masked_preview") or (redact_key(value) if value else None),
         }
 
     result = {}
@@ -4943,7 +5062,11 @@ async def set_env_var(body: EnvVarUpdate, profile: Optional[str] = None):
     try:
         with _profile_scope(body.profile or profile):
             save_env_value(body.key, body.value)
-        return {"ok": True, "key": body.key}
+        from hermes_cli.model_gateway import credential_status, record_credential_status
+        status = credential_status(body.key, body.value)
+        if status.get("validation_status") != "valid":
+            status = record_credential_status(body.key, body.value, status="pending")
+        return {"ok": True, "key": body.key, "credential": status}
     except ValueError as exc:
         # save_env_value raises ValueError for invalid names and for keys
         # on the denylist (LD_PRELOAD, PATH, PYTHONPATH, …). Surface the
@@ -4960,21 +5083,19 @@ async def set_env_var(body: EnvVarUpdate, profile: Optional[str] = None):
 # read-only models/key call that 401s on a bad token — enough to catch a
 # mistyped key before it's persisted. Providers absent from this map (or local
 # endpoints) are not network-validated; the client treats those as "unknown".
-_CREDENTIAL_PROBES: dict[str, tuple[str, str]] = {
-    "OPENROUTER_API_KEY": ("https://openrouter.ai/api/v1/key", "bearer"),
-    "OPENAI_API_KEY": ("https://api.openai.com/v1/models", "bearer"),
-    "XAI_API_KEY": ("https://api.x.ai/v1/models", "bearer"),
-    "GEMINI_API_KEY": ("https://generativelanguage.googleapis.com/v1beta/models", "query"),
+_CREDENTIAL_PROBES: dict[str, dict[str, str]] = {
+    "OPENROUTER_API_KEY": {"url": "https://openrouter.ai/api/v1/key", "auth": "bearer", "provider": "openrouter"},
+    "OPENAI_API_KEY": {"url": "https://api.openai.com/v1/models", "auth": "bearer", "provider": "openai-api"},
+    "XAI_API_KEY": {"url": "https://api.x.ai/v1/models", "auth": "bearer", "provider": "xai"},
+    "GEMINI_API_KEY": {"url": "https://generativelanguage.googleapis.com/v1beta/models", "auth": "query", "provider": "gemini"},
+    "DEEPSEEK_API_KEY": {"url": "https://api.deepseek.com/models", "auth": "bearer", "provider": "deepseek"},
+    "DASHSCOPE_API_KEY": {"url": "https://dashscope.aliyuncs.com/compatible-mode/v1/models", "auth": "bearer", "provider": "alibaba"},
+    "ZAI_API_KEY": {"url": "https://open.bigmodel.cn/api/paas/v4/models", "auth": "bearer", "provider": "zai"},
+    "ANTHROPIC_API_KEY": {"url": "https://api.anthropic.com/v1/models", "auth": "anthropic", "provider": "anthropic"},
 }
 
 
 def _parse_model_ids(resp: "Any") -> List[str]:
-    """Extract model ids from an OpenAI-compatible ``/v1/models`` response.
-
-    Tolerant of the common shapes: ``{"data": [{"id": ...}]}`` (OpenAI / vLLM /
-    llama.cpp) and a bare ``{"data": ["id", ...]}``. Returns ``[]`` on any
-    parse/HTTP error so a slightly non-standard endpoint never hard-blocks.
-    """
     try:
         if not resp.is_success:
             return []
@@ -4982,12 +5103,16 @@ def _parse_model_ids(resp: "Any") -> List[str]:
     except Exception:
         return []
     data = payload.get("data") if isinstance(payload, dict) else payload
+    if isinstance(payload, dict) and not isinstance(data, list):
+        data = payload.get("models")
     if not isinstance(data, list):
         return []
     ids: List[str] = []
     for item in data:
         if isinstance(item, dict):
-            mid = str(item.get("id") or "").strip()
+            mid = str(item.get("id") or item.get("name") or "").strip()
+            if mid.startswith("models/"):
+                mid = mid.split("/", 1)[1]
         else:
             mid = str(item or "").strip()
         if mid:
@@ -4997,64 +5122,90 @@ def _parse_model_ids(resp: "Any") -> List[str]:
 
 @app.post("/api/providers/validate")
 async def validate_provider_credential(body: EnvVarUpdate, request: Request):
-    """Live-probe a provider credential before it's saved.
-
-    Returns {ok, reachable, message}. ok=True means the provider accepted the
-    key; ok=False + reachable=True means the key is bad (caller should block);
-    reachable=False means the network probe couldn't run (caller may save with
-    a warning rather than hard-blocking offline users).
-    """
+    """Validate Provider + Key (+ optional model) without persisting the key."""
     _require_token(request)
     import httpx
+    from hermes_cli.model_gateway import (
+        classify_provider_error,
+        complete_model_request,
+        record_credential_status,
+    )
 
     key = (body.key or "").strip()
     value = (body.value or "").strip()
     if not value:
-        return {"ok": False, "reachable": True, "message": "Enter a value first."}
+        return {"ok": False, "reachable": True, "validation_status": "invalid", "message": "????????"}
 
-    # Local / custom endpoint: validate connectivity, not auth — any HTTP
-    # response (even 401) proves the endpoint is up. Also surface the model
-    # ids the endpoint advertises (OpenAI ``/v1/models`` shape) so the GUI can
-    # auto-pick a default without asking the user to type a model name.
     if key == "OPENAI_BASE_URL":
         url = value.rstrip("/") + "/models"
-        # Send the optional API key so endpoints that require auth on
-        # ``/v1/models`` (many hosted OpenAI-compatible servers) still enumerate
-        # their models instead of returning an empty list behind a 401.
         api_key = (body.api_key or "").strip()
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
         try:
             with httpx.Client(timeout=httpx.Timeout(8.0)) as client:
                 resp = client.get(url, headers=headers)
-            return {"ok": True, "reachable": True, "message": "", "models": _parse_model_ids(resp)}
+            if resp.status_code in (401, 403):
+                return {"ok": False, "reachable": True, "validation_status": "invalid", "error_code": "key_invalid", "message": "????? API Key?"}
+            return {"ok": resp.is_success, "reachable": True, "validation_status": "valid" if resp.is_success else "invalid", "message": "?????" if resp.is_success else f"???? HTTP {resp.status_code}?", "models": _parse_model_ids(resp)}
         except Exception:
-            return {"ok": False, "reachable": False, "message": f"Could not reach {url}."}
+            return {"ok": False, "reachable": False, "validation_status": "pending", "message": f"???? {url}??????????"}
 
     probe = _CREDENTIAL_PROBES.get(key)
     if not probe:
-        # No probe for this provider — can't validate, don't block.
-        return {"ok": True, "reachable": False, "message": ""}
+        if not body.allow_minimal_test:
+            return {"ok": False, "reachable": True, "confirmation_required": True, "validation_status": "confirmation_required", "message": "???????????????????????????????????????"}
+        provider = (body.provider or "").strip()
+        model = (body.model or "").strip()
+        if not provider or not model:
+            return {"ok": False, "reachable": True, "validation_status": "invalid", "message": "?????????????????"}
+        try:
+            await asyncio.to_thread(
+                complete_model_request,
+                messages=[{"role": "user", "content": "Reply OK"}],
+                provider=provider,
+                model=model,
+                base_url=body.base_url,
+                api_key=value,
+                max_tokens=2,
+                temperature=0,
+                timeout=20,
+                task="credential_validation",
+            )
+            record_credential_status(key, value, status="valid")
+            return {"ok": True, "reachable": True, "validation_status": "valid", "message": "?????"}
+        except Exception as exc:
+            error = classify_provider_error(exc)
+            state = "pending" if error["code"] == "network" else "invalid"
+            record_credential_status(key, value, status=state, message=error["message"])
+            return {"ok": False, "reachable": error["code"] != "network", "validation_status": state, "error": error, "message": error["message"]}
 
-    url, auth = probe
     headers = {"Accept": "application/json"}
     params = {}
-    if auth == "bearer":
+    if probe["auth"] == "bearer":
         headers["Authorization"] = f"Bearer {value}"
-    else:
+    elif probe["auth"] == "query":
         params["key"] = value
-
+    else:
+        headers["x-api-key"] = value
+        headers["anthropic-version"] = "2023-06-01"
     try:
         with httpx.Client(timeout=httpx.Timeout(10.0)) as client:
-            resp = client.get(url, headers=headers, params=params)
+            resp = client.get(probe["url"], headers=headers, params=params)
     except Exception:
-        return {"ok": False, "reachable": False, "message": "Could not reach the provider to verify the key."}
+        record_credential_status(key, value, status="pending", message="?????????????")
+        return {"ok": False, "reachable": False, "validation_status": "pending", "message": "????????????????????"}
 
     if resp.status_code in (401, 403):
-        return {"ok": False, "reachable": True, "message": "That API key was rejected. Double-check it and try again."}
+        record_credential_status(key, value, status="invalid", message="API Key ???????")
+        return {"ok": False, "reachable": True, "validation_status": "invalid", "error_code": "key_invalid", "message": "API Key ?????????????????"}
     if resp.status_code == 429 or resp.is_success:
-        # 429 = key is valid but rate-limited; success = valid.
-        return {"ok": True, "reachable": True, "message": ""}
-    return {"ok": False, "reachable": True, "message": f"Provider returned HTTP {resp.status_code} for this key."}
+        record_credential_status(key, value, status="valid")
+        models = _parse_model_ids(resp)
+        wanted = (body.model or "").strip()
+        if wanted and models and wanted not in models:
+            return {"ok": False, "reachable": True, "validation_status": "invalid", "error_code": "model_not_found", "models": models, "message": "API Key ???????????????"}
+        return {"ok": True, "reachable": True, "validation_status": "valid", "message": "?????", "models": models}
+    record_credential_status(key, value, status="invalid", message=f"HTTP {resp.status_code}")
+    return {"ok": False, "reachable": True, "validation_status": "invalid", "message": f"????? HTTP {resp.status_code}?"}
 
 
 @app.delete("/api/env")
@@ -5062,6 +5213,8 @@ async def remove_env_var(body: EnvVarDelete, profile: Optional[str] = None):
     try:
         with _profile_scope(body.profile or profile):
             removed = remove_env_value(body.key)
+        from hermes_cli.model_gateway import clear_credential_status
+        clear_credential_status(body.key)
         if not removed:
             raise HTTPException(status_code=404, detail=f"{body.key} not found in .env")
         return {"ok": True, "key": body.key}

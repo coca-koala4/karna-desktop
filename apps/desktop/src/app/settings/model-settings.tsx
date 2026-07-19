@@ -8,13 +8,16 @@ import {
   getAuxiliaryModels,
   getGlobalModelInfo,
   getGlobalModelOptions,
+  getModelDiagnostics,
   getHermesConfigRecord,
   getMoaModels,
   getRecommendedDefaultModel,
   saveHermesConfig,
   saveMoaModels,
   setEnvVar,
-  setModelAssignment
+  setModelAssignment,
+  testModelConnection,
+  validateProviderCredential
 } from '@/hermes'
 import type {
   AuxiliaryModelsResponse,
@@ -29,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { notifyError } from '@/store/notifications'
 import { startManualLocalEndpoint, startManualProviderOAuth } from '@/store/onboarding'
 import type { HermesConfigRecord } from '@/types/hermes'
+import type { ModelDiagnostics } from '@/hermes'
 
 import { PROVIDER_PRESETS } from '@/lib/provider-presets'
 
@@ -152,18 +156,20 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
   // place — mirrors the onboarding ApiKeyForm but scoped to the model picker.
   const [apiKeyDraft, setApiKeyDraft] = useState('')
   const [activating, setActivating] = useState(false)
+  const [diagnostics, setDiagnostics] = useState<ModelDiagnostics | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     setError('')
 
     try {
-      const [modelInfo, modelOptions, auxiliaryModels, moaModels, cfg] = await Promise.all([
+      const [modelInfo, modelOptions, auxiliaryModels, moaModels, cfg, diag] = await Promise.all([
         getGlobalModelInfo(),
         getGlobalModelOptions(),
         getAuxiliaryModels(),
         getMoaModels().catch(() => null),
-        getHermesConfigRecord()
+        getHermesConfigRecord(),
+        getModelDiagnostics().catch(() => null)
       ])
 
       setMainModel({ model: modelInfo.model, provider: modelInfo.provider })
@@ -178,6 +184,7 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
       }
 
       setConfig(cfg)
+      setDiagnostics(diag)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -376,6 +383,14 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     setError('')
 
     try {
+      const probe = await validateProviderCredential(keyEnv, apiKeyDraft.trim(), undefined, {
+        provider: slug,
+        model: selectedModel || selectedProviderModels[0] || ''
+      })
+      if (!probe.ok && probe.reachable) {
+        setError(probe.message || 'API Key 验证失败，请检查后重试。')
+        return
+      }
       await setEnvVar(keyEnv, apiKeyDraft.trim())
       setApiKeyDraft('')
 
@@ -433,6 +448,10 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
     setError('')
 
     try {
+      const test = await testModelConnection({ provider: selectedProvider, model: selectedModel })
+      if (!test.ok && test.reachable) {
+        throw new Error(test.message || test.error?.message || '模型连接测试失败。')
+      }
       const result = await setModelAssignment({ model: selectedModel, provider: selectedProvider, scope: 'main' })
       const provider = result.provider || selectedProvider
       const model = result.model || selectedModel
@@ -547,6 +566,25 @@ export function ModelSettings({ onMainModelChanged }: ModelSettingsProps) {
 
   return (
     <div className="grid gap-6">
+      {diagnostics && (
+        <div className="rounded-md border border-(--ui-stroke-secondary) bg-(--ui-bg-secondary)/50 px-3 py-2 text-xs">
+          <div className="font-medium text-foreground">模型连接诊断</div>
+          <div className="mt-1 grid gap-1 text-muted-foreground sm:grid-cols-2">
+            <span>供应商：{diagnostics.provider || '未配置'}</span>
+            <span>模型：{diagnostics.model || '未配置'}</span>
+            <span>网关：Python 统一模型网关</span>
+            <span>
+              凭据状态：{diagnostics.credential.validation_status === 'valid'
+                ? '已验证'
+                : diagnostics.credential.validation_status === 'pending'
+                  ? '待验证'
+                  : diagnostics.credential.validation_status === 'invalid'
+                    ? '验证失败'
+                    : '未配置'}
+            </span>
+          </div>
+        </div>
+      )}
       {!hasAnyConfiguredKey && (
         isBrowserMode ? (
           <div className="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">

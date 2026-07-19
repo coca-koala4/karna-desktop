@@ -773,10 +773,34 @@ async function chatBackendFetch(options = {}) {
   const body = options.body || {}
   const provider = String(body.provider || currentModelProvider || '')
   const model = String(body.model || currentModel || '')
-  const configured = findProvider(provider)
-  if (!provider || !model || !configured || !isProviderConfigured(configured)) {
-    return karnaBackendFetch('/api/chat', options)
+  // The Python runtime is the only production model gateway.  Do not inspect
+  // the adapter's legacy credential list here: credentials saved by Settings
+  // live in the Python runtime and every feature must resolve the same route.
+  if (hermesApiBridge) {
+    try {
+      const data = await hermesApiBridge({
+        path: '/api/model/complete',
+        method: 'POST',
+        timeoutMs: options.timeoutMs || 300_000,
+        body: {
+          messages: body.messages || [],
+          provider,
+          model,
+          max_tokens: body.max_tokens || body.maxOutputTokens || 1024,
+          temperature: body.temperature,
+          timeout_seconds: Math.max(1, Math.ceil((options.timeoutMs || 300_000) / 1000)),
+          task: body.task || 'karna_adapter'
+        }
+      })
+      return { status: 200, data }
+    } catch (error) {
+      return { status: Number(error?.status || error?.statusCode || 502), data: { detail: error instanceof Error ? error.message : String(error) } }
+    }
   }
+
+  // Isolated adapter tests may intentionally run without the primary bridge.
+  const configured = findProvider(provider)
+  if (!provider || !model || !configured || !isProviderConfigured(configured)) return karnaBackendFetch('/api/chat', options)
   try {
     const result = await callChatCompletion(provider, model, body.messages || [], {
       timeoutMs: options.timeoutMs || 300_000,
@@ -3832,7 +3856,14 @@ const ingestService = createIngestService({
   dataRoot: KARNA_DATA_ROOT,
   karnaPaths,
   storage,
-  callChatCompletion: (provider, model, messages, opts) => callChatCompletion(provider, model, messages, opts),
+  callChatCompletion: async (provider, model, messages, opts = {}) => {
+    const response = await chatBackendFetch({
+      timeoutMs: opts.timeoutMs || 300_000,
+      body: { provider, model, messages, max_tokens: opts.maxTokens, temperature: opts.temperature, task: 'ingest' }
+    })
+    if (response.status >= 400) throw new Error(response.data?.detail || '模型请求失败')
+    return response.data?.content || ''
+  },
   findProvider,
   isProviderConfigured,
   getCurrentModelConfig: () => ({ provider: currentModelProvider, model: currentModel })
@@ -3844,8 +3875,8 @@ const enhancePromptText = async input => {
 
   const selected = resolveUsableModelSelection({ provider: input?.provider, model: input?.model })
   const provider = selected.provider
-  const modelName = selected.model
-  if (!provider || !isProviderConfigured(provider) || !modelName) {
+  const modelName = String(input?.model || selected.model || '')
+  if (!hermesApiBridge && (!modelName || !provider || !isProviderConfigured(provider))) {
     return {
       ok: false,
       error: '\u672a\u68c0\u6d4b\u5230\u5df2\u6388\u6743\u7684\u6a21\u578b\u3002\u8bf7\u5728\u8bbe\u7f6e\u2192\u6a21\u578b\u4e2d\u4fdd\u5b58 DeepSeek\u3001Qwen\u3001GLM \u6216\u81ea\u5b9a\u4e49 API Key\uff0c\u5e76\u70b9\u51fb\u201c\u8bbe\u4e3a\u9ed8\u8ba4\u201d\u540e\u518d\u4f7f\u7528\u63d0\u793a\u8bcd\u589e\u5f3a\u3002',
@@ -3884,15 +3915,18 @@ const enhancePromptText = async input => {
     : `\u8bf7\u589e\u5f3a\u4ee5\u4e0b\u7528\u6237\u9700\u6c42\uff1a\n\n${raw}`
 
   try {
-    const content = await callChatCompletion(provider.slug, modelName, [
+    const providerSlug = String(input?.provider || provider?.slug || '')
+    const response = await chatBackendFetch({ body: { provider: providerSlug, model: modelName, messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
-    ], { temperature: 0.45, maxTokens: 4096, timeoutMs: 60_000 })
+    ], temperature: 0.45, max_tokens: 4096, task: 'prompt_enhance' }, timeoutMs: 60_000 })
+    if (response.status >= 400) throw new Error(response.data?.detail || '\u63d0\u793a\u8bcd\u589e\u5f3a\u5931\u8d25')
+    const content = response.data?.content || ''
     const enhanced = String(content || '').trim()
     if (!enhanced) return { ok: false, error: '\u63d0\u793a\u8bcd\u589e\u5f3a\u8fd4\u56de\u4e3a\u7a7a\u3002' }
-    return { ok: true, text: enhanced, provider: provider.slug, model: modelName }
+    return { ok: true, text: enhanced, provider: response.data?.provider || providerSlug, model: response.data?.model || modelName }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err), provider: provider.slug, model: modelName }
+    return { ok: false, error: err instanceof Error ? err.message : String(err), provider: String(input?.provider || provider?.slug || ''), model: modelName }
   }
 }
 
@@ -11038,5 +11072,9 @@ module.exports = {
   _tokenOsTest: {
     contextBackendFetch,
     extractRequestedOutputTokens
+  },
+  _modelGatewayTest: {
+    chatBackendFetch,
+    enhancePromptText
   }
 }
