@@ -2,13 +2,13 @@
 
 > **不是“帮你续写一句”的聊天框，而是一套面向长期创作、研究与交付的桌面工作空间。**
 
-[English](README.en.md) · [下载最新版](https://github.com/coca-koala4/karna-desktop/releases/latest) · [安全政策](SECURITY.md)
+[官方网站](https://karna-writer-os.xujiakang75.chatgpt.site) · [三分钟入门](https://karna-writer-os.xujiakang75.chatgpt.site/start) · [示例项目](https://karna-writer-os.xujiakang75.chatgpt.site/examples) · [下载最新版](https://github.com/coca-koala4/karna-desktop/releases/latest) · [社区讨论](https://github.com/coca-koala4/karna-desktop/discussions) · [English](README.en.md) · [安全政策](SECURITY.md)
 
 Karna 面向小说、非虚构写作、研究报告、剧本、课程、论文资料整理与内容团队协作。它把对话、项目文件、知识、版本、智能体工作流、技能与外部工具放在同一个桌面环境中，让 AI 从一次性的回答者，变成一个**可检查、可打断、可追溯、可交付**的创作系统。
 
 Karna 基于 Hermes Agent 的成熟运行时能力继续开发，但产品目标已经不同：Hermes 更像通用智能体运行时；Karna 从项目、文档、人物、资料、版本和交付物出发，为文字工作者构建完整的 Writer OS。
 
-> 当前公开发行处于安全重制阶段。`0.17.x` 已撤回，不应继续安装或传播。新的预发行版只有在离线安装、凭据隔离、品牌、中文界面和包内容门禁全部通过后才会出现。
+> **当前推荐版本：Karna 1.1.0。** `0.17.x` 已撤回，不应继续安装或传播。请始终通过官方 Releases 获取安装器与更新文件。
 
 ---
 
@@ -142,7 +142,7 @@ Karna 不是对上游 README 换一个名字，也不是把聊天页套进 Elect
 
 ## 7. 安装、更新与数据位置
 
-**状态：安全重制中，暂无可推荐的公开版本。**
+**状态：可公开体验；当前推荐版本为 Karna 1.1.0。**
 
 新版 Windows 安装器将提供自定义安装目录、默认工作空间、开机自启动和桌面快捷方式选项。离线运行时位于用户选择的安装目录：
 

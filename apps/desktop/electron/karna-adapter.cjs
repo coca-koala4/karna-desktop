@@ -61,7 +61,12 @@ const { createPlanService } = require('./karna/plan-service.cjs')
 const { createGoalService } = require('./karna/goal-service.cjs')
 const { createCreativeService } = require('./karna/creative-service.cjs')
 const { MODEL_PROVIDERS, createCustomModelController, createCustomModelStore, createEmbeddingModelService, createImageModelService, createModelRouter, customEnvKey, modelCapabilities } = require('./karna/model-service.cjs')
-const { app, safeStorage } = require('electron')
+// `require('electron')` returns the Electron API inside the desktop process,
+// but resolves to the executable path string in plain Node.js. Keep adapter
+// service tests importable without weakening the packaged credential path.
+const electronApi = require('electron')
+const electronApp = electronApi && typeof electronApi === 'object' ? electronApi.app : null
+const safeStorage = electronApi && typeof electronApi === 'object' ? electronApi.safeStorage : null
 const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { resolveModelContextBudget } = require('../shared/model-context-budget.cjs')
 const storage = createStorageUtils({ fs, path })
@@ -445,8 +450,12 @@ const parseEnvFile = () => {
   return env
 }
 
-const modelCredentialStore = createModelCredentialStore({ safeStorage, userDataPath: app.getPath('userData') })
-const getEnvValue = key => app.isPackaged
+const modelCredentialUserDataPath = electronApp && typeof electronApp.getPath === 'function'
+  ? electronApp.getPath('userData')
+  : KARNA_DATA_ROOT
+const isPackagedDesktop = electronApp?.isPackaged === true
+const modelCredentialStore = createModelCredentialStore({ safeStorage, userDataPath: modelCredentialUserDataPath })
+const getEnvValue = key => isPackagedDesktop
   ? modelCredentialStore.get(key)
   : process.env[key] || parseEnvFile()[key] || ''
 const customModelStore = createCustomModelStore({
@@ -471,7 +480,7 @@ const findUsableImageModel = modelRouter.findUsableImageModel
 const routeModelForPrompt = modelRouter.routeModelForPrompt
 
 const writeEnvValue = (key, value) => {
-  if (app.isPackaged) {
+  if (isPackagedDesktop) {
     modelCredentialStore.set(key, value)
     return
   }
@@ -502,7 +511,7 @@ const writeEnvValue = (key, value) => {
 }
 
 const deleteEnvValue = key => {
-  if (app.isPackaged) {
+  if (isPackagedDesktop) {
     modelCredentialStore.remove(key)
     return
   }
