@@ -2738,23 +2738,36 @@ const buildExecutionPlan = (workflow) => {
   const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : []
   const edges = Array.isArray(workflow.edges) ? workflow.edges : []
   const nodeIds = new Set(nodes.map(n => n.id))
+  // Loop edges describe a later re-entry into an already executed node. They
+  // are not prerequisites for the first topological pass. Treating them as
+  // normal dependencies makes a controlled loop look like an unresolvable
+  // cycle (agent_2 -> ... -> agent_9 -> agent_2) and used to spin forever in
+  // the synchronous queue below, freezing the Electron main process while the
+  // chat composer waited on /api/writer/workflows/resolve.
+  const validEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+  const loopEdges = validEdges.filter(e => e.type === 'loop')
+  const planningEdges = validEdges.filter(e => e.type !== 'loop')
   const incoming = new Map()
   const outgoing = new Map()
   for (const n of nodes) {
     incoming.set(n.id, [])
     outgoing.set(n.id, [])
   }
-  for (const e of edges) {
-    if (nodeIds.has(e.source) && nodeIds.has(e.target)) {
-      incoming.get(e.target).push(e.source)
-      outgoing.get(e.source).push(e.target)
-    }
+  for (const e of planningEdges) {
+    incoming.get(e.target).push(e.source)
+    outgoing.get(e.source).push(e.target)
   }
   const entryNodes = nodes.filter(n => (incoming.get(n.id) || []).length === 0)
   const steps = []
   const visited = new Set()
   const queue = entryNodes.map(n => n.id)
-  while (queue.length > 0) {
+  // A malformed non-loop cycle must return a diagnostic, never block the
+  // main process. The bound is deliberately generous for the current graph
+  // limits but makes this function total even with corrupted user data.
+  const maxQueueIterations = Math.max(nodes.length * 4, 32)
+  let queueIterations = 0
+  while (queue.length > 0 && queueIterations < maxQueueIterations) {
+    queueIterations += 1
     const nodeId = queue.shift()
     if (visited.has(nodeId)) continue
     const deps = incoming.get(nodeId) || []
@@ -2774,10 +2787,22 @@ const buildExecutionPlan = (workflow) => {
       if (!visited.has(next)) queue.push(next)
     }
   }
+  const unresolvedNodeIds = nodes.map(n => n.id).filter(id => !visited.has(id))
   return {
     workflowId: workflow.id,
     steps,
-    entryNodeId: entryNodes[0]?.id || null
+    entryNodeId: entryNodes[0]?.id || null,
+    loopEdges: loopEdges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      condition: e.condition || e.data?.condition || null
+    })),
+    unresolvedNodeIds,
+    warnings: unresolvedNodeIds.length > 0
+      ? [`无法按普通依赖解析节点：${unresolvedNodeIds.join(', ')}`]
+      : []
   }
 }
 const resolveWorkflow = ({ workflow_id, workspace_id, session_id }) => {
