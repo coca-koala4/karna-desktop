@@ -3,6 +3,12 @@
 !include "WordFunc.nsh"
 !include "FileFunc.nsh"
 
+; Enable Unicode support for proper Chinese text rendering
+Unicode true
+
+; Set code page to UTF-8 for Chinese characters
+!define CP_UTF8 65001
+
 ; electron-builder compiles the same include once while generating the
 ; uninstaller. Installer-only custom-page callbacks are intentionally unused in
 ; that pass; the installer/uninstaller dual pass also intentionally triggers

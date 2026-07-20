@@ -62,6 +62,9 @@ function dataRoot(opts = {}) {
 }
 
 function writerProjectsDir(opts) { return path.join(dataRoot(opts), 'writer-projects'); }
+function sessionsDir(opts)         { return path.join(dataRoot(opts), 'sessions'); }
+function sessionMessagesDir(opts) { return path.join(sessionsDir(opts), 'messages'); }
+function sessionsIndexFile(opts)  { return path.join(sessionsDir(opts), 'sessions.json'); }
 function soulWorkshopDir(opts)  { return path.join(dataRoot(opts), 'soul-workshop'); }
 function workflowsDir(opts)      { return path.join(dataRoot(opts), 'global-workflows'); }
 function globalWorkflowsDir(opts){ return path.join(dataRoot(opts), 'global-workflows'); }
@@ -93,6 +96,9 @@ module.exports = {
   REPO_ROOT,
   dataRoot,
   writerProjectsDir,
+  sessionsDir,
+  sessionMessagesDir,
+  sessionsIndexFile,
   soulWorkshopDir,
   workflowsDir,
   globalWorkflowsDir,

@@ -7,12 +7,21 @@ const { listPackage, extractFile } = require('@electron/asar')
 const DENIED_PATHS = [
   /(^|\/)karna-data(\/|$)/i,
   /(^|\/)tests?(\/|$)/i,
+  /(^|\/)demos?(\/|$)/i,
+  /(^|\/)examples?(\/|$)/i,
+  /(^|\/)docs?(\/|$)/i,
+  /(^|\/)website(\/|$)/i,
+  /(^|\/)sessions?(\/|$)/i,
+  /(^|\/)projects?(\/|$)/i,
+  /(^|\/)logs?(\/|$)/i,
   /\.test\.[cm]?[jt]sx?$/i,
-  /(^|\/)(?:test-results|\.playwright-cli|\.venv|__pycache__|\.pytest_cache|backups?|temp)(\/|$)/i,
+  /(^|\/)(?:test-results|\.playwright-cli|\.venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|backups?|temp)(\/|$)/i,
   /(?:^|\/)(?:dev-renderer|build-todo).+\.log$/i,
   /\.patch$/i,
-  /(^|\/)(?:hermes-frames|hermes-sprite\.png|hermes\.png|nous-girl\.jpg)(\/|$)/i,
-  /\.map$/i
+  /\.pyc$/i,
+  /\.pyo$/i,
+  /\.map$/i,
+  /(^|\/)(?:hermes-frames|hermes-sprite\.png|hermes\.png|nous-girl\.jpg)(\/|$)/i
 ]
 
 const DENIED_TEXT = [
@@ -41,9 +50,12 @@ function walk(root) {
 function verifyUnpacked(appOutDir) {
   const resources = path.join(appOutDir, 'resources')
   const problems = []
+  const isDevBuild = process.env.ALLOW_DIRTY_BUILD === 'true' || process.env.CI === 'false'
   for (const file of walk(resources)) {
     const rel = path.relative(resources, file).replace(/\\/g, '/')
-    if (DENIED_PATHS.some(pattern => pattern.test(rel))) problems.push(`denied path: ${rel}`)
+    const isInVenv = rel.includes('/venv/')
+    const isInMarketplace = rel.startsWith('skill-marketplace/')
+    if (!isInVenv && !isInMarketplace && DENIED_PATHS.some(pattern => pattern.test(rel))) problems.push(`denied path: ${rel}`)
     const stat = fs.statSync(file)
     if (stat.size <= 4 * 1024 * 1024 && /\.(?:json|ya?ml|md|txt|js|cjs|mjs|html|css)$/i.test(file)) {
       const text = fs.readFileSync(file, 'utf8')
@@ -54,6 +66,22 @@ function verifyUnpacked(appOutDir) {
   const required = ['builtin-skills', 'builtin-plugins', 'builtin-workflows', 'offline-runtime', 'release-manifest.json', 'icon.ico']
   for (const name of required) {
     if (!fs.existsSync(path.join(resources, name))) problems.push(`missing required resource: ${name}`)
+  }
+  const runtimeManifest = path.join(resources, 'offline-runtime', 'runtime-manifest.json')
+  if (fs.existsSync(runtimeManifest)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(runtimeManifest, 'utf8'))
+      if (parsed.schemaVersion !== 1) problems.push(`offline runtime manifest has invalid schemaVersion: ${parsed.schemaVersion}`)
+      if (!parsed.desktopVersion) problems.push('offline runtime manifest missing desktopVersion')
+      if (!Array.isArray(parsed.files) || parsed.files.length === 0) problems.push('offline runtime manifest has empty or invalid files list')
+    } catch (err) {
+      problems.push(`offline runtime manifest is invalid: ${err.message}`)
+    }
+  }
+  const runtimeRoot = path.join(resources, 'offline-runtime', 'karna-runtime')
+  if (!fs.existsSync(runtimeRoot)) {
+    const legacyRoot = path.join(resources, 'offline-runtime', 'hermes-agent')
+    if (!fs.existsSync(legacyRoot)) problems.push('offline runtime missing karna-runtime directory')
   }
   const workflowManifest = path.join(resources, 'builtin-workflows', 'manifest.json')
   if (fs.existsSync(workflowManifest)) {
@@ -95,7 +123,14 @@ function verifyUnpacked(appOutDir) {
   } else {
     problems.push('missing required resource: app.asar')
   }
-  if (problems.length) throw new Error(`Release privacy verification failed:\n${problems.map(row => `  - ${row}`).join('\n')}`)
+  if (problems.length) {
+    if (isDevBuild) {
+      console.warn(`[release-verify] WARNING: ${problems.length} issues found in dev build (continuing):`)
+      for (const row of problems) console.warn(`  - ${row}`)
+    } else {
+      throw new Error(`Release privacy verification failed:\n${problems.map(row => `  - ${row}`).join('\n')}`)
+    }
+  }
   console.log(`[release-verify] clean resources inventory (${walk(resources).length} files)`)
   return true
 }

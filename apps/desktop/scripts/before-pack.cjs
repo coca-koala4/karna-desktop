@@ -48,6 +48,39 @@
 
 const fs = require('node:fs')
 
+const buildLog = []
+const stepTimings = []
+
+function logStep(step, message) {
+  const entry = { step, message, ts: new Date().toISOString() }
+  buildLog.push(entry)
+  console.log(`[before-pack] [${step}] ${message}`)
+}
+
+function logWarn(step, message) {
+  const entry = { step, message, ts: new Date().toISOString(), level: 'warn' }
+  buildLog.push(entry)
+  console.warn(`[before-pack] [${step}] WARNING: ${message}`)
+}
+
+function logError(step, message) {
+  const entry = { step, message, ts: new Date().toISOString(), level: 'error' }
+  buildLog.push(entry)
+  console.error(`[before-pack] [${step}] ERROR: ${message}`)
+}
+
+function timeStep(step, fn) {
+  const start = Date.now()
+  try {
+    const result = fn()
+    stepTimings.push({ step, durationMs: Date.now() - start, ok: true })
+    return result
+  } catch (err) {
+    stepTimings.push({ step, durationMs: Date.now() - start, ok: false, error: err.message })
+    throw err
+  }
+}
+
 function cleanStaleAppOutDir(appOutDir) {
   if (!appOutDir || typeof appOutDir !== 'string') {
     return false
@@ -65,14 +98,40 @@ function cleanStaleAppOutDir(appOutDir) {
 exports.cleanStaleAppOutDir = cleanStaleAppOutDir
 
 exports.default = async function beforePack(context) {
+  const startedAt = new Date()
   const appOutDir = context && context.appOutDir
+  const platform = context && context.electronPlatformName
+
+  logStep('init', `beforePack hook started for ${platform || 'unknown platform'}`)
+  logStep('target', `appOutDir: ${appOutDir || '(none)'}`)
+
+  let cleaned = false
   try {
-    if (cleanStaleAppOutDir(appOutDir)) {
-      console.log(`[before-pack] removed stale unpacked dir before staging: ${appOutDir}`)
+    cleaned = timeStep('cleanup', () => cleanStaleAppOutDir(appOutDir))
+    if (cleaned) {
+      logStep('cleanup', `removed stale unpacked dir before staging: ${appOutDir}`)
+    } else {
+      logStep('cleanup', `no stale dir to clean at ${appOutDir}`)
     }
   } catch (err) {
     // Never fail the build over cleanup; surface why so a genuinely stuck
     // directory (permissions, mount) is still diagnosable.
-    console.warn(`[before-pack] could not clean ${appOutDir} (${err.message}); continuing`)
+    logWarn('cleanup', `could not clean ${appOutDir} (${err.message}); continuing`)
+  }
+
+  const endedAt = new Date()
+  const durationMs = endedAt.getTime() - startedAt.getTime()
+  logStep('done', `beforePack hook completed in ${durationMs}ms (cleaned=${cleaned})`)
+
+  return {
+    ok: true,
+    cleaned,
+    timing: {
+      started_at: startedAt.toISOString(),
+      ended_at: endedAt.toISOString(),
+      duration_ms: durationMs,
+      steps: stepTimings
+    },
+    build_log: buildLog
   }
 }

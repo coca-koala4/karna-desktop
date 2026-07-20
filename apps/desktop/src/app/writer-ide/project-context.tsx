@@ -9,12 +9,25 @@ export interface ResolvedProject {
   permissionsRoot: string
 }
 
+export interface ProjectSession {
+  id: string
+  title: string
+  preview: string
+  updated: number
+  created: number
+  message_count: number
+  agent_id?: string
+  agent_name?: string
+}
+
 export interface WriterProjectContextValue {
   workspaceId: string
   writerProjectId: string
   rootPath: string
   projectName: string
   mainSessionId: string | null
+  projectSessions: ProjectSession[]
+  agentSessions: Array<ProjectSession & { agent_id: string }>
   permissionsRoot: string
   capabilities: any
   createdDocuments: any[]
@@ -29,6 +42,8 @@ export interface WriterProjectContextValue {
   reload: () => Promise<void>
   setMainSessionId: (sessionId: string) => Promise<void>
   clearMainSessionId: () => Promise<void>
+  createNewSession: () => Promise<string | null>
+  switchToSession: (sessionId: string) => Promise<void>
 }
 
 const WriterProjectContext = createContext<WriterProjectContextValue | null>(null)
@@ -39,6 +54,8 @@ const LOADING_CONTEXT: WriterProjectContextValue = {
   rootPath: '',
   projectName: '',
   mainSessionId: null,
+  projectSessions: [],
+  agentSessions: [],
   permissionsRoot: '',
   capabilities: null,
   createdDocuments: [],
@@ -52,7 +69,9 @@ const LOADING_CONTEXT: WriterProjectContextValue = {
   error: null,
   reload: async () => {},
   setMainSessionId: async () => {},
-  clearMainSessionId: async () => {}
+  clearMainSessionId: async () => {},
+  createNewSession: async () => null,
+  switchToSession: async () => {}
 }
 
 export function WriterProjectProvider({
@@ -94,18 +113,58 @@ export function WriterProjectProvider({
           error: result?.error || '项目解析失败',
           reload: resolveProject,
           setMainSessionId: async () => {},
-          clearMainSessionId: async () => {}
+          clearMainSessionId: async () => {},
+          createNewSession: async () => null,
+          switchToSession: async () => {}
         })
         return
       }
 
       const project = result.project
+      const createNewSession = async (): Promise<string | null> => {
+        if (!project.id) return null
+        try {
+          const res = await window.karnaDesktop.api<any>({
+            method: 'POST',
+            path: `/api/writer/projects/${project.id}/sessions`,
+            body: { setPrimary: true }
+          })
+          if (res?.ok && res.sessionId) {
+            setContextValue(prev => ({
+              ...prev,
+              mainSessionId: res.sessionId,
+              projectSessions: [
+                ...prev.projectSessions,
+                { id: res.sessionId, title: `${project.name} · 主控`, preview: '', updated: Date.now() / 1000, created: Date.now() / 1000, message_count: 0, agent_id: 'controller', agent_name: '主控' }
+              ]
+            }))
+            return res.sessionId
+          }
+        } catch (err) {
+          console.error('Failed to create new project session:', err)
+        }
+        return null
+      }
+      const switchToSession = async (sessionId: string) => {
+        try {
+          await window.karnaDesktop.api({
+            method: 'POST',
+            path: `/api/writer/projects/${project.id}/main-session`,
+            body: { sessionId }
+          })
+          setContextValue(prev => ({ ...prev, mainSessionId: sessionId }))
+        } catch (err) {
+          console.error('Failed to switch session:', err)
+        }
+      }
       setContextValue({
         workspaceId,
         writerProjectId: project.id || '',
         rootPath: project.rootPath || '',
         projectName: project.name || workspaceId,
         mainSessionId: project.primarySessionId || null,
+        projectSessions: Array.isArray(project.sessions) ? project.sessions : [],
+        agentSessions: Array.isArray(project.agentSessions) ? project.agentSessions : [],
         permissionsRoot: project.permissionsRoot || project.rootPath || '',
         capabilities: project.capabilities || project.resolved_capabilities || null,
         createdDocuments: Array.isArray(project.created_documents) ? project.created_documents : [],
@@ -143,7 +202,9 @@ export function WriterProjectProvider({
             // Older adapters may not support clearing yet; still fix renderer state.
           }
           setContextValue(prev => ({ ...prev, mainSessionId: null }))
-        }
+        },
+        createNewSession,
+        switchToSession
       })
     } catch (err: any) {
       if (generation !== generationRef.current) {
@@ -157,7 +218,9 @@ export function WriterProjectProvider({
         error: err?.message || String(err),
         reload: resolveProject,
         setMainSessionId: async () => {},
-        clearMainSessionId: async () => {}
+        clearMainSessionId: async () => {},
+        createNewSession: async () => null,
+        switchToSession: async () => {}
       })
     }
   }, [workspaceId])

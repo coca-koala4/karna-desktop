@@ -68,6 +68,9 @@ hermes_cli/web_dist/
 apps/desktop/build/
 apps/desktop/dist/
 apps/desktop/release/
+apps/desktop/release2/
+apps/desktop/release-new/
+apps/desktop/release-build/
 apps/desktop/*.tsbuildinfo
 
 # Web UI assets — synced from @nous-research/ui at build time via

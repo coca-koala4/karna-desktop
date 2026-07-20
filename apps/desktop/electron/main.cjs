@@ -78,6 +78,7 @@ const { resolveKarnaRuntimeHome } = require('./karna-runtime-home.cjs')
 const { migrateLegacyRuntimeUserData, resolveKarnaAgentDataHome } = require('./karna-user-data.cjs')
 const { installOfflineRuntimeAsync } = require('./offline-runtime.cjs')
 const { createModelCredentialStore } = require('./model-credential-store.cjs')
+const { createModelConfigMigrator } = require('./migrations/model-config-migration.cjs')
 const { readWslWindowsClipboardImage } = require('./wsl-clipboard-image.cjs')
 const { nativeOverlayWidth: computeNativeOverlayWidth } = require('./titlebar-overlay-width.cjs')
 const { readDirForIpc } = require('./fs-read-dir.cjs')
@@ -156,6 +157,7 @@ const {
 const {
   handleKarnaApiRequest,
   setHermesApiBridge,
+  setReleaseUpdater,
   stopKarnaAdapter,
   registerRemoteIpcHandlers
 } = require('./karna-adapter.cjs')
@@ -458,7 +460,17 @@ function pathWithHermesManagedNode(...entries) {
 // ACTIVE_HERMES_ROOT — the canonical mutable Hermes install. Same path
 // install.ps1 / install.sh use, so a desktop-only user and a CLI-only user end
 // up with identical layouts and can share one install.
-const ACTIVE_HERMES_ROOT = path.join(ACTIVE_RUNTIME_VERSION_ROOT, 'hermes-agent')
+const ACTIVE_HERMES_ROOT = path.join(ACTIVE_RUNTIME_VERSION_ROOT, 'karna-runtime')
+if (IS_PACKAGED) {
+  const _legacyAgentRoot = path.join(ACTIVE_RUNTIME_VERSION_ROOT, 'hermes-agent')
+  if (!directoryExists(ACTIVE_HERMES_ROOT) && directoryExists(_legacyAgentRoot)) {
+    try {
+      fs.renameSync(_legacyAgentRoot, ACTIVE_HERMES_ROOT)
+    } catch (_) {
+      // Ignore migration errors during early startup; will retry during bootstrap if needed.
+    }
+  }
+}
 // VENV_ROOT — venv lives inside the repo, exactly like install.ps1 does it.
 const VENV_ROOT = path.join(ACTIVE_HERMES_ROOT, 'venv')
 // BOOTSTRAP_COMPLETE_MARKER — written by the first-launch bootstrap runner
@@ -3278,6 +3290,15 @@ async function ensureRuntime(backend) {
       }
       try {
         await installOfflineRuntimeAsync({ bundleRoot, runtimeHome: RUNTIME_HOME, version: RUNTIME_VERSION })
+        const legacyAgentRoot = path.join(ACTIVE_RUNTIME_VERSION_ROOT, 'hermes-agent')
+        if (!directoryExists(ACTIVE_HERMES_ROOT) && directoryExists(legacyAgentRoot)) {
+          try {
+            fs.renameSync(legacyAgentRoot, ACTIVE_HERMES_ROOT)
+            rememberLog(`[runtime] migrated legacy hermes-agent directory to karna-runtime`)
+          } catch (migrateError) {
+            rememberLog(`[runtime] legacy migration warning: ${migrateError.message}`)
+          }
+        }
         writeBootstrapMarker({ pinnedCommit: `offline-${RUNTIME_VERSION}`, pinnedBranch: 'offline-release' })
         rememberLog(`[runtime] installed verified offline runtime ${RUNTIME_VERSION} at ${ACTIVE_RUNTIME_VERSION_ROOT}`)
         return ensureRuntime(resolveHermesBackend(backend.args))
@@ -7883,6 +7904,7 @@ function showAboutPanelFresh() {
 
 ipcMain.handle('hermes:version', async () => ({
   appVersion: app.getVersion(),
+  displayVersion: `${APP_NAME} 1.0 \u00b7 ${app.getVersion()}`,
   runtimeVersion: resolveHermesVersion(),
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
@@ -8201,6 +8223,25 @@ app.whenReady().then(() => {
   } catch (error) {
     rememberLog(`[model] credential migration failed: ${error.message}`)
   }
+  try {
+    const userDataPath = app.getPath('userData')
+    const modelConfigMigrator = createModelConfigMigrator({
+      fs,
+      path,
+      userDataPath,
+      oldDataRoot: HERMES_HOME
+    })
+    const modelMigrationResult = modelConfigMigrator.migrateModelConfig({ credentialStore: modelCredentialStore })
+    if (modelMigrationResult.migrated) {
+      rememberLog(`[model-config] migrated model configuration (provider=${modelMigrationResult.selectedProvider || 'none'}, detected=${modelMigrationResult.detectedProvidersCount || 0})`)
+    } else if (modelMigrationResult.reason === 'already_migrated') {
+      rememberLog('[model-config] model configuration already migrated')
+    } else if (modelMigrationResult.error) {
+      rememberLog(`[model-config] model configuration migration failed: ${modelMigrationResult.error}`)
+    }
+  } catch (error) {
+    rememberLog(`[model-config] model configuration migration error: ${error.message}`)
+  }
   writerPreviewService.initialize()
   try {
     const applied = desktopPreferences.applyInstallerOptions(writeDefaultProjectDir)
@@ -8243,6 +8284,10 @@ app.whenReady().then(() => {
   registerPowerResumeListeners()
   ensureTray()
   releaseUpdater?.startPolling()
+
+  if (releaseUpdater && typeof setReleaseUpdater === 'function') {
+    setReleaseUpdater(releaseUpdater)
+  }
 
   let writerProjectsService = null
   try {

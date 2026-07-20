@@ -70,7 +70,7 @@ export function AboutSettings() {
     && now - (latestApplyAt || mountedAt) > 2 * 60 * 1000
   const applying = (apply.applying || apply.stage === 'restart') && !staleInstalling
   const updateHint = status?.branch === 'stable'
-    ? `\u7a33\u5b9a\u901a\u9053 \u00b7 \u5f53\u524d ${version?.appVersion || '\u672a\u77e5'}`
+    ? `\u7a33\u5b9a\u901a\u9053 \u00b7 \u5f53\u524d ${version?.displayVersion || version?.appVersion || '\u672a\u77e5'}`
     : a.branchCommit(status?.branch ?? 'unknown', status?.currentSha?.slice(0, 7) ?? 'unknown')
 
   const handleCheck = async () => {
@@ -107,7 +107,7 @@ export function AboutSettings() {
         <div>
           <h2 className="text-lg font-semibold tracking-tight">{a.heading}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            {version?.appVersion ? a.version(version.appVersion) : a.versionUnavailable}
+            {version?.displayVersion ? version.displayVersion : (version?.appVersion ? a.version(version.appVersion) : a.versionUnavailable)}
           </p>
           <p className="mt-1 text-[0.7rem] text-muted-foreground/70">
             基于兼容运行时构建

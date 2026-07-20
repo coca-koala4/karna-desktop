@@ -5,7 +5,8 @@
   "description": "四并行评审师→汇总→循环修订→人工检验",
   "mode": "canvas",
   "builtin": true,
-  "template_version": 1,
+  "template_version": 2,
+  "fixed_in": "1.1.3",
   "nodes": [
     { "id": "input_1", "type": "input_text", "position": { "x": 100, "y": 400 }, "data": { "label": "输入", "nodeType": "input_text", "isStart": true, "inputText": "" } },
     { "id": "agent_2", "type": "agent", "position": { "x": 380, "y": 400 }, "data": { "label": "章节撰写师", "nodeType": "agent", "agent_id": "chapter_writer" } },
@@ -32,11 +33,11 @@
     { "id": "e10", "source": "agent_7", "target": "condition_8", "sourceHandle": "out", "targetHandle": "in" },
     { "id": "e11", "source": "condition_8", "target": "human_confirm_10", "sourceHandle": "true_out", "targetHandle": "in", "label": "达标" },
     { "id": "e12", "source": "condition_8", "target": "agent_9", "sourceHandle": "false_out", "targetHandle": "in", "label": "未达标" },
-    { "id": "e13", "source": "agent_9", "target": "agent_2", "sourceHandle": "out", "targetHandle": "in", "label": "修订后重写", "type": "loop" },
+    { "id": "e13", "source": "agent_9", "target": "agent_2", "sourceHandle": "out", "targetHandle": "in", "label": "修订后重写", "type": "loop", "animated": true, "condition": { "maxRounds": 3, "onLimitReached": "continue" } },
     { "id": "e14", "source": "human_confirm_10", "target": "final_output_11", "sourceHandle": "approve_out", "targetHandle": "in", "label": "通过" },
-    { "id": "e15", "source": "human_confirm_10", "target": "agent_9", "sourceHandle": "reject_out", "targetHandle": "in", "label": "驳回" }
+    { "id": "e15", "source": "human_confirm_10", "target": "agent_9", "sourceHandle": "reject_out", "targetHandle": "in", "label": "驳回", "type": "loop", "animated": true, "condition": { "maxRounds": 5, "onLimitReached": "continue" } }
   ],
-  "limits": { "max_agents": 10, "max_parallel": 3, "max_loop": 3 },
-  "runtimeConfig": { "maxConcurrency": 3, "failurePolicy": "stop", "retryCount": 1 },
+  "limits": { "max_agents": 10, "max_parallel": 4, "max_loop": 3 },
+  "runtimeConfig": { "maxConcurrency": 4, "failurePolicy": "stop", "retryCount": 1, "allowLoop": true },
   "knowledge_binding": { "enabled": true }
 }

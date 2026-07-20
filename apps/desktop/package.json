@@ -2,8 +2,8 @@
   "name": "karna",
   "productName": "Karna",
   "private": true,
-  "version": "1.1.2",
-  "description": "Karna desktop-first AI writing workspace.",
+  "version": "2.0.1",
+  "description": "Karna 2.0.1 正式版 - Desktop-first AI writing workspace.",
   "author": "Karna",
   "type": "module",
   "main": "electron/main.cjs",
@@ -20,7 +20,7 @@
     "start": "npm run build && electron .",
     "build": "node scripts/assert-root-install.cjs && node scripts/write-build-stamp.cjs && node scripts/generate-release-manifest.cjs && node scripts/stage-skill-marketplace.cjs && node scripts/stage-native-deps.cjs && node scripts/check-mcp-icon-catalog.cjs && tsc -b && vite build && npm run postbuild",
     "postbuild": "node scripts/assert-dist-built.cjs && node scripts/assert-renderer-budget.cjs",
-    "prebuilder": "node scripts/assert-release-inputs.cjs && node scripts/check-mcp-icon-catalog.cjs && node scripts/stage-offline-runtime.cjs && node scripts/patch-electron-builder-mac-binary.cjs",
+    "prebuilder": "node scripts/verify-version-consistency.cjs --allow-dirty && node scripts/assert-release-inputs.cjs && node scripts/check-mcp-icon-catalog.cjs && node scripts/stage-offline-runtime.cjs && node scripts/patch-electron-builder-mac-binary.cjs",
     "builder": "cross-env NODE_OPTIONS=--max-old-space-size=16384 node scripts/run-electron-builder.cjs",
     "pack": "npm run build && npm run builder -- --dir",
     "dist": "npm run build && npm run builder",
@@ -245,7 +245,7 @@
       "provider": "github",
       "owner": "coca-koala4",
       "repo": "karna-desktop",
-      "releaseType": "prerelease"
+      "releaseType": "release"
     },
     "asar": true,
     "afterSign": "scripts/notarize.cjs",

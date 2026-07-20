@@ -17,7 +17,7 @@ import {
   useReactFlow,
   type Connection
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, memo, useState } from 'react'
 import type * as React from 'react'
 
 import { Codicon } from '@/components/ui/codicon'
@@ -281,7 +281,8 @@ function CustomNode({ data, selected, id }: NodeProps<FlowNode>) {
   )
 }
 
-const nodeTypes = { custom: CustomNode }
+const MemoizedCustomNode = memo(CustomNode)
+const nodeTypes = { custom: MemoizedCustomNode }
 
 function getEdgeStyle(edge: FlowEdge) {
   const status = edge.data?.status as string | undefined
@@ -345,7 +346,6 @@ function CustomEdge({
   sourceHandle,
   targetHandle
 }: EdgeProps<FlowEdge> & { sourceHandle?: string; targetHandle?: string }) {
-  const { setSelectedEdgeId } = useAgentFlow()
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -365,20 +365,9 @@ function CustomEdge({
 
   return (
     <>
-      {animated && (
-        <path
-          d={edgePath}
-          fill="none"
-          opacity={0.3}
-          stroke={stroke}
-          strokeLinecap="round"
-          strokeWidth={strokeWidth + 6}
-          style={{ filter: 'blur(8px)' }}
-        />
-      )}
       <BaseEdge
         id={id}
-        markerEnd={MarkerType.ArrowClosed}
+        markerEnd={markerEnd}
         path={edgePath}
         style={{
           ...style,
@@ -389,17 +378,12 @@ function CustomEdge({
       />
       {animated && (
         <circle r="4" fill={stroke} opacity={0.9}>
-          <animateMotion dur="1.2s" path={edgePath} repeatCount="indefinite" />
+          <animateMotion dur="1.5s" path={edgePath} repeatCount="indefinite" />
         </circle>
       )}
       <path
         d={edgePath}
         fill="none"
-        onClick={() => setSelectedEdgeId(id)}
-        onContextMenu={(event) => {
-          event.preventDefault()
-          setSelectedEdgeId(id)
-        }}
         stroke="transparent"
         strokeWidth={selected ? 28 : 22}
         style={{ cursor: 'pointer' }}
@@ -432,7 +416,8 @@ function CustomEdge({
   )
 }
 
-const edgeTypes = { default: CustomEdge, smoothstep: CustomEdge }
+const MemoizedCustomEdge = memo(CustomEdge)
+const edgeTypes = { default: MemoizedCustomEdge, smoothstep: MemoizedCustomEdge }
 
 interface ContextMenuState {
   x: number

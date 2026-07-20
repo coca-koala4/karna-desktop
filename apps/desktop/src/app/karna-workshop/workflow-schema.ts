@@ -554,8 +554,10 @@ export interface WorkflowEdgeRecord {
   label?: string
   type?: 'normal' | 'condition' | 'loop' | 'human_approval'
   condition?: {
-    expression: string
+    expression?: string
     description?: string
+    maxRounds?: number
+    onLimitReached?: string
   }
   animated?: boolean
   style?: Record<string, unknown>
@@ -585,7 +587,7 @@ export interface WorkflowValidationError {
   relatedNodeId?: string
   relatedEdgeId?: string
   fixSuggestions?: Array<{ label: string; action: string }>
-  severity: 'error' | 'warning'
+  severity: 'error' | 'warning' | 'info'
 }
 
 export interface WorkflowValidationResult {
@@ -611,6 +613,7 @@ export interface WriterWorkflow {
   updated_at?: string
   version?: number
   tags?: string[]
+  builtin?: boolean
 }
 
 export interface NodeRunRecord {
@@ -1992,6 +1995,66 @@ export function clampWorkflowLimits(limits: Partial<WorkflowLimits> = {}): Workf
   }
 }
 
+const LEGACY_NODE_TYPE_MAP: Record<string, WorkflowNodeType> = {
+  'input': 'input_text',
+  'output': 'final_output',
+  'human_review': 'human_confirm',
+  'loop': 'loop_controller',
+  'archive': 'save_snapshot',
+  'text_output': 'final_output',
+  'file_output': 'final_output',
+  'parallel': 'fanout',
+  'merge': 'text_merge'
+}
+
+const LEGACY_EDGE_TYPE_MAP: Record<string, 'normal' | 'condition' | 'loop' | 'human_approval'> = {
+  'default': 'normal',
+  'straight': 'normal',
+  'step': 'normal',
+  'smoothstep': 'normal',
+  'bezier': 'normal',
+  'approval': 'human_approval'
+}
+
+function getNodeInputHandles(nodeType: WorkflowNodeType | string): Set<string> {
+  const def = getNodeDefinition(nodeType as WorkflowNodeType)
+  const handles = new Set<string>(['in'])
+  if (def?.inputs) {
+    for (const port of def.inputs) {
+      handles.add(port.id)
+    }
+  }
+  if (nodeType === 'agent') {
+    handles.add('context_in')
+  }
+  return handles
+}
+
+function getNodeOutputHandles(nodeType: WorkflowNodeType | string): Set<string> {
+  const def = getNodeDefinition(nodeType as WorkflowNodeType)
+  const handles = new Set<string>(['out', 'text_out'])
+  if (def?.outputs) {
+    for (const port of def.outputs) {
+      handles.add(port.id)
+    }
+  }
+  return handles
+}
+
+function migrateNodeType(type: string | undefined): WorkflowNodeType {
+  if (!type) return 'agent' as WorkflowNodeType
+  if (LEGACY_NODE_TYPE_MAP[type]) return LEGACY_NODE_TYPE_MAP[type]
+  if (getNodeDefinition(type as WorkflowNodeType)) return type as WorkflowNodeType
+  return 'agent' as WorkflowNodeType
+}
+
+function migrateEdgeType(type: string | undefined): 'normal' | 'condition' | 'loop' | 'human_approval' {
+  if (!type) return 'normal'
+  if (type === 'normal' || type === 'condition' || type === 'loop' || type === 'human_approval') return type
+  if (LEGACY_EDGE_TYPE_MAP[type]) return LEGACY_EDGE_TYPE_MAP[type]
+  return 'normal'
+}
+
 export function migrateWorkflow(workflow: any): WriterWorkflow {
   if (!workflow || typeof workflow !== 'object') {
     return {
@@ -2008,7 +2071,7 @@ export function migrateWorkflow(workflow: any): WriterWorkflow {
 
   const nodes: WorkflowNodeRecord[] = Array.isArray(workflow.nodes)
     ? workflow.nodes.map((n: any, i: number) => {
-        const nodeType = (n?.type || n?.data?.nodeType || 'agent') as WorkflowNodeType
+        const nodeType = migrateNodeType(n?.type || n?.data?.nodeType)
         return {
           id: String(n?.id || `node_${Date.now()}_${i}`),
           type: nodeType,
@@ -2029,24 +2092,60 @@ export function migrateWorkflow(workflow: any): WriterWorkflow {
             rounds: n?.data?.rounds ?? n?.rounds,
             locked: n?.data?.locked,
             isStart: n?.data?.isStart,
-            requiresReview: n?.data?.requiresReview
+            requiresReview: nodeType === 'human_confirm' ? (n?.data?.requiresReview ?? true) : n?.data?.requiresReview
           }
         }
       })
     : []
 
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
   const edges: WorkflowEdgeRecord[] = Array.isArray(workflow.edges)
-    ? workflow.edges.map((e: any, i: number) => ({
-        id: String(e?.id || `edge_${Date.now()}_${i}`),
-        source: String(e?.source || ''),
-        target: String(e?.target || ''),
-        sourceHandle: e?.sourceHandle || 'out',
-        targetHandle: e?.targetHandle || 'in',
-        label: e?.label,
-        type: e?.type || 'normal',
-        animated: e?.animated,
-        style: e?.style
-      })).filter((e: WorkflowEdgeRecord) => e.source && e.target)
+    ? workflow.edges.map((e: any, i: number) => {
+        const sourceId = String(e?.source || '')
+        const targetId = String(e?.target || '')
+        if (!sourceId || !targetId || !nodeMap.has(sourceId) || !nodeMap.has(targetId)) {
+          return null
+        }
+        const sourceNode = nodeMap.get(sourceId)!
+        const targetNode = nodeMap.get(targetId)!
+        const validSourceHandles = getNodeOutputHandles(sourceNode.type)
+        const validTargetHandles = getNodeInputHandles(targetNode.type)
+        
+        let sourceHandle = e?.sourceHandle || 'out'
+        let targetHandle = e?.targetHandle || 'in'
+        let edgeType = migrateEdgeType(e?.type)
+        
+        if (!validSourceHandles.has(sourceHandle)) {
+          if (validSourceHandles.has('out')) sourceHandle = 'out'
+          else sourceHandle = Array.from(validSourceHandles)[0] || 'out'
+        }
+        if (!validTargetHandles.has(targetHandle)) {
+          if (validTargetHandles.has('in')) targetHandle = 'in'
+          else targetHandle = Array.from(validTargetHandles)[0] || 'in'
+        }
+
+        let edgeCondition = e?.condition
+        if (edgeType === 'loop' && !edgeCondition?.maxRounds) {
+          edgeCondition = {
+            maxRounds: Number(workflow?.limits?.max_loop || 3),
+            onLimitReached: edgeCondition?.onLimitReached || 'continue',
+            ...(edgeCondition || {})
+          }
+        }
+
+        return {
+          id: String(e?.id || `edge_${Date.now()}_${i}`),
+          source: sourceId,
+          target: targetId,
+          sourceHandle,
+          targetHandle,
+          label: e?.label,
+          type: edgeType,
+          condition: edgeCondition,
+          animated: e?.animated !== undefined ? e.animated : (edgeType === 'loop'),
+          style: e?.style
+        }
+      }).filter(Boolean) as WorkflowEdgeRecord[]
     : []
 
   return {
@@ -2120,6 +2219,7 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
   const nodes = Array.isArray(workflow.nodes) ? workflow.nodes.filter((n: any) => n && n.id) : []
   const edges = Array.isArray(workflow.edges) ? workflow.edges.filter((e: any) => e && e.source && e.target) : []
   const limits = clampWorkflowLimits(workflow.limits || {})
+  const nodeMap = new Map<string, any>(nodes.map((node: any) => [String(node.id), node]))
   const ids: Set<string> = new Set(nodes.map((node: any) => String(node.id)))
   const agentCount = nodes.filter((node: any) => node.type === 'agent' || node.data?.nodeType === 'agent').length
 
@@ -2132,8 +2232,8 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
     })
   }
 
-  const startNodes = nodes.filter((n: any) => n.data?.isStart || n.type === 'input' || n.data?.nodeType === 'input_text' || n.data?.nodeType === 'input')
-  const outputNodes = nodes.filter((n: any) => n.type === 'output' || n.type === 'final_output' || n.data?.nodeType === 'output' || n.data?.nodeType === 'final_output' || n.data?.isFinalOutput)
+  const startNodes = nodes.filter((n: any) => n.data?.isStart || n.type === 'input_text' || n.data?.nodeType === 'input_text')
+  const outputNodes = nodes.filter((n: any) => n.type === 'final_output' || n.data?.nodeType === 'final_output' || n.data?.isFinalOutput)
 
   if (nodes.length > 0 && startNodes.length === 0) {
     warnings.push({
@@ -2165,6 +2265,7 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
         severity: 'error',
         fixSuggestions: [{ label: '删除无效连线', action: 'delete_edge' }]
       })
+      continue
     }
     if (source === target) {
       errors.push({
@@ -2174,6 +2275,80 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
         relatedNodeId: source,
         severity: 'error'
       })
+      continue
+    }
+
+    const sourceNode = nodeMap.get(source)!
+    const targetNode = nodeMap.get(target)!
+    const sourceType = sourceNode.type || sourceNode.data?.nodeType
+    const targetType = targetNode.type || targetNode.data?.nodeType
+    const validSourceHandles = getNodeOutputHandles(sourceType)
+    const validTargetHandles = getNodeInputHandles(targetType)
+
+    const sourceHandle = edge.sourceHandle || 'out'
+    const targetHandle = edge.targetHandle || 'in'
+
+    if (!validSourceHandles.has(sourceHandle)) {
+      errors.push({
+        code: 'INVALID_SOURCE_HANDLE',
+        message: `Invalid source handle ${sourceHandle} on node ${source} (type ${sourceType})`,
+        userMessage: `连线起点「${sourceNode.data?.label || source}」的端口「${sourceHandle}」不存在，已自动修正为默认端口`,
+        relatedEdgeId: edge.id,
+        relatedNodeId: source,
+        severity: 'error',
+        fixSuggestions: [{ label: '自动修复端口', action: 'migrate_workflow' }]
+      })
+    }
+
+    if (!validTargetHandles.has(targetHandle)) {
+      errors.push({
+        code: 'INVALID_TARGET_HANDLE',
+        message: `Invalid target handle ${targetHandle} on node ${target} (type ${targetType})`,
+        userMessage: `连线终点「${targetNode.data?.label || target}」的端口「${targetHandle}」不存在，已自动修正为默认端口`,
+        relatedEdgeId: edge.id,
+        relatedNodeId: target,
+        severity: 'error',
+        fixSuggestions: [{ label: '自动修复端口', action: 'migrate_workflow' }]
+      })
+    }
+
+    if (sourceType === 'condition') {
+      if (sourceHandle !== 'true_out' && sourceHandle !== 'false_out') {
+        errors.push({
+          code: 'INVALID_CONDITION_BRANCH',
+          message: `Condition node must use true_out/false_out handles`,
+          userMessage: '条件判断节点的输出端口必须是「条件成立」或「条件不成立」',
+          relatedEdgeId: edge.id,
+          relatedNodeId: source,
+          severity: 'error'
+        })
+      }
+    }
+
+    if (sourceType === 'human_confirm') {
+      if (sourceHandle !== 'approve_out' && sourceHandle !== 'reject_out' && sourceHandle !== 'edit_out') {
+        errors.push({
+          code: 'INVALID_HUMAN_CONFIRM_BRANCH',
+          message: `Human confirm node must use approve_out/reject_out/edit_out handles`,
+          userMessage: '人工确认节点的输出端口必须是「通过」「驳回」或「修改后」',
+          relatedEdgeId: edge.id,
+          relatedNodeId: source,
+          severity: 'error'
+        })
+      }
+    }
+
+    if (sourceType === 'loop_controller') {
+      if (sourceHandle !== 'out' && sourceHandle !== 'exit_out') {
+        errors.push({
+          code: 'INVALID_LOOP_BRANCH',
+          message: `Loop controller must use out/exit_out handles`,
+          userMessage: '循环控制器的输出端口必须是「循环体」或「退出循环」',
+          relatedEdgeId: edge.id,
+          relatedNodeId: source,
+          severity: 'error'
+        })
+      }
     }
   }
 
@@ -2193,47 +2368,108 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
     }
   }
 
-  const adjacency = new Map<string, string[]>(nodes.map((node: any) => [String(node.id), []]))
+  const adjacency = new Map<string, Array<{ target: string; edge: any }>>()
+  const loopEdgesList: any[] = []
+  for (const node of nodes) adjacency.set(String(node.id), [])
   for (const edge of edges) {
     const source = String(edge.source)
     const target = String(edge.target)
     if (ids.has(source) && ids.has(target)) {
-      adjacency.get(source)?.push(target)
+      if (edge.type === 'loop') {
+        loopEdgesList.push(edge)
+      } else {
+        adjacency.get(source)?.push({ target, edge })
+      }
     }
   }
 
+  const invalidCycles: Array<{ nodes: string[] }> = []
   const visiting = new Set<string>()
   const visited = new Set<string>()
-  let hasCycle = false
+  const pathMap = new Map<string, number>()
 
-  const dfs = (id: string, path: Set<string>) => {
-    if (hasCycle) return
-    if (path.has(id)) {
-      hasCycle = true
-      const hasLoopController = Array.from(path).some(nid => {
-        const n = nodes.find((nd: any) => nd.id === nid)
-        return n?.type === 'loop' || n?.type === 'loop_controller' || n?.data?.nodeType === 'loop' || n?.data?.nodeType === 'loop_controller'
-      })
-      if (!hasLoopController && !workflow.runtimeConfig?.allowLoop) {
-        errors.push({
-          code: 'CYCLE_DETECTED',
-          message: 'Cycle detected without loop controller',
-          userMessage: '工作流不允许形成无保护的环路；请使用循环控制器节点并设置轮数上限',
-          severity: 'error'
-        })
-      }
+  const dfs = (id: string, path: string[]) => {
+    if (visiting.has(id)) {
+      const cycleStart = pathMap.get(id) ?? path.indexOf(id)
+      const cycleNodes = path.slice(cycleStart)
+      invalidCycles.push({ nodes: cycleNodes })
       return
     }
     if (visited.has(id)) return
     visiting.add(id)
-    const newPath = new Set(path)
-    newPath.add(id)
-    for (const next of adjacency.get(id) || []) dfs(next, newPath)
+    pathMap.set(id, path.length)
+    const newPath = [...path, id]
+    for (const { target } of (adjacency.get(id) || [])) {
+      dfs(target, newPath)
+    }
     visiting.delete(id)
+    pathMap.delete(id)
     visited.add(id)
   }
 
-  for (const id of ids) dfs(id, new Set())
+  for (const id of ids) dfs(id, [])
+
+  for (const cycle of invalidCycles) {
+    const cycleDesc = cycle.nodes.map(nid => {
+      const n = nodes.find((nd: any) => String(nd.id) === nid)
+      return n?.data?.label || nid
+    }).join(' → ')
+    errors.push({
+      code: 'INVALID_CYCLE',
+      message: `Invalid cycle: ${cycleDesc}`,
+      userMessage: `该工作流包含非法闭环：${cycleDesc}。请使用loop类型的连线创建受控循环并设置轮数上限。`,
+      severity: 'error',
+      relatedNodeId: cycle.nodes[0]
+    })
+  }
+
+  const maxLoop = Number(limits.max_loop || 3)
+  for (const loopEdge of loopEdgesList) {
+    const sourceId = String(loopEdge.source)
+    const targetId = String(loopEdge.target)
+    const source = nodeMap.get(sourceId)
+    const target = nodeMap.get(targetId)
+    if (!source || !target) {
+      errors.push({
+        code: 'INVALID_LOOP_EDGE',
+        message: `Loop edge references non-existent node`,
+        userMessage: '循环连线引用了不存在的节点',
+        relatedEdgeId: loopEdge.id,
+        severity: 'error'
+      })
+      continue
+    }
+    if (sourceId === targetId) {
+      errors.push({
+        code: 'LOOP_SELF_TARGET',
+        message: 'Loop edge cannot target itself',
+        userMessage: '循环连线的起点和终点不能是同一个节点',
+        relatedNodeId: sourceId,
+        relatedEdgeId: loopEdge.id,
+        severity: 'error'
+      })
+      continue
+    }
+    const sourceLabel = source?.data?.label || sourceId
+    const targetLabel = target?.data?.label || targetId
+    const loopMax = Math.max(1, Math.min(10, maxLoop || 3))
+    if (!maxLoop || maxLoop < 1 || maxLoop > 10) {
+      warnings.push({
+        code: 'LOOP_LIMIT_INVALID',
+        message: `Invalid max_loop: ${maxLoop}`,
+        userMessage: `循环轮数设置异常(${maxLoop})，已自动设为默认值3轮`,
+        severity: 'warning',
+        fixSuggestions: [{ label: '调整循环上限', action: 'set_max_loop' }]
+      })
+    }
+    warnings.push({
+      code: 'CONTROLLED_LOOP',
+      message: `Controlled loop: ${sourceLabel} -> ${targetLabel}, max ${loopMax} rounds`,
+      userMessage: `检测到受控循环：${sourceLabel} → ${targetLabel}，最多 ${loopMax} 轮。`,
+      severity: 'info' as any,
+      relatedEdgeId: loopEdge.id
+    })
+  }
 
   return {
     valid: errors.filter(e => e.severity === 'error').length === 0,
@@ -2242,7 +2478,7 @@ export function validateWorkflow(workflow: any): WorkflowValidationResult {
   }
 }
 
-export function createWorkflowTemplate(kind: 'basic_writing' | 'critique_loop' | 'empty' | 'simple' | 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'critique'): WriterWorkflow {
+export function createWorkflowTemplate(kind: 'empty' | 'simple' | 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'critique'): WriterWorkflow {
   const makeNode = (type: WorkflowNodeType, label: string, x: number, y: number, extra?: Partial<WorkflowNodeData>, index?: number): WorkflowNodeRecord => ({
     id: `${type}_${index ?? Date.now()}`,
     type,
@@ -2331,96 +2567,7 @@ export function createWorkflowTemplate(kind: 'basic_writing' | 'critique_loop' |
     }
   }
 
-  if (kind === 'basic_writing') {
-    const nodes: WorkflowNodeRecord[] = [
-      makeNode('input_text', '输入', 100, 300, { isStart: true, inputText: '' }, 1),
-      makeNode('agent', '大纲规划师', 380, 300, { agent_id: 'outline_planner' }, 2),
-      makeNode('agent', '章节撰写师', 700, 300, { agent_id: 'chapter_writer' }, 3),
-      makeNode('agent', '文词润色师', 1020, 300, { agent_id: 'style_polisher' }, 4),
-      makeNode('final_output', '输出', 1340, 300, {}, 5)
-    ]
-    return {
-      name: '基础写作流程',
-      description: '输入→大纲规划→写作→润色→输出的线性流程',
-      mode: 'canvas',
-      nodes,
-      edges: [
-        { id: 'e1', source: nodes[0].id, target: nodes[1].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e2', source: nodes[1].id, target: nodes[2].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e3', source: nodes[2].id, target: nodes[3].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e4', source: nodes[3].id, target: nodes[4].id, sourceHandle: 'out', targetHandle: 'in' }
-      ],
-      limits: DEFAULT_LIMITS,
-      runtimeConfig: DEFAULT_RUNTIME_CONFIG,
-      knowledge_binding: { enabled: true },
-      schema_version: 2
-    }
-  }
-
-  if (kind === 'critique_loop') {
-    const nodes: WorkflowNodeRecord[] = [
-      makeNode('input_text', '输入', 100, 400, { isStart: true, inputText: '' }, 1),
-      makeNode('agent', '章节撰写师', 380, 400, { agent_id: 'chapter_writer' }, 2),
-      makeNode('agent', '情节评审师', 700, 100, { agent_id: 'plot_critic' }, 3),
-      makeNode('agent', '人物评审师', 700, 300, { agent_id: 'character_critic' }, 4),
-      makeNode('agent', '文风评审师', 700, 500, { agent_id: 'style_critic' }, 5),
-      makeNode('agent', '设定评审师', 700, 700, { agent_id: 'worldbuilding_critic' }, 6),
-      makeNode('agent', '意见汇总师', 1080, 400, { agent_id: 'critique_aggregator' }, 7),
-      makeNode('condition', '评分判断', 1360, 400, { condition: 'overallScore >= 70' }, 8),
-      makeNode('agent', '文稿修订师', 1360, 700, { agent_id: 'revision_agent', rounds: 3 }, 9),
-      makeNode('human_confirm', '人工检验', 1640, 400, { requiresReview: true }, 10),
-      makeNode('final_output', '最终输出', 1920, 400, {}, 11)
-    ]
-    return {
-      name: '多评审师循环修订',
-      description: '四并行评审师→汇总→判断→修订循环→人工确认→输出',
-      mode: 'canvas',
-      nodes,
-      edges: [
-        { id: 'e1', source: nodes[0].id, target: nodes[1].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e2', source: nodes[1].id, target: nodes[2].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e3', source: nodes[1].id, target: nodes[3].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e4', source: nodes[1].id, target: nodes[4].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e5', source: nodes[1].id, target: nodes[5].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e6', source: nodes[2].id, target: nodes[6].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e7', source: nodes[3].id, target: nodes[6].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e8', source: nodes[4].id, target: nodes[6].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e9', source: nodes[5].id, target: nodes[6].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e10', source: nodes[6].id, target: nodes[7].id, sourceHandle: 'out', targetHandle: 'in' },
-        { id: 'e11', source: nodes[7].id, target: nodes[9].id, sourceHandle: 'true_out', targetHandle: 'in', label: '达标' },
-        { id: 'e12', source: nodes[7].id, target: nodes[8].id, sourceHandle: 'false_out', targetHandle: 'in', label: '未达标' },
-        { id: 'e13', source: nodes[8].id, target: nodes[1].id, sourceHandle: 'out', targetHandle: 'in', label: '修订后重写', type: 'loop' },
-        { id: 'e14', source: nodes[9].id, target: nodes[10].id, sourceHandle: 'approve_out', targetHandle: 'in', label: '通过' },
-        { id: 'e15', source: nodes[9].id, target: nodes[8].id, sourceHandle: 'reject_out', targetHandle: 'in', label: '驳回' }
-      ],
-      limits: DEFAULT_LIMITS,
-      runtimeConfig: DEFAULT_RUNTIME_CONFIG,
-      knowledge_binding: { enabled: true },
-      schema_version: 2
-    }
-  }
-
   const specs: Record<string, Array<{ type: WorkflowNodeType; label: string; agent_id?: string }>> = {
-    basic_writing: [
-      { type: 'input_text', label: '输入' },
-      { type: 'agent', label: '大纲规划师', agent_id: 'outline_planner' },
-      { type: 'agent', label: '章节撰写师', agent_id: 'chapter_writer' },
-      { type: 'agent', label: '文词润色师', agent_id: 'style_polisher' },
-      { type: 'final_output', label: '输出' }
-    ],
-    critique_loop: [
-      { type: 'input_text', label: '输入' },
-      { type: 'agent', label: '章节撰写师', agent_id: 'chapter_writer' },
-      { type: 'agent', label: '情节评审师', agent_id: 'plot_critic' },
-      { type: 'agent', label: '人物评审师', agent_id: 'character_critic' },
-      { type: 'agent', label: '文风评审师', agent_id: 'style_critic' },
-      { type: 'agent', label: '设定评审师', agent_id: 'worldbuilding_critic' },
-      { type: 'agent', label: '意见汇总师', agent_id: 'critique_aggregator' },
-      { type: 'condition', label: '评分判断' },
-      { type: 'agent', label: '文稿修订师', agent_id: 'revision_agent' },
-      { type: 'human_confirm', label: '人工检验' },
-      { type: 'final_output', label: '最终输出' }
-    ],
     chapter: [
       { type: 'input', label: '导入需求与章节材料' },
       { type: 'agent', label: '大纲拆解', agent_id: 'outline_architect' },
@@ -2477,7 +2624,7 @@ export function createWorkflowTemplate(kind: 'basic_writing' | 'critique_loop' |
     sourceHandle: 'out',
     targetHandle: 'in'
   }))
-  const names: Record<string, string> = { basic_writing: '基础写作流程', critique_loop: '多评论家循环修订', chapter: '章节创作流', polish: '单章润色点评流', foreshadow: '伏笔回收流', unstuck: '卡文救援流', empty: '空白', simple: '最简写作', critique: '共识修订' }
+  const names: Record<string, string> = { chapter: '章节创作流', polish: '单章润色点评流', foreshadow: '伏笔回收流', unstuck: '卡文救援流', empty: '空白', simple: '最简写作', critique: '共识修订' }
 
   return {
     name: names[kind] || '章节创作流',

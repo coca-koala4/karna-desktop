@@ -11,13 +11,13 @@ const { installOfflineRuntime, installOfflineRuntimeAsync, verifyBundle } = requ
 
 function writeBundle(root, version = '1') {
   const bundle = path.join(root, 'bundle')
-  const payload = path.join(bundle, 'hermes-agent', 'hermes_cli', '__init__.py')
+  const payload = path.join(bundle, 'karna-runtime', 'hermes_cli', '__init__.py')
   fs.mkdirSync(path.dirname(payload), { recursive: true })
   fs.writeFileSync(payload, '# clean runtime\n')
   const sha256 = crypto.createHash('sha256').update(fs.readFileSync(payload)).digest('hex')
   fs.writeFileSync(
     path.join(bundle, 'runtime-manifest.json'),
-    JSON.stringify({ schemaVersion: 1, desktopVersion: version, files: [{ path: 'hermes-agent/hermes_cli/__init__.py', sha256 }] })
+    JSON.stringify({ schemaVersion: 1, desktopVersion: version, files: [{ path: 'karna-runtime/hermes_cli/__init__.py', sha256 }] })
   )
   return { bundle, payload }
 }
@@ -30,7 +30,7 @@ test('verified offline runtime installs under versioned runtime home', t => {
   verifyBundle(bundle, '1.2.3')
   const installed = installOfflineRuntime({ bundleRoot: bundle, runtimeHome: path.join(root, 'runtime'), version: '1.2.3' })
   assert.equal(installed, path.join(root, 'runtime', 'versions', '1.2.3'))
-  assert.equal(fs.existsSync(path.join(installed, 'hermes-agent', 'hermes_cli', '__init__.py')), true)
+  assert.equal(fs.existsSync(path.join(installed, 'karna-runtime', 'hermes_cli', '__init__.py')), true)
   assert.equal(fs.readFileSync(path.join(root, 'runtime', 'active-version'), 'utf8'), '1.2.3\n')
 })
 
@@ -60,7 +60,7 @@ test('offline runtime async worker installs without blocking caller API', async 
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
   const { bundle } = writeBundle(root, '1')
   const installed = await installOfflineRuntimeAsync({ bundleRoot: bundle, runtimeHome: path.join(root, 'runtime'), version: '1' })
-  assert.equal(fs.existsSync(path.join(installed, 'hermes-agent', 'hermes_cli', '__init__.py')), true)
+  assert.equal(fs.existsSync(path.join(installed, 'karna-runtime', 'hermes_cli', '__init__.py')), true)
 })
 
 test('offline runtime rejects a manifest that includes itself', t => {

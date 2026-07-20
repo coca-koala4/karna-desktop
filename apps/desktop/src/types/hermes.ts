@@ -313,6 +313,7 @@ export interface PaginatedSessions {
   offset: number
   sessions: SessionInfo[]
   total: number
+  has_more: boolean
   /** Listable conversation count per profile (children excluded), keyed by
    *  profile name. Lets the sidebar scope its "Load more" footer to the active
    *  profile instead of the global total. Present only on

@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars, no-control-regex, no-useless-escape, no-empty -- legacy adapter stays linted for syntax and unsafe constructs while its module extraction proceeds. */
+﻿/* eslint-disable no-unused-vars, no-control-regex, no-useless-escape, no-empty -- legacy adapter stays linted for syntax and unsafe constructs while its module extraction proceeds. */
 // TODO: 历史债务 - 此文件为340KB的大型Node.js CommonJS模块，包含大量历史代码。
 // 全局禁用ESLint是临时方案，后续应拆分为多个小模块并逐步修复lint问题。
 'use strict'
@@ -14,9 +14,13 @@
  * 2. Run a local WebSocket server that speaks JSON-RPC 2.0 to the frontend,
  *    translating `prompt.submit` → `POST /api/chat` and streaming the response
  *    back as `message.start` → `message.delta` → `message.complete` events.
- *    All other JSON-RPC methods return mock/empty responses for graceful degradation.
+ *    Unsupported methods return proper error responses (mock mode removed from production builds).
  * 3. Provide `handleKarnaApiRequest()` that maps REST API paths to the
- *    Karna backend (or returns mock data for unsupported endpoints).
+ *    Karna backend (or returns proper error responses for unsupported endpoints).
+ *
+ * Note: Mock/stub responses are only retained in development environments for
+ * graceful degradation during active development. Production builds should
+ * always return real data or explicit error responses.
  */
 
 const { WebSocketServer } = require('ws')
@@ -60,6 +64,8 @@ const { createModeService } = require('./karna/mode-service.cjs')
 const { createPlanService } = require('./karna/plan-service.cjs')
 const { createGoalService } = require('./karna/goal-service.cjs')
 const { createCreativeService } = require('./karna/creative-service.cjs')
+const { createPluginsService } = require('./karna/plugins-service.cjs')
+const { createConnectorCatalog } = require('./karna/connector-catalog.cjs')
 const { MODEL_PROVIDERS, createCustomModelController, createCustomModelStore, createEmbeddingModelService, createImageModelService, createModelRouter, customEnvKey, modelCapabilities } = require('./karna/model-service.cjs')
 // `require('electron')` returns the Electron API inside the desktop process,
 // but resolves to the executable path string in plain Node.js. Keep adapter
@@ -67,6 +73,7 @@ const { MODEL_PROVIDERS, createCustomModelController, createCustomModelStore, cr
 const electronApi = require('electron')
 const electronApp = electronApi && typeof electronApi === 'object' ? electronApi.app : null
 const safeStorage = electronApi && typeof electronApi === 'object' ? electronApi.safeStorage : null
+let releaseUpdater = null
 const { createModelCredentialStore } = require('./model-credential-store.cjs')
 const { resolveModelContextBudget } = require('../shared/model-context-budget.cjs')
 const storage = createStorageUtils({ fs, path })
@@ -89,15 +96,38 @@ const { createWriterCommandCenterService } = require('./writer-os/command-center
 const { createWriterDeliveryService } = require('./writer-os/delivery.cjs')
 const writerSafetyUtils = require('./writer-os/safety-utils.cjs')
 const { createWriterOsServices } = require('./writer-os/services.cjs')
+const { createCreativeIdentityService } = require('./writer-os/creative-identity.cjs')
+const { createCreativeReuseGuardService } = require('./writer-os/creative-reuse-guard.cjs')
+const { createWriterProjectScopeService } = require('./writer-os/writer-project-scope.cjs')
 const nodeCapabilities = require('./writer-os/node-capabilities.cjs')
 const { createModeCompatibilityCompiler } = require('./writer-os/mode-compatibility-compiler.cjs')
 const { createModeResourceBridge } = require('./writer-os/mode-resource-bridge.cjs')
 const { createSessionLifecycleService } = require('./karna/session-lifecycle-service.cjs')
+const { createMemoryService } = require('./karna/memory-service.cjs')
 const writerOsApiContract = require('../shared/writer-os-api-contract.json')
 const { registerApiRoutes } = require('./karna/api-routes.cjs')
 const KARNA_DATA_ROOT = karnaPaths.dataRoot({ env: { ...process.env, KARNA_DATA_DIR: process.env.KARNA_DESKTOP_DATA_DIR || process.env.KARNA_DATA_DIR } })
 const WRITER_OS_CONTRACT_MODULES = writerOsApiContract.modules.map(module => module.id)
 const soulPrompts = createSoulPromptService({ fs, path, dataRoot: KARNA_DATA_ROOT })
+const pluginsService = createPluginsService({
+  fs,
+  path,
+  dataRoot: KARNA_DATA_ROOT,
+  storage
+})
+
+const connectorCatalog = createConnectorCatalog({
+  fs,
+  path,
+  dataRoot: KARNA_DATA_ROOT,
+  storage
+})
+
+const memoryService = createMemoryService({
+  fs,
+  path,
+  dataRoot: KARNA_DATA_ROOT
+})
 
 const LEGACY_TYPE_TO_DOC_TYPE = {
   'novel': 'narrative_prose',
@@ -180,6 +210,53 @@ const getWriterOs = () => {
   return writerOs
 }
 
+let creativeIdentity = null
+const getCreativeIdentity = () => {
+  if (creativeIdentity) return creativeIdentity
+  creativeIdentity = createCreativeIdentityService({
+    fs, path, crypto,
+    readJsonFile, writeJsonFile
+  })
+  return creativeIdentity
+}
+
+let reuseGuard = null
+const getReuseGuard = () => {
+  if (reuseGuard) return reuseGuard
+  reuseGuard = createCreativeReuseGuardService({
+    fs, path, crypto,
+    readJsonFile, writeJsonFile,
+    listAllProjects: () => readWriterProjects().projects || [],
+    creativeIdentityService: getCreativeIdentity()
+  })
+  return reuseGuard
+}
+
+let writerProjectScope = null
+const getWriterProjectScope = () => {
+  if (writerProjectScope) return writerProjectScope
+  const ci = getCreativeIdentity()
+  const rg = getReuseGuard()
+  writerProjectScope = createWriterProjectScopeService({
+    fs, path, crypto,
+    readJsonFile, writeJsonFile,
+    findWriterProject: (id) => findWriterProject(id),
+    listWriterProjects: () => readWriterProjects().projects || [],
+    enrichWriterProject,
+    ensureWriterProjectMetadata: (p) => ensureWriterProjectMetadata(p),
+    ensureCreativeIdentityForProject: (p) => ci.ensureCreativeIdentity(p),
+    buildReuseGuardContextForProject: (p) => rg.buildReuseGuardContext(p),
+    scanReuseGuardForProject: (p) => rg.scanAllProjectsForReuse(p),
+    writerProjectStoryBiblePath: project => path.join(project.folder, 'bible', 'story_bible.json'),
+    writerProjectNarrativeStatePath: project => path.join(project.folder, 'narrative-state', 'narrative_state.json'),
+    writerProjectCreativeMemoryPath: project => path.join(project.folder, 'memory', 'creative_memory.json'),
+    writerProjectDocumentsPath: project => path.join(project.folder, 'documents', 'documents.json'),
+    writerProjectCreativeSearchPath: project => path.join(project.folder, 'documents', 'creative_search.json'),
+    writerProjectKnowledgeGraphPath: project => path.join(project.folder, 'graph', 'knowledge_graph.json')
+  })
+  return writerProjectScope
+}
+
 let karnaBackendUrl = `http://${KARNA_BACKEND_HOST}:${KARNA_BACKEND_PORT}`
 let wsBridgeUrl = `ws://${WS_BRIDGE_HOST}:${WS_BRIDGE_PORT}`
 let karnaProcess = null
@@ -191,6 +268,173 @@ let bootProgressCb = null
 const sessions = new Map()
 const sessionMessages = new Map()
 let nextSessionNum = 1
+
+const sessionsDir = () => karnaPaths.sessionsDir()
+const sessionMessagesDir = () => karnaPaths.sessionMessagesDir()
+const sessionsIndexPath = () => karnaPaths.sessionsIndexFile()
+
+function ensureSessionsDirs() {
+  const dir = sessionsDir()
+  const msgDir = sessionMessagesDir()
+  try { fs.mkdirSync(dir, { recursive: true }) } catch {}
+  try { fs.mkdirSync(msgDir, { recursive: true }) } catch {}
+}
+
+function saveSessionsImmediate() {
+  try {
+    ensureSessionsDirs()
+    const allSessions = Array.from(sessions.values()).map(s => ({
+      id: s.id,
+      title: s.title,
+      created: s.created,
+      updated: s.updated,
+      message_count: s.message_count || 0,
+      archived: s.archived,
+      source: s.source,
+      provider: s.provider,
+      model: s.model,
+      profile: s.profile,
+      cwd: s.cwd,
+      project_id: s.project_id,
+      project_title: s.project_title,
+      writer_project_id: s.writer_project_id,
+      agent_id: s.agent_id,
+      agent_name: s.agent_name,
+      agent_role: s.agent_role,
+      workspace_id: s.workspace_id,
+      conversation_scope: s.conversation_scope,
+      permission_mode: s.permission_mode,
+      running: false,
+      system_context: s.system_context
+    }))
+    atomicWrite(sessionsIndexPath(), { version: 1, sessions: allSessions, updated_at: new Date().toISOString() })
+  } catch (err) {
+    rememberLog(`Failed to save sessions index: ${err.message}`)
+  }
+}
+
+let saveSessionsTimer = null
+function saveSessions() {
+  if (saveSessionsTimer) clearTimeout(saveSessionsTimer)
+  saveSessionsTimer = setTimeout(() => {
+    saveSessionsTimer = null
+    saveSessionsImmediate()
+  }, 500)
+}
+
+function saveSessionMessagesImmediate(sessionId) {
+  try {
+    ensureSessionsDirs()
+    const messages = sessionMessages.get(sessionId) || []
+    const filePath = path.join(sessionMessagesDir(), `${sessionId}.jsonl`)
+    const lines = messages.map(m => JSON.stringify(m)).join('\n')
+    fs.writeFileSync(filePath, lines + (lines ? '\n' : ''), 'utf8')
+  } catch (err) {
+    rememberLog(`Failed to save messages for session ${sessionId}: ${err.message}`)
+  }
+}
+
+let saveMessagesTimers = new Map()
+function saveSessionMessages(sessionId) {
+  if (saveMessagesTimers.has(sessionId)) clearTimeout(saveMessagesTimers.get(sessionId))
+  const timer = setTimeout(() => {
+    saveMessagesTimers.delete(sessionId)
+    saveSessionMessagesImmediate(sessionId)
+  }, 500)
+  saveMessagesTimers.set(sessionId, timer)
+}
+
+function persistSession(sessionId) {
+  saveSessions()
+  if (sessionId) saveSessionMessages(sessionId)
+}
+
+function loadSessionsFromDisk() {
+  try {
+    ensureSessionsDirs()
+    const indexPath = sessionsIndexPath()
+    if (!fs.existsSync(indexPath)) return
+    
+    const data = readJsonFile(indexPath, { version: 1, sessions: [] })
+    const writerProjectsStore = (() => {
+      try { return readWriterProjects() } catch { return { projects: [] } }
+    })()
+    const projectsById = new Map((writerProjectsStore.projects || []).map(p => [p.id, p]))
+    
+    for (const s of (data.sessions || [])) {
+      let session = { ...s }
+      
+      if (session.writer_project_id || session.project_id) {
+        const projectId = session.writer_project_id || session.project_id
+        const project = projectsById.get(projectId)
+        
+        if (project) {
+          if (project.folder && session.cwd !== project.folder) {
+            session.cwd = project.folder
+          }
+          session.project_title = project.title || session.project_title
+        } else {
+          session._orphaned = true
+        }
+      }
+      
+      sessions.set(s.id, session)
+      const numMatch = String(s.id).match(/karna-(\d+)-/)
+      if (numMatch) {
+        const num = parseInt(numMatch[1], 10)
+        if (num >= nextSessionNum) nextSessionNum = num + 1
+      }
+    }
+    
+    const msgDir = sessionMessagesDir()
+    if (fs.existsSync(msgDir)) {
+      const files = fs.readdirSync(msgDir)
+      for (const file of files) {
+        if (!file.endsWith('.jsonl')) continue
+        const sessionId = file.slice(0, -'.jsonl'.length)
+        if (!sessions.has(sessionId)) continue
+        try {
+          const content = fs.readFileSync(path.join(msgDir, file), 'utf8')
+          const messages = content.split('\n').filter(Boolean).map(line => {
+            try { return JSON.parse(line) } catch { return null }
+          }).filter(Boolean)
+          sessionMessages.set(sessionId, messages)
+          const session = sessions.get(sessionId)
+          if (session) session.message_count = messages.length
+        } catch (err) {
+          rememberLog(`Failed to load messages for session ${sessionId}: ${err.message}`)
+        }
+      }
+    }
+    
+    for (const project of (writerProjectsStore.projects || [])) {
+      const bindingsToFix = []
+      if (project.main_session_id && !sessions.has(project.main_session_id)) {
+        bindingsToFix.push('main_session_id')
+      }
+      if (Array.isArray(project.session_ids)) {
+        project.session_ids = project.session_ids.filter(sid => sessions.has(sid))
+      }
+      if (project.agent_session_ids && typeof project.agent_session_ids === 'object') {
+        for (const [agentId, sid] of Object.entries(project.agent_session_ids)) {
+          if (!sessions.has(sid)) delete project.agent_session_ids[agentId]
+        }
+      }
+      if (bindingsToFix.length > 0) {
+        for (const field of bindingsToFix) {
+          project[field] = null
+        }
+        rememberLog(`Repaired broken session bindings for project ${project.id}`)
+      }
+    }
+    writeWriterProjects(writerProjectsStore)
+    
+    rememberLog(`Loaded ${sessions.size} sessions from disk`)
+  } catch (err) {
+    rememberLog(`Failed to load sessions from disk: ${err.message}`)
+  }
+}
+
 const cronJobs = new Map()
 const modeCompatibilityCompiler = createModeCompatibilityCompiler({ nodeCapabilities: nodeCapabilities?.NODE_CAPABILITIES || nodeCapabilities })
 const modeService = createModeService({ logRequest, modeCompatibilityCompiler })
@@ -318,10 +562,35 @@ const writeBackendJsonAtomic = (filename, data) => {
 }
 const notConfigured = (capability, error, extra = {}) => ({ ok: false, capability, error, ...extra })
 
+const createApiError = (code, message, extra = {}) => ({
+  ok: false,
+  error: {
+    code,
+    message,
+    retryable: false,
+    request_id: crypto.randomUUID()
+  },
+  ...extra
+})
+
+const ERROR_CODES = {
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  BACKEND_NOT_READY: 'BACKEND_NOT_READY',
+  PROVIDER_SETUP_REQUIRED: 'PROVIDER_SETUP_REQUIRED',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+  NOT_FOUND: 'NOT_FOUND'
+}
+
 const normalizeApiKey = value => String(value || '').trim().replace(/^Bearer\s+/i, '')
 
 const getModelSelectionPath = () => backendDataPath('model_selection.json')
 const readPersistedModelSelection = () => {
+  try {
+    const newConfig = readNewModelConfig()
+    if (newConfig.provider && newConfig.model) {
+      return newConfig
+    }
+  } catch {}
   try {
     const file = getModelSelectionPath()
     if (!fs.existsSync(file)) return { provider: '', model: '' }
@@ -334,6 +603,7 @@ const readPersistedModelSelection = () => {
 const persistCurrentModelSelection = () => {
   try {
     if (!currentModelProvider || !currentModel) return
+    persistNewModelConfig(currentModelProvider, currentModel)
     writeBackendJsonAtomic('model_selection.json', {
       provider: currentModelProvider,
       model: currentModel,
@@ -357,43 +627,38 @@ const restorePersistedModelSelection = () => {
 
 const ensureCurrentConfiguredProvider = () => {
   const current = findProvider(currentModelProvider)
-  if (current && isProviderConfigured(current) && currentModel) return
-  if (restorePersistedModelSelection()) return
-  const configured = MODEL_PROVIDERS.find(isProviderConfigured) || getCustomProviders()[0] || getCustomProvider()
-  if (configured) {
-    currentModelProvider = configured.slug
-    currentModel = configured.models.includes(currentModel) ? currentModel : configured.models[0]
-    if (!karnaConfig.models) karnaConfig.models = {}
-    karnaConfig.models.default = currentModel
-    persistCurrentModelSelection()
+  if (current && isProviderConfigured(current) && currentModel) return true
+  if (restorePersistedModelSelection()) return true
+  return false
+}
+
+const resolveAuthorizedModel = input => {
+  const requestedProviderSlug = String(input?.provider || '').trim()
+  const requestedModel = String(input?.model || '').trim()
+
+  if (requestedProviderSlug && requestedModel) {
+    const requestedProvider = findProvider(requestedProviderSlug)
+    if (requestedProvider && isProviderConfigured(requestedProvider)) {
+      const modelToUse = requestedProvider.models.includes(requestedModel) ? requestedModel : (requestedProvider.models[0] || '')
+      if (modelToUse) {
+        return { provider: requestedProvider, model: modelToUse, source: 'requested' }
+      }
+    }
   }
+
+  if (ensureCurrentConfiguredProvider()) {
+    const currentProvider = findProvider(currentModelProvider)
+    if (currentProvider && isProviderConfigured(currentProvider) && currentModel) {
+      return { provider: currentProvider, model: currentModel, source: 'current' }
+    }
+  }
+
+  return { provider: null, model: '', source: 'none', error: 'provider_setup_required', error_message: '请先在设置中配置并验证一个AI模型供应商。' }
 }
 
 const resolveUsableModelSelection = input => {
-  const requestedProviderSlug = String(input?.provider || '').trim()
-  const requestedModel = String(input?.model || '').trim()
-  const requestedProvider = findProvider(requestedProviderSlug)
-  if (requestedProvider && isProviderConfigured(requestedProvider) && requestedModel) {
-    return { provider: requestedProvider, model: requestedModel }
-  }
-
-  ensureCurrentConfiguredProvider()
-  const currentProvider = findProvider(currentModelProvider)
-  if (currentProvider && isProviderConfigured(currentProvider) && currentModel) {
-    return { provider: currentProvider, model: currentModel }
-  }
-
-  const configured = MODEL_PROVIDERS.find(isProviderConfigured) || getCustomProviders()[0] || getCustomProvider()
-  if (configured) {
-    currentModelProvider = configured.slug
-    currentModel = configured.models.includes(requestedModel) ? requestedModel : (configured.models[0] || requestedModel)
-    if (!karnaConfig.models) karnaConfig.models = {}
-    karnaConfig.models.default = currentModel
-    persistCurrentModelSelection()
-    if (currentModel) return { provider: configured, model: currentModel }
-  }
-
-  return { provider: null, model: '' }
+  const result = resolveAuthorizedModel(input)
+  return { provider: result.provider, model: result.model }
 }
 
 const getConfiguredProviders = () => {
@@ -454,6 +719,43 @@ const modelCredentialUserDataPath = electronApp && typeof electronApp.getPath ==
   ? electronApp.getPath('userData')
   : KARNA_DATA_ROOT
 const isPackagedDesktop = electronApp?.isPackaged === true
+
+const getNewModelConfigPath = () => path.join(modelCredentialUserDataPath, 'model-config.json')
+const readNewModelConfig = () => {
+  try {
+    const file = getNewModelConfigPath()
+    if (!fs.existsSync(file)) return { provider: '', model: '' }
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (data?.schemaVersion === 1 && data?.provider && data?.model) {
+      return { provider: String(data.provider), model: String(data.model) }
+    }
+    return { provider: '', model: '' }
+  } catch {
+    return { provider: '', model: '' }
+  }
+}
+const persistNewModelConfig = (provider, model) => {
+  try {
+    if (!provider || !model) return
+    const file = getNewModelConfigPath()
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    const tempFile = `${file}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    try {
+      fs.writeFileSync(tempFile, JSON.stringify({
+        schemaVersion: 1,
+        provider: String(provider),
+        model: String(model),
+        updated_at: new Date().toISOString()
+      }, null, 2) + '\n', 'utf8')
+      fs.renameSync(tempFile, file)
+    } finally {
+      try { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile) } catch {}
+    }
+  } catch (err) {
+    rememberLog(`Could not persist new model config: ${err?.message || err}`)
+  }
+}
+
 const modelCredentialStore = createModelCredentialStore({ safeStorage, userDataPath: modelCredentialUserDataPath })
 const getEnvValue = key => isPackagedDesktop
   ? modelCredentialStore.get(key)
@@ -1276,53 +1578,153 @@ function releaseSkillPacks() {
 }
 
 function handleKarnaPluginPlatform(reqPath, method, body) {
-  if ((reqPath === '/api/karna/plugins' || reqPath.startsWith('/api/karna/plugins?')) && method === 'GET') {
-    return { ok: true, plugins: scanReleasePlugins() }
+  try {
+    if ((reqPath === '/api/karna/plugins' || reqPath.startsWith('/api/karna/plugins?')) && method === 'GET') {
+      const result = pluginsService.listPlugins()
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '获取插件列表失败')
+    }
+
+    const pluginJobMatch = reqPath.match(/^\/api\/karna\/plugins\/jobs\/([^/?]+)(?:\?|$)/)
+    if (pluginJobMatch && method === 'GET') {
+      const jobId = decodeURIComponent(pluginJobMatch[1])
+      const result = pluginsService.getJobStatus(jobId)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || '任务不存在')
+    }
+
+    const pluginPreflightMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/preflight(?:\?|$)/)
+    if (pluginPreflightMatch && method === 'POST') {
+      const id = decodeURIComponent(pluginPreflightMatch[1])
+      const result = pluginsService.preflightInstall(id, body?.manifestUrl)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '预检查失败')
+    }
+
+    const pluginInstallMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/install(?:\?|$)/)
+    if (pluginInstallMatch && method === 'POST') {
+      const id = decodeURIComponent(pluginInstallMatch[1])
+      const result = pluginsService.installPlugin(id, body)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '安装失败')
+    }
+
+    const pluginEnableMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/enable(?:\?|$)/)
+    if (pluginEnableMatch && method === 'POST') {
+      const id = decodeURIComponent(pluginEnableMatch[1])
+      const result = pluginsService.enablePlugin(id, body?.enabled)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '启用状态更新失败')
+    }
+
+    const pluginPermissionsMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/permissions(?:\?|$)/)
+    if (pluginPermissionsMatch && method === 'GET') {
+      const id = decodeURIComponent(pluginPermissionsMatch[1])
+      const result = pluginsService.getPluginPermissions(id)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || '插件不存在')
+    }
+
+    const pluginUpdateMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/update(?:\?|$)/)
+    if (pluginUpdateMatch && method === 'POST') {
+      const id = decodeURIComponent(pluginUpdateMatch[1])
+      const result = pluginsService.updatePlugin(id)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '更新失败')
+    }
+
+    const pluginRollbackMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/rollback(?:\?|$)/)
+    if (pluginRollbackMatch && method === 'POST') {
+      const id = decodeURIComponent(pluginRollbackMatch[1])
+      const result = pluginsService.rollbackPlugin(id)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '回滚失败')
+    }
+
+    const pluginDetailMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)(?:\?|$)/)
+    if (pluginDetailMatch && method === 'GET') {
+      const id = decodeURIComponent(pluginDetailMatch[1])
+      const result = pluginsService.getPluginDetail(id)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || '插件不存在')
+    }
+
+    if (pluginDetailMatch && method === 'DELETE') {
+      const id = decodeURIComponent(pluginDetailMatch[1])
+      const result = pluginsService.uninstallPlugin(id)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '卸载失败')
+    }
+
+    const skillInstallMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/install(?:\?|$)/)
+    if (skillInstallMatch && method === 'POST') {
+      const id = decodeURIComponent(skillInstallMatch[1])
+      const result = pluginsService.installExternalSkill(id, body)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '安装失败')
+    }
+
+    const skillEnableMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/enable(?:\?|$)/)
+    if (skillEnableMatch && method === 'POST') {
+      const id = decodeURIComponent(skillEnableMatch[1])
+      const result = pluginsService.enableSkill(id, body?.enabled, body?.context)
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '启用状态更新失败')
+    }
+
+    const skillDetailMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)(?:\?|$)/)
+    if (skillDetailMatch && method === 'GET') {
+      const id = decodeURIComponent(skillDetailMatch[1])
+      const result = pluginsService.getSkillDetail(id)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || 'Skill 不存在')
+    }
+
+    if ((reqPath === '/api/karna/skills' || reqPath.startsWith('/api/karna/skills?')) && method === 'GET') {
+      const result = pluginsService.listSkills()
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '获取 Skill 列表失败')
+    }
+
+    if ((reqPath === '/api/karna/skill-packs' || reqPath.startsWith('/api/karna/skill-packs?')) && method === 'GET') {
+      return { ok: true, skill_packs: releaseSkillPacks() }
+    }
+
+    if (reqPath === '/api/karna/skill-packs/install' && method === 'POST') {
+      const source = String(body?.source || body?.id || '').trim()
+      return { ok: true, job_id: `skill-pack-${Date.now()}`, state: 'completed', phase: 'active', progress: 100, operation: 'install', source: source || 'karna://skill-marketplace', plugin_id: source || 'karna.external-skill-marketplace', plugin_name: 'Karna Skill \u6269\u5c55\u5305', created_at: Date.now() / 1000, updated_at: Date.now() / 1000, message: '\u5916\u7f6e Skill \u5e02\u573a\u5df2\u968f\u5b89\u88c5\u5305\u79bb\u7ebf\u5185\u7f6e\uff0c\u8bf7\u5728\u201c\u6240\u6709 Skill\u201d\u91cc\u9010\u4e2a\u5b89\u88c5\u6216\u542f\u7528\u3002' }
+    }
+
+    if ((reqPath === '/api/karna/connectors' || reqPath.startsWith('/api/karna/connectors?')) && method === 'GET') {
+      const url = new URL(reqPath, 'http://local')
+      const category = url.searchParams.get('category') || undefined
+      const status = url.searchParams.get('status') || undefined
+      const result = connectorCatalog.listConnectors({ category, status })
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '获取连接器列表失败')
+    }
+
+    if ((reqPath === '/api/karna/connectors/categories' || reqPath.startsWith('/api/karna/connectors/categories?')) && method === 'GET') {
+      const result = connectorCatalog.getCategories()
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '获取分类列表失败')
+    }
+
+    if (reqPath === '/api/karna/connectors/validate' && method === 'POST') {
+      const result = connectorCatalog.validateCatalog()
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '目录验证失败')
+    }
+
+    if (reqPath === '/api/karna/connectors/validate-icons' && method === 'POST') {
+      if (typeof connectorCatalog.validateIcons !== 'function') {
+        return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '图标验证功能尚未实现')
+      }
+      const result = connectorCatalog.validateIcons()
+      return result.ok ? result : createApiError(ERROR_CODES.INVALID_REQUEST, result.error || '图标验证失败')
+    }
+
+    const connectorToolsMatch = reqPath.match(/^\/api\/karna\/connectors\/([^/?]+)\/tools(?:\?|$)/)
+    if (connectorToolsMatch && method === 'GET') {
+      const id = decodeURIComponent(connectorToolsMatch[1])
+      const result = connectorCatalog.getConnectorTools(id)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || '连接器不存在')
+    }
+
+    const connectorDetailMatch = reqPath.match(/^\/api\/karna\/connectors\/([^/?]+)(?:\?|$)/)
+    if (connectorDetailMatch && method === 'GET') {
+      const id = decodeURIComponent(connectorDetailMatch[1])
+      const result = connectorCatalog.getConnector(id)
+      return result.ok ? result : createApiError(ERROR_CODES.NOT_FOUND, result.error || '连接器不存在')
+    }
+
+    return null
+  } catch (err) {
+    return createApiError(ERROR_CODES.INVALID_REQUEST, err.message || '请求处理失败')
   }
-  const pluginEnableMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)\/enable(?:\?|$)/)
-  if (pluginEnableMatch && method === 'POST') {
-    const id = decodeURIComponent(pluginEnableMatch[1])
-    const enabled = body?.enabled !== false
-    const state = readBackendJson('plugins.json', { version: 1, enabled: {} })
-    state.enabled = normalizeStateMap(state.enabled)
-    state.enabled[id] = enabled
-    writeBackendJson('plugins.json', state)
-    return { ok: true, plugin_id: id, enabled }
-  }
-  const pluginMatch = reqPath.match(/^\/api\/karna\/plugins\/([^/?]+)$/)
-  if (pluginMatch && method === 'GET') {
-    const id = decodeURIComponent(pluginMatch[1])
-    const plugin = scanReleasePlugins().find(row => row.id === id)
-    return plugin || notConfigured('plugins', `插件不存在：${id}`)
-  }
-  if ((reqPath === '/api/karna/skills' || reqPath.startsWith('/api/karna/skills?')) && method === 'GET') {
-    return { ok: true, skills: [...scanReleaseSkills(), ...scanMarketplaceSkills()] }
-  }
-  const skillEnableMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/enable(?:\?|$)/)
-  if (skillEnableMatch && method === 'POST') {
-    const id = decodeURIComponent(skillEnableMatch[1])
-    const enabled = !reqPath.includes('enabled=false') && body?.enabled !== false
-    const state = readBackendJson('skills_state.json', { version: 1, enabled: {} })
-    state.enabled = normalizeStateMap(state.enabled)
-    state.enabled[id] = enabled
-    writeBackendJson('skills_state.json', state)
-    return { ok: true, skill_id: id, enabled }
-  }
-  if ((reqPath === '/api/karna/skill-packs' || reqPath.startsWith('/api/karna/skill-packs?')) && method === 'GET') {
-    return { ok: true, skill_packs: releaseSkillPacks() }
-  }
-  const skillInstallMatch = reqPath.match(/^\/api\/karna\/skills\/([^/?]+)\/install(?:\?|$)/)
-  if (skillInstallMatch && method === 'POST') {
-    return installMarketplaceSkill(decodeURIComponent(skillInstallMatch[1]))
-  }
-  if (reqPath === '/api/karna/skill-packs/install' && method === 'POST') {
-    const source = String(body?.source || body?.id || '').trim()
-    return { ok: true, job_id: `skill-pack-${Date.now()}`, state: 'completed', phase: 'active', progress: 100, operation: 'install', source: source || 'karna://skill-marketplace', plugin_id: source || 'karna.external-skill-marketplace', plugin_name: 'Karna Skill \u6269\u5c55\u5305', created_at: Date.now() / 1000, updated_at: Date.now() / 1000, message: '\u5916\u7f6e Skill \u5e02\u573a\u5df2\u968f\u5b89\u88c5\u5305\u79bb\u7ebf\u5185\u7f6e\uff0c\u8bf7\u5728\u201c\u6240\u6709 Skill\u201d\u91cc\u9010\u4e2a\u5b89\u88c5\u6216\u542f\u7528\u3002' }
-  }
-  if (reqPath.includes('/preflight') || reqPath.includes('/install') || reqPath.includes('/update') || reqPath.includes('/rollback')) {
-    return notConfigured('plugins', '\u5f53\u524d\u7248\u672c\u5df2\u5185\u7f6e\u79bb\u7ebf\u63d2\u4ef6\u548c Skill \u5e02\u573a\uff1b\u8bf7\u5728\u201c\u6240\u6709 Skill\u201d\u91cc\u9009\u62e9\u9700\u8981\u7684 Skill \u540e\u542f\u7528\u3002')
-  }
-  return null
 }
 
 const resolveExecutable = command => {
@@ -2063,23 +2465,44 @@ const normalizeWorkflowNode = (node, index = 0) => ({
   position: node?.position && typeof node.position === 'object' ? { x: Number(node.position.x || 0), y: Number(node.position.y || 0) } : { x: 120 + index * 160, y: 140 },
   data: node?.data && typeof node.data === 'object' ? node.data : {}
 })
-const normalizeWorkflowEdge = edge => ({ id: String(edge?.id || `${edge?.source || ''}-${edge?.target || ''}` || workflowId('edge')), source: String(edge?.source || ''), target: String(edge?.target || ''), label: edge?.label ? String(edge.label) : '' })
+const normalizeWorkflowEdge = edge => {
+  const type = ['normal', 'condition', 'loop', 'human_approval'].includes(edge?.type) ? edge.type : 'normal'
+  return {
+    id: String(edge?.id || `${edge?.source || ''}-${edge?.target || ''}` || workflowId('edge')),
+    source: String(edge?.source || ''),
+    target: String(edge?.target || ''),
+    sourceHandle: edge?.sourceHandle || 'out',
+    targetHandle: edge?.targetHandle || 'in',
+    label: edge?.label ? String(edge.label) : '',
+    type,
+    condition: edge?.condition || (type === 'loop' ? { maxRounds: 3, onLimitReached: 'continue' } : undefined),
+    animated: edge?.animated !== undefined ? Boolean(edge.animated) : (type === 'loop'),
+    style: edge?.style,
+    data: edge?.data
+  }
+}
 const validateWorkflowGraph = workflow => {
   const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : []
   const edges = Array.isArray(workflow.edges) ? workflow.edges : []
   const ids = new Set(nodes.map(node => node.id))
-  const agentCount = nodes.filter(node => node.type === 'agent').length
+  const agentCount = nodes.filter(node => node.type === 'agent' || node.data?.nodeType === 'agent').length
   const limits = defaultWorkflowLimits(workflow.limits)
   if (agentCount > limits.max_agents) throw new Error(`At most ${limits.max_agents} Agent nodes are allowed in one workflow`)
+  let loopEdgeCount = 0
   for (const edge of edges) {
     if (!ids.has(edge.source) || !ids.has(edge.target)) throw new Error('An edge references a missing node')
     if (edge.source === edge.target) throw new Error('A node cannot connect to itself')
+    if (edge.type === 'loop') loopEdgeCount++
   }
+  if (loopEdgeCount > limits.max_loop) throw new Error(`At most ${limits.max_loop} loop edges are allowed in one workflow`)
   const adjacency = new Map(nodes.map(node => [node.id, []]))
-  for (const edge of edges) adjacency.get(edge.source)?.push(edge.target)
+  for (const edge of edges) {
+    if (edge.type === 'loop') continue
+    adjacency.get(edge.source)?.push(edge.target)
+  }
   const visiting = new Set(); const visited = new Set()
   const dfs = id => {
-    if (visiting.has(id)) throw new Error('Workflow cycles are not allowed; use a loop node with an explicit cap')
+    if (visiting.has(id)) throw new Error('Workflow cycles are not allowed; use a loop-type edge with an explicit round cap (maxRounds)')
     if (visited.has(id)) return
     visiting.add(id)
     for (const next of adjacency.get(id) || []) dfs(next)
@@ -2702,12 +3125,37 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
   }
   const nextIndexFromEdge = (node, branch = '') => {
     const edges = outgoing.get(node.id) || []
-    const matched = branch ? edges.find(edge => String(edge.label || '').toLowerCase().includes(branch)) : null
-    const edge = matched || edges[0]
-    if (!edge) return null
-    const idx = originalIndex.get(edge.target)
+    const nodeType = String(node.type || node.data?.nodeType || '')
+    let matched = null
+    if (branch === 'pass' || branch === 'true') {
+      matched = edges.find(e => e.sourceHandle === 'true_out' || e.sourceHandle === 'approve_out' || e.sourceHandle === 'pass_out')
+        || edges.find(e => /^(是|pass|通过|达标|yes|true)/i.test(String(e.label || '')))
+    } else if (branch === 'retry' || branch === 'false') {
+      matched = edges.find(e => e.sourceHandle === 'false_out' || e.sourceHandle === 'reject_out' || e.sourceHandle === 'fail_out')
+        || edges.find(e => /^(否|fail|reject|驳回|未达标|no|false)/i.test(String(e.label || '')))
+    }
+    if (!matched) {
+      const nonLoopEdges = edges.filter(e => e.type !== 'loop')
+      const normalEdges = nonLoopEdges.filter(e => !['true_out', 'false_out', 'approve_out', 'reject_out', 'pass_out', 'fail_out'].includes(e.sourceHandle))
+      matched = normalEdges[0] || nonLoopEdges[0] || edges[0]
+    }
+    if (!matched) return null
+    const idx = originalIndex.get(matched.target)
     return typeof idx === 'number' ? idx : null
   }
+  const resolveNodeType = (node) => {
+    const t = String(node?.type || node?.data?.nodeType || '')
+    if (t === 'input_text' || t === 'input_file' || t === 'input_variable' || t === 'input_constant') return 'input'
+    if (t === 'human_confirm' || t === 'human_review' || t === 'human_edit') return 'human_review'
+    if (t === 'final_output' || t === 'text_output' || t === 'file_output' || t === 'save_snapshot' || t === 'archive') return 'output'
+    if (t === 'fanout' || t === 'parallel') return 'parallel'
+    if (t === 'loop_controller' || t === 'loop') return 'loop'
+    if (t === 'condition' || t === 'score_judge' || t === 'boolean_judge' || t === 'llm_judge') return 'condition'
+    if (t === 'agent' || t === 'critic' || t === 'tool_agent' || t === 'scheduler') return 'agent'
+    return t
+  }
+  const loopVisitCount = new Map()
+  const maxLoopVisits = limits.max_loop || 3
   const runAgentNode = async (node, localUpstream) => {
     const label = node.data?.label || node.data?.name || node.id
     const agent = agentById.get(node.data?.agent_id || node.data?.agentId) || normalizeWorkflowAgent(node.data || {}, 0)
@@ -2998,7 +3446,11 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
   const completeOne = () => { run.progress.completed = Math.min(run.progress.total, Number(run.progress.completed || 0) + 1); persistRun() }
   let index = Math.max(0, startIndex)
   const visited = new Set()
-  while (index < workflow.nodes.length) {
+  let stepCount = 0
+  let loopEpoch = 0
+  const maxSteps = (workflow.nodes.length || 1) * (maxLoopVisits + 2) * 3 + 20
+  while (index < workflow.nodes.length && stepCount < maxSteps) {
+    stepCount++
     if (workflowStopRequests.has(run.run_id)) {
       workflowStopRequests.delete(run.run_id)
       run.status = 'cancelled'
@@ -3010,17 +3462,33 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
     const node = workflow.nodes[index]
     if (!node || (onlyNodeId && !nodeById.has(node.id))) { index += 1; continue }
     const label = node.data?.label || node.data?.name || node.id
-    if (visited.has(`${node.id}:${index}`)) { setNodeStatus(node, { status: 'blocked', summary: 'Stopped because this path repeated. Use loop node with explicit cap.' }); run.status = 'blocked'; break }
-    visited.add(`${node.id}:${index}`)
+    const effectiveType = resolveNodeType(node)
+    const loopKey = `${node.id}@${index}#${loopEpoch}`
+    if (effectiveType === 'agent' || effectiveType === 'critic') {
+      const cnt = loopVisitCount.get(node.id) || 0
+      if (cnt >= maxLoopVisits) {
+        const loopEdges = (outgoing.get(node.id) || []).filter(e => e.type === 'loop')
+        if (loopEdges.length > 0) {
+          setNodeStatus(node, { status: 'done', summary: `已达最大循环轮次 ${maxLoopVisits}，跳出循环继续后续流程。` })
+          const afterLoop = (outgoing.get(node.id) || []).find(e => e.type !== 'loop')
+          if (afterLoop) {
+            const nextIdx = originalIndex.get(afterLoop.target)
+            completeOne(); index = typeof nextIdx === 'number' ? nextIdx : index + 1; continue
+          }
+        }
+      }
+    }
+    if (visited.has(loopKey)) { setNodeStatus(node, { status: 'blocked', summary: 'Stopped because this path repeated. Use loop edge with explicit maxRounds cap.' }); run.status = 'blocked'; break }
+    visited.add(loopKey)
     try {
       if (skipped.has(node.id)) { setNodeStatus(node, { status: 'skipped', summary: 'Skipped by author before run.' }); completeOne(); index += 1; continue }
-      if (node.type === 'input') {
-        upstream = [upstream, node.data?.content, node.data?.prompt].filter(Boolean).join('\n\n')
+      if (effectiveType === 'input') {
+        upstream = [upstream, node.data?.content, node.data?.prompt, node.data?.inputText].filter(Boolean).join('\n\n')
         setNodeStatus(node, { status: 'done', summary: String(upstream).slice(0, 500) })
         completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
       }
-      if (node.type === 'human_review') {
-        const mustReview = node.data?.requiresReview === true || node.data?.requiresReview === 'true'
+      if (effectiveType === 'human_review') {
+        const mustReview = node.data?.requiresReview !== false && node.data?.requiresReview !== 'false'
         if (!mustReview) {
           setNodeStatus(node, { status: 'done', summary: '人工确认节点已跳过，流程继续向下执行。' })
           completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
@@ -3028,62 +3496,121 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
         if (input?.action === 'continue' || input?.humanInput) {
           upstream = [upstream, input.humanInput].filter(Boolean).join('\n\n')
           setNodeStatus(node, { status: 'accepted', summary: '已收到人工确认，继续执行后续节点。', human_input: String(input.humanInput || '').slice(0, 2000) })
-          completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
+          completeOne();
+          const approveEdge = (outgoing.get(node.id) || []).find(e => e.sourceHandle === 'approve_out' || /^(通过|pass|yes|approve|是)/i.test(String(e.label || '')))
+          const rejectEdge = (outgoing.get(node.id) || []).find(e => e.sourceHandle === 'reject_out' || /^(驳回|reject|no|fail|否)/i.test(String(e.label || '')))
+          const humanChoice = String(input.humanAction || input.choice || '').toLowerCase()
+          const chosen = humanChoice === 'reject' ? rejectEdge : (humanChoice === 'approve' ? approveEdge : (approveEdge || rejectEdge))
+          if (chosen) {
+            const nextIdx = originalIndex.get(chosen.target)
+            if (typeof nextIdx === 'number' && nextIdx < index) loopEpoch++
+            index = nextIdx ?? index + 1
+          } else {
+            const nextIdx = nextIndexFromEdge(node)
+            if (typeof nextIdx === 'number' && nextIdx < index) loopEpoch++
+            index = nextIdx ?? index + 1
+          }
+          continue
         }
         run.status = 'paused'; run.paused_at_node_id = node.id; persistRun()
         setNodeStatus(node, { status: 'paused', summary: '等待人工确认：请检查当前节点产出并决定继续、驳回或跳过。' })
         break
       }
-      if (node.type === 'loop') {
-        const rounds = Math.min(limits.max_loop, Math.max(1, Number(node.data?.rounds || 3)))
+      if (effectiveType === 'loop') {
+        const rounds = Math.min(maxLoopVisits, Math.max(1, Number(node.data?.rounds || node.data?.maxRounds || maxLoopVisits)))
         setNodeStatus(node, { status: 'done', rounds, summary: `Loop cap is ${rounds} rounds. Dispatcher will stop retries at this cap.` })
         completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
       }
-      if (node.type === 'condition') {
-        const threshold = Math.max(0, Math.min(100, Number(node.data?.threshold || node.data?.pass_score || 60)))
+      if (effectiveType === 'condition') {
+        const threshold = Math.max(0, Math.min(100, Number(node.data?.threshold || node.data?.pass_score || node.data?.passingScore || 70)))
         const score = firstScoreFromText(upstream)
-        const branch = score == null ? 'unknown' : score >= threshold ? 'pass' : 'retry'
-        setNodeStatus(node, { status: 'done', score, threshold, branch, summary: score == null ? `No score recognized; continuing default path. Condition: ${node.data?.condition || 'not set'}` : `Score ${score}/${threshold}; entering ${branch === 'pass' ? 'pass' : 'retry'} branch.` })
+        const branch = score == null ? 'pass' : score >= threshold ? 'pass' : 'retry'
+        setNodeStatus(node, { status: 'done', score, threshold, branch, summary: score == null ? `No score recognized; continuing default (pass) path. Condition: ${node.data?.condition || 'not set'}` : `Score ${score}/${threshold}; entering ${branch === 'pass' ? 'pass' : 'retry'} branch.` })
         completeOne()
-        const configuredTarget = branch === 'pass' ? (node.data?.passTargetId || node.data?.pass_target_id) : branch === 'retry' ? (node.data?.retryTargetId || node.data?.retry_target_id) : ''
-        const configuredIndex = configuredTarget ? originalIndex.get(String(configuredTarget)) : null
-        index = typeof configuredIndex === 'number' ? configuredIndex : (nextIndexFromEdge(node, branch) ?? index + 1)
+        const condNextIdx = nextIndexFromEdge(node, branch)
+        if (typeof condNextIdx === 'number' && condNextIdx < index) loopEpoch++
+        index = condNextIdx ?? index + 1
         continue
       }
-      if (node.type === 'parallel') {
+      if (effectiveType === 'parallel' || effectiveType === 'fanout') {
         const fanoutEdges = (outgoing.get(node.id) || []).slice(0, limits.max_parallel)
-        let parallelNodes = fanoutEdges.map(edge => workflow.nodes[originalIndex.get(edge.target)]).filter(child => child && child.type === 'agent')
+        let parallelNodes = fanoutEdges.map(edge => workflow.nodes[originalIndex.get(edge.target)]).filter(child => child && (resolveNodeType(child) === 'agent' || resolveNodeType(child) === 'critic'))
         if (!parallelNodes.length) {
           let scan = index + 1
-          while (scan < workflow.nodes.length && workflow.nodes[scan]?.type === 'agent' && parallelNodes.length < limits.max_parallel) { parallelNodes.push(workflow.nodes[scan]); scan += 1 }
+          while (scan < workflow.nodes.length && (resolveNodeType(workflow.nodes[scan]) === 'agent' || resolveNodeType(workflow.nodes[scan]) === 'critic') && parallelNodes.length < limits.max_parallel) { parallelNodes.push(workflow.nodes[scan]); scan += 1 }
         }
         setNodeStatus(node, { status: 'running', summary: `并行启动 ${parallelNodes.length} 个 Agent；所有输出先回到隐藏调度器。` })
         const results = await Promise.all(parallelNodes.map(child => runAgentNode(child, upstream).catch(err => `Node failed: ${err instanceof Error ? err.message : String(err)}`)))
         upstream = results.map((content, i) => `## ${parallelNodes[i]?.data?.label || parallelNodes[i]?.id}\n${content}`).join('\n\n')
+        parallelNodes.forEach(() => completeOne())
         const maxChildIndex = parallelNodes.reduce((max, child) => Math.max(max, originalIndex.get(child.id) ?? index), index)
         setNodeStatus(node, { status: 'done', parallel_count: parallelNodes.length, summary: `并行任务已完成：${parallelNodes.length} 个 Agent 的输出已合并，可进入下游节点。` })
         const childIds = new Set(parallelNodes.map(child => child.id))
-        const nonChildEdge = (outgoing.get(node.id) || []).find(edge => !childIds.has(edge.target))
+        const nonChildEdge = (outgoing.get(node.id) || []).find(edge => !childIds.has(edge.target) && edge.type !== 'loop')
         const nonChildIndex = nonChildEdge ? originalIndex.get(nonChildEdge.target) : null
         completeOne(); index = typeof nonChildIndex === 'number' ? nonChildIndex : maxChildIndex + 1; continue
       }
-      if (node.type === 'archive') {
-        const artifact = { id: workflowId('artifact'), node_id: node.id, title: label, kind: 'workflow', content: upstream, created_at: workflowNow() }
-        const file = path.join(workflowArtifactsDir(project), `${artifact.id}.md`)
-        fs.writeFileSync(file, `# ${label}\n\n${upstream}\n`, 'utf8')
-        artifact.path = file; run.artifacts.push(artifact)
-        setNodeStatus(node, { status: 'done', summary: `Archived to ${file}`, artifact_id: artifact.id })
-        completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
-      }
-      if (node.type === 'output') {
+      if (effectiveType === 'output' || effectiveType === 'archive') {
         setNodeStatus(node, { status: 'done', summary: String(upstream).slice(0, 1200) })
         completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
       }
-      if (node.type === 'agent') {
+      if (effectiveType === 'agent' || effectiveType === 'critic' || effectiveType === 'tool_agent' || effectiveType === 'scheduler') {
+        const prevCount = loopVisitCount.get(node.id) || 0
+        loopVisitCount.set(node.id, prevCount + 1)
         upstream = await runAgentNode(node, upstream)
-        completeOne(); index = nextIndexFromEdge(node) ?? index + 1; continue
+        const outEdges = outgoing.get(node.id) || []
+        const loopEdges = outEdges.filter(e => e.type === 'loop')
+        const normalEdges = outEdges.filter(e => e.type !== 'loop')
+        const childAgentEdges = normalEdges.filter(e => {
+          const t = workflow.nodes[originalIndex.get(e.target)]
+          return t && (resolveNodeType(t) === 'agent' || resolveNodeType(t) === 'critic')
+        })
+        let nextIdx = null
+        if (childAgentEdges.length > 1) {
+          const fanoutTargets = childAgentEdges.map(e => originalIndex.get(e.target)).filter(i => typeof i === 'number')
+          const parallelChildren = fanoutTargets.map(i => workflow.nodes[i]).filter(Boolean)
+          setNodeStatus(node, { status: 'done', summary: `分发至 ${parallelChildren.length} 个下游并行 Agent` })
+          const results = await Promise.all(parallelChildren.map(child => runAgentNode(child, upstream).catch(err => `Node failed: ${err instanceof Error ? err.message : String(err)}`)))
+          upstream = [upstream, ...results.map((content, i) => `## ${parallelChildren[i]?.data?.label || parallelChildren[i]?.id}\n${content}`)].join('\n\n')
+          parallelChildren.forEach(() => completeOne())
+          const childIdSet = new Set(parallelChildren.map(c => c.id))
+          let convergeTarget = null
+          for (const child of parallelChildren) {
+            const childOut = (outgoing.get(child.id) || []).find(e => e.type !== 'loop' && !childIdSet.has(e.target))
+            if (childOut) { convergeTarget = childOut.target; break }
+          }
+          if (convergeTarget) { nextIdx = originalIndex.get(convergeTarget) }
+          else {
+            const nonChildEdge = normalEdges.find(e => !childIdSet.has(e.target))
+            nextIdx = nonChildEdge ? originalIndex.get(nonChildEdge.target) : null
+          }
+        } else if (normalEdges.length > 0) {
+          const firstNormal = normalEdges.find(e => !['true_out', 'false_out', 'approve_out', 'reject_out', 'edit_out'].includes(e.sourceHandle)) || normalEdges[0]
+          nextIdx = originalIndex.get(firstNormal.target)
+        } else if (loopEdges.length > 0) {
+          nextIdx = originalIndex.get(loopEdges[0].target)
+        }
+        completeOne()
+        if (typeof nextIdx === 'number' && nextIdx < index) {
+          const currentLoopCount = loopVisitCount.get(node.id) || 0
+          if (currentLoopCount >= maxLoopVisits) {
+            setNodeStatus(node, { status: 'done', summary: `已达最大循环轮次 ${maxLoopVisits}，跳出循环继续后续流程。` })
+            const afterLoop = (outgoing.get(node.id) || []).find(e => e.type !== 'loop')
+            if (afterLoop) {
+              index = originalIndex.get(afterLoop.target) ?? workflow.nodes.length
+            } else {
+              index = workflow.nodes.length
+            }
+          } else {
+            loopEpoch++
+            index = nextIdx
+          }
+        } else {
+          index = typeof nextIdx === 'number' ? nextIdx : (index + 1)
+        }
+        continue
       }
-      setNodeStatus(node, { status: 'done', summary: `Unknown node type ${node.type}; skipped.` })
+      setNodeStatus(node, { status: 'done', summary: `Unknown node type ${node.type} (resolved=${effectiveType}); skipped.` })
       completeOne(); index += 1
     } catch (err) {
       run.node_statuses[node.id] = { ...(run.node_statuses[node.id] || {}), status: 'blocked', label, summary: err instanceof Error ? err.message : String(err), updated_at: workflowNow() }
@@ -3091,6 +3618,9 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
       break
     }
     if (onlyNodeId) break
+  }
+  if (stepCount >= maxSteps && run.status === 'running') {
+    run.status = 'blocked'
   }
   if (run.status === 'running') run.status = Object.values(run.node_statuses).some(row => row.status === 'blocked') ? 'blocked' : 'done'
   run.finished_at = workflowNow()
@@ -3423,6 +3953,10 @@ const parseTypedTitle = arg => {
 }
 const ensureWriterProjectFolders = project => {
   fs.mkdirSync(project.folder, { recursive: true })
+  const requiredDirs = ['identity', 'bible', 'memory', 'narrative-state', 'documents', 'safety', 'graph', 'wiki', 'critics', 'artifacts', 'rag', 'guide', 'delivery', 'capabilities', 'benchmarks', 'roadmap']
+  for (const dir of requiredDirs) {
+    try { fs.mkdirSync(path.join(project.folder, dir), { recursive: true }) } catch {}
+  }
 }
 const safeWriteFile = (filePath, content, encoding = 'utf8') => {
   if (!fs.existsSync(filePath)) {
@@ -3873,13 +4407,14 @@ const enhancePromptText = async input => {
   const raw = String(input?.text || input?.prompt || '').trim()
   if (!raw) return { ok: false, error: '\u8bf7\u5148\u8f93\u5165\u9700\u8981\u589e\u5f3a\u7684\u63d0\u793a\u8bcd\u3002' }
 
-  const selected = resolveUsableModelSelection({ provider: input?.provider, model: input?.model })
+  const selected = resolveAuthorizedModel({ provider: input?.provider, model: input?.model })
   const provider = selected.provider
-  const modelName = String(input?.model || selected.model || '')
-  if (!hermesApiBridge && (!modelName || !provider || !isProviderConfigured(provider))) {
+  const modelName = String(selected.model || input?.model || '')
+  if (selected.error) {
     return {
       ok: false,
-      error: '\u672a\u68c0\u6d4b\u5230\u5df2\u6388\u6743\u7684\u6a21\u578b\u3002\u8bf7\u5728\u8bbe\u7f6e\u2192\u6a21\u578b\u4e2d\u4fdd\u5b58 DeepSeek\u3001Qwen\u3001GLM \u6216\u81ea\u5b9a\u4e49 API Key\uff0c\u5e76\u70b9\u51fb\u201c\u8bbe\u4e3a\u9ed8\u8ba4\u201d\u540e\u518d\u4f7f\u7528\u63d0\u793a\u8bcd\u589e\u5f3a\u3002',
+      code: 'provider_setup_required',
+      error: '\u8bf7\u5148\u5728\u8bbe\u7f6e\u4e2d\u914d\u7f6e\u5e76\u9a8c\u8bc1\u4e00\u4e2aAI\u6a21\u578b\u4f9b\u5e94\u5546\uff0c\u7136\u540e\u518d\u4f7f\u7528\u63d0\u793a\u8bcd\u589e\u5f3a\u3002',
       provider: provider?.slug || currentModelProvider || '',
       model: modelName || currentModel || ''
     }
@@ -4081,11 +4616,16 @@ const createWriterProject = async input => {
     const controller = normalizeAgentInput({ id: 'controller', name: '主控', role: '主控', brief: 'Schedule tasks and assign task_system.json.', persona: 'Project dispatcher.', enabled: true, status: 'working', status_label: '待命' }, 0, id)
     const inputAgents = Array.isArray(input?.agents) ? input.agents : null
     const agentTemplateKey = isNewTaxonomy ? (input.taxonomy.primaryDocumentType || type) : (input?.agentTemplate || type)
-    const agentsInput = multiAgentEnabled ? [controller, ...(inputAgents || writerAgentTemplates(agentTemplateKey).agents)] : [controller]
+    const isNovelProject = ['novel', 'narrative_prose', 'long_form', 'screenplay'].includes(agentTemplateKey) || /长篇|小说|剧本|narrative/i.test(title)
+    const defaultWriterAgents = isNovelProject ? WORKFLOW_AGENT_TEMPLATES : writerAgentTemplates(agentTemplateKey).agents
+    const agentsInput = multiAgentEnabled || isNovelProject
+      ? [controller, ...(inputAgents || defaultWriterAgents)]
+      : [controller]
     const agents = writeWriterAgents(project, agentTemplateKey, agentsInput)
-    writeWriterAgentsData(project, agents.agents.map(a => ({ ...a, session_id: null })), { template: agents.template, enabled: multiAgentEnabled, concurrency: { enabled: multiAgentEnabled, max_parallel: Math.max(1, Number(input?.maxParallelAgents || 3)) } })
+    writeWriterAgentsData(project, agents.agents.map(a => ({ ...a, session_id: null })), { template: agents.template, enabled: multiAgentEnabled || isNovelProject, concurrency: { enabled: multiAgentEnabled || isNovelProject, max_parallel: Math.max(1, Number(input?.maxParallelAgents || 3)) } })
     writeTaskSystem(project, { ...defaultTaskSystem(project, agents.agents), coordination_mode: coordinationMode })
-    if (multiAgentEnabled && String(input?.goal || '').trim()) generateProjectTasks(project, input.goal)
+    const shouldGenerateTasks = (multiAgentEnabled || isNovelProject || coordinationMode !== 'manual') && String(input?.goal || '').trim()
+    if (shouldGenerateTasks) generateProjectTasks(project, input.goal)
     karnaConfig = { ...karnaConfig, terminal: { ...(karnaConfig.terminal || {}), cwd: normalizedFolder } }
     const knowledge = { ok: false, folder: normalizedFolder, status: 'not_selected', folders: [], selected: project.knowledge_ids }
     const importFolder = String(input?.importFolder || '').trim()
@@ -4111,6 +4651,12 @@ const createWriterProject = async input => {
     }
     writeWriterProjects({ version: 1, active_project_id: id, projects: [...(store.projects || []), project] })
     committed = true
+    try {
+      const scopeService = getWriterProjectScope()
+      scopeService.initializeProject(project)
+    } catch (initErr) {
+      rememberLog(`[writer] Failed to initialize project creative identity: ${initErr.message}`)
+    }
     analytics.track('project_created', {
       project_id: id,
       project_type: type,
@@ -4419,7 +4965,7 @@ const writeProjectJson = (project, file, data) => writeJsonFile(path.join(projec
 const ensureWriterProjectMetadata = project => {
   ensureWriterProjectFolders(project)
   const manifestFile = writerProjectManifestPath(project)
-  if (!fs.existsSync(manifestFile)) writeJsonFile(manifestFile, {
+  const defaultManifest = {
     version: 1,
     scope: 'project',
     project_id: project.id,
@@ -4427,9 +4973,32 @@ const ensureWriterProjectMetadata = project => {
     workspace_id: project.workspace_id || '',
     title: project.title,
     user_memory: { author_preferences: [], style_preferences: [], common_genres: [] },
-    project_memory: { bible: 'bible/bible.json', isolated: true },
+    project_memory: {
+      bible: 'bible/bible.json',
+      story_bible: 'bible/story_bible.json',
+      creative_identity: 'identity/creative_identity.json',
+      creative_memory: 'memory/creative_memory.json',
+      isolated: true
+    },
     privacy: { local_first: true, manual_analysis: true, never_overwrite_original: true, default_full_text_upload: false }
-  })
+  }
+  if (!fs.existsSync(manifestFile)) {
+    writeJsonFile(manifestFile, defaultManifest)
+  } else {
+    try {
+      const existing = readJsonFile(manifestFile, null)
+      if (existing && (!existing.project_memory || !existing.project_memory.creative_identity)) {
+        existing.project_memory = {
+          ...defaultManifest.project_memory,
+          ...(existing.project_memory || {}),
+          story_bible: existing.project_memory?.story_bible || 'bible/story_bible.json',
+          creative_identity: 'identity/creative_identity.json',
+          creative_memory: existing.project_memory?.creative_memory || 'memory/creative_memory.json'
+        }
+        writeJsonFile(manifestFile, existing)
+      }
+    } catch {}
+  }
 }
 const logWriterProjectCall = (project, operation, details = {}) => {
   ensureWriterProjectMetadata(project)
@@ -6504,6 +7073,7 @@ async function handleJsonRpcCall(socket, frame) {
       }
       sessions.set(newId, session)
       sessionMessages.set(newId, [])
+      persistSession(newId)
 
       if (session.writer_project_id && p.set_primary !== false) {
         try {
@@ -6708,13 +7278,18 @@ async function handleJsonRpcCall(socket, frame) {
       break
     }
 
-    // ---- Setup / Runtime probes (mock) ----
+    // ---- Setup / Runtime probes ----
     case 'setup.status': {
+      const appVersion = electronApp && typeof electronApp.getVersion === 'function' ? electronApp.getVersion() : '2.0.0'
       sendJsonRpcResult(socket, id, {
+        ok: true,
         status: backendReady ? 'running' : 'starting',
-        version: '0.1.0',
+        version: appVersion,
+        desktopVersion: appVersion,
+        runtimeVersion: process.version,
         uptime: process.uptime(),
-        backend: backendReady ? 'connected' : 'mock',
+        backend: backendReady ? 'connected' : 'disconnected',
+        gatewayState: backendReady ? 'running' : 'stopped',
         mode: 'local',
         auth_mode: 'token'
       })
@@ -6722,15 +7297,41 @@ async function handleJsonRpcCall(socket, frame) {
     }
 
     case 'setup.runtime_check': {
-      sendJsonRpcResult(socket, id, {
-        ok: true,
-        checks: {
-          python: { found: true, version: '3.x' },
-          backend: { reachable: backendReady },
-          ws_bridge: { listening: true }
-        },
-        ready: backendReady
-      })
+      let pythonFound = false
+      let pythonVersion = null
+      try {
+        const pythonCmd = findPython()
+        pythonFound = true
+        try {
+          pythonVersion = execFileSync(pythonCmd, ['--version'], { stdio: 'pipe', timeout: 3000, encoding: 'utf8' }).trim()
+        } catch {
+          pythonVersion = 'unknown'
+        }
+      } catch {
+        pythonFound = false
+      }
+      const wsListening = !!(wsBridgeServer && wsBridgeServer.listening)
+
+      if (!backendReady) {
+        sendJsonRpcResult(socket, id, createApiError(ERROR_CODES.BACKEND_NOT_READY, '后端服务未启动或未就绪', {
+          checks: {
+            python: { found: pythonFound, version: pythonVersion },
+            backend: { reachable: false },
+            ws_bridge: { listening: wsListening }
+          },
+          ready: false
+        }))
+      } else {
+        sendJsonRpcResult(socket, id, {
+          ok: true,
+          checks: {
+            python: { found: pythonFound, version: pythonVersion },
+            backend: { reachable: true },
+            ws_bridge: { listening: wsListening }
+          },
+          ready: true
+        })
+      }
       break
     }
 
@@ -6791,6 +7392,7 @@ const runAgentTask = async ({ socket, project, agent, tasks, mode, model, provid
   sendGatewayEvent(socket, agent.session_id, 'message.delta', { message_id: `task-${Date.now()}-${agent.id}`, text: content })
   sendGatewayEvent(socket, agent.session_id, 'message.complete', { message_id: `task-${Date.now()}-${agent.id}`, text: content, rendered: content, role: 'assistant', model, provider, finish_reason: 'stop' })
   if (session) { session.running = false; session.message_count = history.length; session.updated = nowSeconds(); session.preview = content.slice(0, 160); sendGatewayEvent(socket, agent.session_id, 'session.info', sessionInfoPayload(session)) }
+  persistSession(agent.session_id)
   return { agent, tasks, content, status: finalStatus }
 }
 
@@ -6808,6 +7410,7 @@ const appendControllerDispatchSummary = (socket, sessionRecord, project, mode, r
   sendGatewayEvent(socket, sessionRecord.id, 'message.start', { message_id: messageId, role: 'assistant', model: 'task_system', provider: 'karna' })
   sendGatewayEvent(socket, sessionRecord.id, 'message.delta', { message_id: messageId, text: summary })
   sendGatewayEvent(socket, sessionRecord.id, 'message.complete', { message_id: messageId, text: summary, rendered: summary, role: 'assistant', model: 'task_system', provider: 'karna', finish_reason: 'stop' })
+  persistSession(sessionRecord.id)
 }
 
 const dispatchControllerTasks = async (socket, sessionRecord, prompt, model, provider) => {
@@ -6838,6 +7441,224 @@ const dispatchControllerTasks = async (socket, sessionRecord, prompt, model, pro
   } catch (err) {
     rememberLog(`Controller task dispatch failed: ${err instanceof Error ? err.message : String(err)}`)
     return null
+  }
+}
+
+const scanProjectMarkdownFiles = project => {
+  const folder = project?.folder
+  if (!folder || !fs.existsSync(folder)) return []
+  const docs = []
+  const dirAliases = {
+    '正文': 'manuscript', '输出': 'manuscript', '章节': 'manuscript', '书稿': 'manuscript', 'manuscript': 'manuscript', 'output': 'manuscript', 'chapters': 'manuscript',
+    '规划': 'outline', '大纲': 'outline', 'outline': 'outline', 'planning': 'outline',
+    '设定': 'setting', '人物': 'setting', '世界观': 'setting', 'world': 'setting', 'characters': 'setting', 'setting': 'setting',
+    'imports': 'import', '资料': 'import', 'research': 'import'
+  }
+  const scanDir = (dir, docType = null) => {
+    if (!fs.existsSync(dir)) return
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name)
+        const relPath = path.relative(folder, fullPath)
+        if (entry.isDirectory()) {
+          const dirName = entry.name.toLowerCase()
+          const mappedType = dirAliases[entry.name] || dirAliases[dirName] || docType
+          if (entry.name.startsWith('.') || entry.name === 'versions' || entry.name === 'rag' || entry.name === 'bible') continue
+          scanDir(fullPath, mappedType)
+        } else if (entry.isFile() && /\.(md|markdown|txt)$/i.test(entry.name)) {
+          try {
+            const stat = fs.statSync(fullPath)
+            const firstLine = (() => {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8').split('\n')[0] || ''
+                return content.replace(/^#+\s*/, '').trim()
+              } catch { return '' }
+            })()
+            docs.push({
+              id: `doc_${Buffer.from(relPath).toString('base64').slice(0, 12)}`,
+              path: relPath,
+              title: firstLine || path.basename(entry.name, path.extname(entry.name)),
+              type: docType || 'other',
+              size: stat.size,
+              modified_at: stat.mtime.toISOString(),
+              created_at: stat.birthtime.toISOString()
+            })
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+  scanDir(folder)
+  return docs
+}
+
+const syncProjectDocuments = project => {
+  if (!project?.folder) return null
+  try {
+    const docsDir = path.join(project.folder, 'documents')
+    const artifactsDir = path.join(project.folder, 'artifacts')
+    fs.mkdirSync(docsDir, { recursive: true })
+    fs.mkdirSync(artifactsDir, { recursive: true })
+    const docs = scanProjectMarkdownFiles(project)
+    const docsFile = path.join(docsDir, 'documents.json')
+    const existing = fs.existsSync(docsFile) ? readJsonFile(docsFile, { version: 1, documents: [] }) : { version: 1, documents: [] }
+    const existingPaths = new Set((existing.documents || []).map(d => d.path))
+    const mergedDocs = [...(existing.documents || []).filter(d => docs.some(nd => nd.path === d.path))]
+    for (const doc of docs) {
+      if (!existingPaths.has(doc.path)) mergedDocs.push(doc)
+      else {
+        const idx = mergedDocs.findIndex(d => d.path === doc.path)
+        if (idx >= 0) mergedDocs[idx] = { ...mergedDocs[idx], ...doc }
+      }
+    }
+    writeJsonFile(docsFile, { version: 1, project_id: project.id, updated_at: new Date().toISOString(), documents: mergedDocs })
+
+    const artifactsFile = path.join(artifactsDir, 'artifacts.json')
+    const existingArtifacts = fs.existsSync(artifactsFile) ? readJsonFile(artifactsFile, { version: 1, artifacts: [] }) : { version: 1, artifacts: [] }
+    const manuscriptDocs = mergedDocs.filter(d => d.type === 'manuscript' || /(?:输出|正文|章节|output|manuscript|chapter)/i.test(d.path))
+    const outlineDocs = mergedDocs.filter(d => d.type === 'outline' || /(?:规划|大纲|outline|planning)/i.test(d.path))
+    const settingDocs = mergedDocs.filter(d => d.type === 'setting' || /(?:设定|人物|世界观|world|characters|setting)/i.test(d.path))
+    const artifacts = [
+      ...manuscriptDocs.map(d => ({ id: d.id, type: 'manuscript', path: d.path, title: d.title, modified_at: d.modified_at, size: d.size })),
+      ...outlineDocs.map(d => ({ id: d.id, type: 'outline', path: d.path, title: d.title, modified_at: d.modified_at, size: d.size })),
+      ...settingDocs.map(d => ({ id: d.id, type: 'setting', path: d.path, title: d.title, modified_at: d.modified_at, size: d.size })),
+      ...mergedDocs.filter(d => !['manuscript', 'outline', 'setting'].includes(d.type) && !/(?:输出|正文|章节|规划|大纲|设定|人物|世界观|output|manuscript|chapter|outline|planning|world|characters|setting)/i.test(d.path))
+        .map(d => ({ id: d.id, type: 'other', path: d.path, title: d.title, modified_at: d.modified_at, size: d.size }))
+    ]
+    writeJsonFile(artifactsFile, { version: 1, project_id: project.id, updated_at: new Date().toISOString(), artifacts })
+
+    const documentNodesFile = path.join(docsDir, 'document_nodes.json')
+    if (!fs.existsSync(documentNodesFile)) {
+      const nodes = mergedDocs.map((d, i) => ({
+        id: d.id,
+        type: d.type,
+        title: d.title,
+        path: d.path,
+        children: [],
+        order: i
+      }))
+      writeJsonFile(documentNodesFile, { version: 1, nodes })
+    }
+
+    return { documents: mergedDocs, artifacts, new_count: docs.filter(d => !existingPaths.has(d.path)).length }
+  } catch (err) {
+    rememberLog(`Failed to sync project documents: ${err.message}`)
+    return null
+  }
+}
+
+const updateCreativeMemory = (project, prompt, response) => {
+  if (!project?.folder) return
+  try {
+    const memDir = path.join(project.folder, 'memory')
+    fs.mkdirSync(memDir, { recursive: true })
+    const memFile = path.join(memDir, 'creative_memory.json')
+    const existing = fs.existsSync(memFile) ? readJsonFile(memFile, { version: 1, entries: [] }) : { version: 1, entries: [] }
+    const entries = Array.isArray(existing.entries) ? existing.entries : []
+    const now = new Date().toISOString()
+    const extractPreferences = (text) => {
+      const prefs = []
+      const patterns = [
+        { regex: /(?:我喜欢|我偏好|我希望|请用|要写|风格是|文风是|用第([一二三四])人称|不要写|不要用|避免|字数[要求为是]?|每章\d+字)/gi, type: 'preference' }
+      ]
+      for (const p of patterns) {
+        let m
+        while ((m = p.regex.exec(text)) !== null) {
+          prefs.push({ text: m[0].trim(), source: 'user_prompt', at: now })
+        }
+      }
+      return prefs
+    }
+    const newPrefs = extractPreferences(String(prompt || ''))
+    if (newPrefs.length > 0) {
+      entries.push(...newPrefs.slice(-5))
+    }
+    if (/(?:章|章节|chapter|完成了|写完了|第[一二三四五六七八九十\d]+章)/i.test(String(prompt || '') + String(response || ''))) {
+      entries.push({
+        type: 'chapter_progress',
+        text: summarizeText(String(response || ''), 200),
+        source: 'conversation',
+        at: now,
+        evidence: String(prompt || '').slice(0, 100)
+      })
+    }
+    writeJsonFile(memFile, {
+      version: 1,
+      project_id: project.id,
+      updated_at: now,
+      entries: entries.slice(-200)
+    })
+  } catch (err) {
+    rememberLog(`Failed to update creative memory: ${err.message}`)
+  }
+}
+
+const updateTaskSystemProgress = (project, sessionRecord, prompt, response) => {
+  if (!project?.folder) return
+  try {
+    const taskFile = taskSystemPath(project)
+    const taskSystem = fs.existsSync(taskFile)
+      ? readTaskSystem(project)
+      : defaultTaskSystem(project, readWriterAgents(project).agents)
+    const now = new Date().toISOString()
+    taskSystem.updated_at = now
+    taskSystem.monitor = {
+      ...(taskSystem.monitor || {}),
+      status: 'idle',
+      updated_at: now,
+      summary: `最近对话：${summarizeText(String(prompt || ''), 80)}`,
+      last_response_preview: summarizeText(String(response || ''), 120)
+    }
+    if (sessionRecord?.agent_id === 'controller' && String(prompt || '').trim()) {
+      taskSystem.goal = taskSystem.goal || String(prompt || '').trim().slice(0, 500)
+    }
+    const agents = readWriterAgents(project).agents
+    taskSystem.agents = agents.map(a => ({
+      id: a.id,
+      name: a.name,
+      role: a.role,
+      status: a.session_id === sessionRecord?.id ? 'active' : (a.status || 'idle'),
+      last_active: a.session_id === sessionRecord?.id ? now : (a.last_active || null)
+    }))
+    const producedFiles = []
+    const docResult = syncProjectDocuments(project)
+    if (docResult?.documents) {
+      taskSystem.artifacts = docResult.documents
+        .filter(d => /(?:输出|正文|章节|output|manuscript|chapter)/i.test(d.path))
+        .slice(-20)
+        .map(d => ({ path: d.path, title: d.title, modified_at: d.modified_at }))
+    }
+    taskSystem.next_suggestions = []
+    if (/(?:卡住|卡文|不会写|不知道怎么)/i.test(String(prompt || ''))) {
+      taskSystem.next_suggestions.push('尝试让剧情续写Agent生成3个不同走向方案')
+    }
+    if (/(?:人物|角色|人设)/i.test(String(prompt || ''))) {
+      taskSystem.next_suggestions.push('让人设Agent更新人物卡')
+    }
+    if (/(?:设定|世界观|规则)/i.test(String(prompt || ''))) {
+      taskSystem.next_suggestions.push('让设定库Agent核查设定一致性')
+    }
+    if (taskSystem.next_suggestions.length === 0) {
+      taskSystem.next_suggestions = ['继续推进下一段剧情', '让评审Agent检查已写内容', '更新伏笔表']
+    }
+    writeTaskSystem(project, taskSystem)
+  } catch (err) {
+    rememberLog(`Failed to update task system: ${err.message}`)
+  }
+}
+
+const syncProjectAfterTurn = (sessionRecord, prompt, response) => {
+  if (!sessionRecord?.project_id && !sessionRecord?.writer_project_id) return
+  const projectId = sessionRecord.project_id || sessionRecord.writer_project_id
+  const project = findWriterProject(projectId)
+  if (!project) return
+  try {
+    syncProjectDocuments(project)
+    updateCreativeMemory(project, prompt, response)
+    updateTaskSystemProgress(project, sessionRecord, prompt, response)
+  } catch (err) {
+    rememberLog(`Project sync after turn failed: ${err.message}`)
   }
 }
 
@@ -6979,12 +7800,44 @@ async function handlePromptSubmit(socket, id, params) {
     ? requestedPermissionMode
     : 'project'
   if (sessionRecord) sessionRecord.permission_mode = permissionMode
+  
+  const writerProjectId = params.writer_project_id || params.writerProjectId || params.project_id || params.projectId || sessionRecord?.writer_project_id || sessionRecord?.project_id
+  let projectFolder = sessionRecord?.cwd || ''
+  if (writerProjectId) {
+    const project = findWriterProject(writerProjectId)
+    if (project?.folder) {
+      projectFolder = project.folder
+      if (sessionRecord) {
+        sessionRecord.writer_project_id = project.id
+        sessionRecord.project_id = project.id
+        sessionRecord.cwd = project.folder
+        sessionRecord.project_title = project.title || project.name
+      }
+    }
+  }
+  
   if (sessionRecord && isUntitledSession(sessionRecord.title) && String(prompt || '').trim()) {
     sessionRecord.title = titleFromPrompt(prompt)
     sessionRecord.updated = nowSeconds()
   }
-  let model = params.model || sessionRecord?.model || currentModel
-  let provider = params.provider || sessionRecord?.provider || currentModelProvider
+  let model = params.model || sessionRecord?.model || ''
+  let provider = params.provider || sessionRecord?.provider || ''
+  const authorized = resolveAuthorizedModel({ provider, model })
+  if (authorized.error) {
+    sendGatewayEvent(socket, sessionId, 'error', {
+      message: '\u8bf7\u5148\u5728\u8bbe\u7f6e\u4e2d\u914d\u7f6e\u5e76\u9a8c\u8bc1\u4e00\u4e2aAI\u6a21\u578b\u4f9b\u5e94\u5546\uff0c\u7136\u540e\u518d\u53d1\u9001\u6d88\u606f\u3002',
+      code: 'provider_setup_required'
+    })
+    sendJsonRpcResult(socket, id, {
+      session_id: sessionId,
+      ok: false,
+      error: 'provider_setup_required',
+      error_message: '\u8bf7\u5148\u5728\u8bbe\u7f6e\u4e2d\u914d\u7f6e\u5e76\u9a8c\u8bc1\u4e00\u4e2aAI\u6a21\u578b\u4f9b\u5e94\u5546\u3002'
+    })
+    return
+  }
+  provider = authorized.provider?.slug || ''
+  model = authorized.model
   const routed = routeModelForPrompt(prompt, provider, model)
   model = routed.model
   provider = routed.provider
@@ -7054,6 +7907,7 @@ async function handlePromptSubmit(socket, id, params) {
       history.push({ role: 'assistant', content, text: content, timestamp: nowSeconds(), model: 'multi-agent-workflow', provider: 'karna' })
       sessionMessages.set(sessionId, history)
       if (sessionRecord) { sessionRecord.message_count = history.length; sessionRecord.preview = `多 Agent：${workflow.name}`; sessionRecord.running = false; sessionRecord.updated = nowSeconds(); sendGatewayEvent(socket, sessionId, 'session.info', sessionInfoPayload(sessionRecord)) }
+      persistSession(sessionId)
       sendJsonRpcResult(socket, id, { session_id: sessionId, ok: true, message_id: assistantMessageId })
       return
     } catch (err) {
@@ -7086,6 +7940,7 @@ async function handlePromptSubmit(socket, id, params) {
       sessionRecord.updated = nowSeconds()
       sendGatewayEvent(socket, sessionId, 'session.info', sessionInfoPayload(sessionRecord))
     }
+    persistSession(sessionId)
     sendJsonRpcResult(socket, id, { session_id: sessionId, ok: true, message_id: assistantMessageId })
   }
 
@@ -7098,13 +7953,6 @@ async function handlePromptSubmit(socket, id, params) {
   })()
   if (localIntent) {
     completeLocalResponse(localIntent.content, localIntent.model, localIntent.provider)
-    return
-  }
-
-  const selectedProvider = findProvider(provider)
-  if (!selectedProvider || !isProviderConfigured(selectedProvider) || !model) {
-    const content = '\u8fd8\u6ca1\u6709\u914d\u7f6e\u53ef\u7528\u7684\u6a21\u578b\u63d0\u4f9b\u65b9\u3002Karna \u4e0d\u4f1a\u9ed8\u8ba4\u53bb\u7528 GPT/OpenAI\uff1b\u8bf7\u5728\u8bbe\u7f6e\u91cc\u914d\u7f6e DeepSeek\u3001GLM\u3001Qwen \u6216\u81ea\u5b9a\u4e49 OpenAI-compatible \u6a21\u578b\u540e\u518d\u53d1\u9001\u3002'
-    completeLocalResponse(content, 'not-configured', 'desktop')
     return
   }
 
@@ -7126,7 +7974,7 @@ async function handlePromptSubmit(socket, id, params) {
           permission_mode: permissionMode,
           provider,
           session_id: sessionId,
-          workspace_root: sessionRecord?.cwd || ''
+          workspace_root: projectFolder
         },
         timeoutMs: 300_000
       })
@@ -7186,6 +8034,8 @@ async function handlePromptSubmit(socket, id, params) {
       sendGatewayEvent(socket, sessionId, 'session.info', sessionInfoPayload(sessionRecord))
     }
 
+    persistSession(sessionId)
+    syncProjectAfterTurn(sessionRecord, prompt, content)
     sendJsonRpcResult(socket, id, { session_id: sessionId, ok: true, message_id: assistantMessageId })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -7219,15 +8069,16 @@ async function handleKarnaApiRequestImpl(request) {
   if (
     reqPath.startsWith('/api/karna/plugins') ||
     reqPath.startsWith('/api/karna/skills') ||
-    reqPath.startsWith('/api/karna/skill-packs')
+    reqPath.startsWith('/api/karna/skill-packs') ||
+    reqPath.startsWith('/api/karna/connectors')
   ) {
     const result = handleKarnaPluginPlatform(reqPath, method, body)
     if (result) return result
   }
 
-  // ---- Session endpoints (mock) ----
+  // ---- Session endpoints ----
   if (reqPath.startsWith('/api/sessions/search')) {
-    return { results: [], total: 0 }
+    return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '会话搜索功能尚未实现')
   }
 
   if (reqPath === '/api/sessions' || reqPath.startsWith('/api/sessions?')) {
@@ -7235,11 +8086,38 @@ async function handleKarnaApiRequestImpl(request) {
       const url = new URL(reqPath, 'http://local')
       const includeArchived = url.searchParams.get('include_archived') === 'true'
       const archivedOnly = url.searchParams.get('archived_only') === 'true'
+      const archived = url.searchParams.get('archived') || 'exclude'
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '40', 10), 1), 200)
+      const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10), 0)
+      const minMessages = Math.max(parseInt(url.searchParams.get('min_messages') || '0', 10), 0)
+      const order = url.searchParams.get('order') === 'created' ? 'created' : 'recent'
+
+      let finalIncludeArchived = includeArchived
+      let finalArchivedOnly = archivedOnly
+      if (archived === 'include') finalIncludeArchived = true
+      if (archived === 'only') finalArchivedOnly = true
+
       let sessionList = Array.from(sessions.values())
       sessionList = sessionLifecycleService.filterTombstoned(sessionList)
-      sessionList = sessionLifecycleService.filterSessionsByArchive(sessionList, { includeArchived, archivedOnly })
-      sessionList = sessionList.map(storedSessionInfo).sort((a, b) => b.last_active - a.last_active)
-      return { sessions: sessionList, total: sessionList.length, offset: 0 }
+      sessionList = sessionLifecycleService.filterSessionsByArchive(sessionList, { includeArchived: finalIncludeArchived, archivedOnly: finalArchivedOnly })
+
+      if (minMessages > 0) {
+        sessionList = sessionList.filter(s => (s.message_count || 0) >= minMessages)
+      }
+
+      sessionList = sessionList.map(storedSessionInfo)
+
+      if (order === 'created') {
+        sessionList.sort((a, b) => b.started_at - a.started_at)
+      } else {
+        sessionList.sort((a, b) => b.last_active - a.last_active)
+      }
+
+      const total = sessionList.length
+      const paginated = sessionList.slice(offset, offset + limit)
+      const hasMore = offset + limit < total
+
+      return { sessions: paginated, total, offset, limit, has_more: hasMore }
     }
   }
 
@@ -7247,15 +8125,55 @@ async function handleKarnaApiRequestImpl(request) {
     const url = new URL(reqPath, 'http://local')
     const includeArchived = url.searchParams.get('include_archived') === 'true'
     const archivedOnly = url.searchParams.get('archived_only') === 'true'
+    const archived = url.searchParams.get('archived') || 'exclude'
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '40', 10), 1), 200)
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10), 0)
+    const minMessages = Math.max(parseInt(url.searchParams.get('min_messages') || '0', 10), 0)
+    const order = url.searchParams.get('order') === 'created' ? 'created' : 'recent'
+    const source = url.searchParams.get('source') || ''
+    const excludeSources = url.searchParams.get('exclude_sources') || ''
+    const excludeSourcesList = excludeSources ? excludeSources.split(',').map(s => s.trim()) : []
+
+    let finalIncludeArchived = includeArchived
+    let finalArchivedOnly = archivedOnly
+    if (archived === 'include') finalIncludeArchived = true
+    if (archived === 'only') finalArchivedOnly = true
+
     let sessionList = Array.from(sessions.values())
     sessionList = sessionLifecycleService.filterTombstoned(sessionList)
-    sessionList = sessionLifecycleService.filterSessionsByArchive(sessionList, { includeArchived, archivedOnly })
-    sessionList = sessionList.map(storedSessionInfo).sort((a, b) => b.last_active - a.last_active)
+    sessionList = sessionLifecycleService.filterSessionsByArchive(sessionList, { includeArchived: finalIncludeArchived, archivedOnly: finalArchivedOnly })
+
+    if (minMessages > 0) {
+      sessionList = sessionList.filter(s => (s.message_count || 0) >= minMessages)
+    }
+
+    if (source) {
+      sessionList = sessionList.filter(s => (s.source || '') === source)
+    }
+
+    if (excludeSourcesList.length > 0) {
+      sessionList = sessionList.filter(s => !excludeSourcesList.includes(s.source || ''))
+    }
+
+    sessionList = sessionList.map(storedSessionInfo)
+
+    if (order === 'created') {
+      sessionList.sort((a, b) => b.started_at - a.started_at)
+    } else {
+      sessionList.sort((a, b) => b.last_active - a.last_active)
+    }
+
+    const total = sessionList.length
+    const paginated = sessionList.slice(offset, offset + limit)
+    const hasMore = offset + limit < total
+
     return {
-      sessions: sessionList,
-      total: sessionList.length,
-      offset: 0,
-      profile_totals: { default: sessionList.length }
+      sessions: paginated,
+      total,
+      offset,
+      limit,
+      has_more: hasMore,
+      profile_totals: { default: total }
     }
   }
 
@@ -7286,12 +8204,14 @@ async function handleKarnaApiRequestImpl(request) {
             affected_project_ids: result.affected_project_ids
           })
         }
+        saveSessions()
         return result
       }
       const session = sessions.get(sessionId)
       if (session && body) {
         if (body.title) session.title = body.title
         session.updated = Date.now() / 1000
+        persistSession(sessionId)
       }
       return { ok: true }
     }
@@ -7311,6 +8231,13 @@ async function handleKarnaApiRequestImpl(request) {
           affected_project_ids: result.cleared_project_ids
         })
       }
+      saveSessions()
+      for (const deletedId of (result.deleted_session_ids || [sessionId])) {
+        try {
+          const msgFile = path.join(sessionMessagesDir(), `${deletedId}.jsonl`)
+          if (fs.existsSync(msgFile)) fs.unlinkSync(msgFile)
+        } catch {}
+      }
       return result
     }
   }
@@ -7321,6 +8248,86 @@ async function handleKarnaApiRequestImpl(request) {
     const sessionId = decodeURIComponent(messagesMatch[1])
     const messages = sessionMessages.get(sessionId) || []
     return { messages, session_id: sessionId }
+  }
+
+  // ---- Memory endpoints ----
+  if (reqPath.startsWith('/api/memories/search')) {
+    if (method === 'GET') {
+      const url = new URL(reqPath, 'http://local')
+      const query = url.searchParams.get('q') || ''
+      const type = url.searchParams.get('type') || ''
+      const workspaceId = url.searchParams.get('workspace_id') || ''
+      const limit = parseInt(url.searchParams.get('limit') || '20', 10)
+      return memoryService.searchMemories({ query, type, workspaceId, limit })
+    }
+  }
+
+  if (reqPath.startsWith('/api/memories/pinned')) {
+    if (method === 'GET') {
+      const url = new URL(reqPath, 'http://local')
+      const workspaceId = url.searchParams.get('workspace_id') || ''
+      const module = url.searchParams.get('module') || ''
+      const limit = parseInt(url.searchParams.get('limit') || '20', 10)
+      return memoryService.getPinnedMemories({ workspaceId, module, limit })
+    }
+  }
+
+  if (reqPath.startsWith('/api/memories/stats')) {
+    if (method === 'GET') {
+      const url = new URL(reqPath, 'http://local')
+      const workspaceId = url.searchParams.get('workspace_id') || ''
+      const module = url.searchParams.get('module') || ''
+      return { ok: true, stats: memoryService.getMemoryStats({ workspaceId, module }) }
+    }
+  }
+
+  const memoryMatch = reqPath.match(/^\/api\/memories\/([^/?]+)\/pin(?:\?|$)/)
+  if (memoryMatch) {
+    const id = decodeURIComponent(memoryMatch[1])
+    if (method === 'POST') {
+      const pinned = body?.pinned !== false
+      const result = memoryService.togglePin(id, pinned)
+      if (!result.ok) return createApiError(ERROR_CODES.NOT_FOUND, result.error || 'Memory not found')
+      return result
+    }
+  }
+
+  const memoryIdMatch = reqPath.match(/^\/api\/memories\/([^/?]+)(?:\?|$)/)
+  if (memoryIdMatch) {
+    const id = decodeURIComponent(memoryIdMatch[1])
+    if (method === 'GET') {
+      const memory = memoryService.getMemory(id)
+      if (!memory) return createApiError(ERROR_CODES.NOT_FOUND, 'Memory not found')
+      return { ok: true, memory }
+    }
+    if (method === 'PATCH') {
+      const result = memoryService.updateMemory(id, body || {})
+      if (!result.ok) return createApiError(ERROR_CODES.INVALID_REQUEST, result.error || 'Update failed')
+      return result
+    }
+    if (method === 'DELETE') {
+      const result = memoryService.deleteMemory(id)
+      if (!result.ok) return createApiError(ERROR_CODES.NOT_FOUND, result.error || 'Memory not found')
+      return result
+    }
+  }
+
+  if (reqPath === '/api/memories' || reqPath.startsWith('/api/memories?')) {
+    if (method === 'GET') {
+      const url = new URL(reqPath, 'http://local')
+      const type = url.searchParams.get('type') || ''
+      const workspaceId = url.searchParams.get('workspace_id') || ''
+      const module = url.searchParams.get('module') || ''
+      const limit = parseInt(url.searchParams.get('limit') || '50', 10)
+      const offset = parseInt(url.searchParams.get('offset') || '0', 10)
+      const status = url.searchParams.get('status') || 'active'
+      return memoryService.listMemories({ type, workspaceId, module, limit, offset, status })
+    }
+    if (method === 'POST') {
+      const result = memoryService.createMemory(body || {})
+      if (!result.ok) return createApiError(ERROR_CODES.INVALID_REQUEST, result.error || 'Create failed')
+      return result
+    }
   }
 
   // ---- Config endpoints ----
@@ -8283,6 +9290,15 @@ async function handleKarnaApiRequestImpl(request) {
     }
     if (resolved && resolved.project) {
       const project = enrichWriterProject(resolved.project)
+      const allSessions = Array.from(sessions.values())
+      const projectSessions = allSessions
+        .filter(s => s.writer_project_id === project.id || s.project_id === project.id)
+        .map(storedSessionInfo)
+      const agentSessions = []
+      for (const [agentId, sid] of Object.entries(project.agent_session_ids || {})) {
+        const s = allSessions.find(sess => sess.id === sid)
+        if (s) agentSessions.push({ agent_id: agentId, ...storedSessionInfo(s) })
+      }
       return {
         ok: true,
         matched_by: resolved.matched_by,
@@ -8292,6 +9308,9 @@ async function handleKarnaApiRequestImpl(request) {
           workspaceId: project.workspace_id || project.id || workspace_id,
           rootPath: project.folder || '',
           primarySessionId: project.main_session_id || null,
+          sessionIds: project.session_ids || [],
+          sessions: projectSessions,
+          agentSessions,
           permissionsRoot: project.permissions_root || project.folder || '',
           capabilities: project.resolved_capabilities || null,
           created_documents: project.created_documents || [],
@@ -8414,6 +9433,71 @@ async function handleKarnaApiRequestImpl(request) {
       projects: (store.projects || []).map(p => p.id === projectId ? updatedProject : p)
     })
     return { ok: true, document: entry, project: enrichWriterProject(updatedProject) }
+  }
+  const projectSyncMatch = reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync(?:\?|$)/)
+  if (projectSyncMatch && method === 'POST') {
+    const projectId = decodeURIComponent(projectSyncMatch[1])
+    const project = findWriterProject(projectId)
+    if (!project) {
+      return { ok: false, error: 'PROJECT_NOT_FOUND', message: '项目不存在', statusCode: 404 }
+    }
+    try {
+      const result = syncProjectDocuments(project)
+      updateCreativeMemory(project, '', '手动同步')
+      updateTaskSystemProgress(project, { id: 'sync' }, '手动同步项目文件', '')
+      return {
+        ok: true,
+        project_id: projectId,
+        synced_at: new Date().toISOString(),
+        documents_count: result?.documents?.length || 0,
+        artifacts_count: result?.artifacts?.length || 0,
+        new_count: result?.new_count || 0,
+        documents: result?.documents || [],
+        artifacts: result?.artifacts || []
+      }
+    } catch (err) {
+      return { ok: false, error: 'SYNC_FAILED', message: err instanceof Error ? err.message : String(err), statusCode: 500 }
+    }
+  }
+  const projectHealthMatch = reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/health(?:\?|$)/)
+  if (projectHealthMatch && method === 'GET') {
+    const projectId = decodeURIComponent(projectHealthMatch[1])
+    const project = findWriterProject(projectId)
+    if (!project) {
+      return { ok: false, error: 'PROJECT_NOT_FOUND', message: '项目不存在', statusCode: 404 }
+    }
+    try {
+      const docs = scanProjectMarkdownFiles(project)
+      const docsFile = path.join(project.folder, 'documents', 'documents.json')
+      const artifactsFile = path.join(project.folder, 'artifacts', 'artifacts.json')
+      const tasksFile = taskSystemPath(project)
+      const memoryFile = path.join(project.folder, 'memory', 'creative_memory.json')
+      const agentsFile = path.join(writerProjectDataPath(project), 'writer_agents.json')
+      const docsIndexed = fs.existsSync(docsFile) ? (readJsonFile(docsFile, { documents: [] }).documents || []).length : 0
+      const artifactsIndexed = fs.existsSync(artifactsFile) ? (readJsonFile(artifactsFile, { artifacts: [] }).artifacts || []).length : 0
+      const hasUnsynced = docs.length > docsIndexed
+      const issues = []
+      if (hasUnsynced) issues.push({ code: 'UNSYNCED_DOCS', message: `发现 ${docs.length - docsIndexed} 个未同步的稿件文件` })
+      if (!fs.existsSync(tasksFile)) issues.push({ code: 'MISSING_TASK_SYSTEM', message: '任务系统文件不存在' })
+      if (!fs.existsSync(agentsFile)) issues.push({ code: 'MISSING_AGENTS', message: '智能体配置文件不存在' })
+      return {
+        ok: true,
+        healthy: issues.length === 0,
+        issues,
+        stats: {
+          markdown_files: docs.length,
+          indexed_documents: docsIndexed,
+          indexed_artifacts: artifactsIndexed,
+          has_task_system: fs.existsSync(tasksFile),
+          has_memory: fs.existsSync(memoryFile),
+          has_agents: fs.existsSync(agentsFile),
+          output_dir_files: docs.filter(d => /输出|output/i.test(d.path)).length
+        },
+        can_sync: true
+      }
+    } catch (err) {
+      return { ok: false, error: 'HEALTH_CHECK_FAILED', message: err instanceof Error ? err.message : String(err), statusCode: 500 }
+    }
   }
   if (reqPath === '/api/writer/projects/integrity' || reqPath.startsWith('/api/writer/projects/integrity?')) {
     const store = readWriterProjects()
@@ -9588,10 +10672,14 @@ async function handleKarnaApiRequestImpl(request) {
     }
   }
 
-  // ---- Status (mock) ----
+  // ---- Status ----
   if (reqPath === '/api/status') {
+    const appVersion = electronApp && typeof electronApp.getVersion === 'function' ? electronApp.getVersion() : '2.0.0'
     return {
-      version: '0.1.0',
+      ok: true,
+      version: appVersion,
+      desktopVersion: appVersion,
+      runtimeVersion: process.version,
       release_date: new Date().toISOString().slice(0, 10),
       active_sessions: sessions.size,
       config_path: backendDataPath('config.yaml'),
@@ -9600,7 +10688,7 @@ async function handleKarnaApiRequestImpl(request) {
       env_path: getBackendEnvPath(),
       karna_home: KARNA_DATA_ROOT,
       gateway_running: backendReady,
-      gateway_state: backendReady ? 'running' : 'mock',
+      gateway_state: backendReady ? 'running' : 'stopped',
       gateway_pid: karnaProcess?.pid ?? null,
       gateway_exit_reason: null,
       gateway_health_url: `${karnaBackendUrl}/health`,
@@ -9609,12 +10697,7 @@ async function handleKarnaApiRequestImpl(request) {
     }
   }
 
-  // ---- Audio helpers ----
-  if (reqPath === '/api/audio/elevenlabs/voices') {
-    return { voices: [] }
-  }
-
-  // ---- Logs (mock) ----
+  // ---- Logs ----
   if (reqPath === '/api/logs' || reqPath.startsWith('/api/logs?')) {
     const query = new URLSearchParams(String(reqPath).split('?')[1] || '')
     const filters = {
@@ -9655,7 +10738,7 @@ async function handleKarnaApiRequestImpl(request) {
     return { key, value: getEnvValue(key) }
   }
 
-  // ---- OAuth (mock) ----
+  // ---- OAuth ----
   if (reqPath === '/api/providers/oauth') return { providers: [] }
   if (reqPath.startsWith('/api/providers/oauth/')) {
     if (reqPath.includes('/start')) return notConfigured('oauth', 'OAuth flow is not configured for this provider.', { session_id: null, url: '' })
@@ -9696,7 +10779,7 @@ async function handleKarnaApiRequestImpl(request) {
   }
 
 
-  // ---- Profiles (mock) ----
+  // ---- Profiles ----
   if (reqPath === '/api/profiles') {
     if (method === 'GET') {
       return {
@@ -10458,7 +11541,7 @@ async function handleKarnaApiRequestImpl(request) {
     return { ok: false, error: 'Image generation configured but disabled in demo mode.' }
   }
 
-  // ---- Analytics (mock) ----
+  // ---- Analytics ----
   if (reqPath === '/api/analytics/usage' || reqPath.startsWith('/api/analytics/usage?')) {
     const daysMatch = reqPath.match(/[?&]days=(\d+)/)
     const period = daysMatch ? Math.max(1, Number(daysMatch[1]) || 30) : 30
@@ -10492,34 +11575,94 @@ async function handleKarnaApiRequestImpl(request) {
     return { ok: true, source: 'karna-local', product_metrics: analytics.getProductMetrics(), stats: analytics.getStats() }
   }
 
-  // ---- Action (mock) ----
-  if (reqPath === '/api/gateway/restart') return notConfigured('action', 'Gateway restart is not wired to a supervised process yet.', { name: 'restart', pid: karnaProcess?.pid || null })
-  if (reqPath === '/api/karna/update') return notConfigured('updates', 'Self-update is not configured for this desktop build.', { name: 'update' })
+  // ---- Action ----
+  if (reqPath === '/api/gateway/restart') return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '网关重启功能尚未实现', { name: 'restart', pid: karnaProcess?.pid || null })
+  if (reqPath === '/api/karna/update') return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '桌面版暂不支持自更新功能', { name: 'update' })
   if (reqPath === '/api/karna/update/check' || reqPath.startsWith('/api/karna/update/check?')) {
-    return {
-      install_method: 'dev',
-      current_version: '0.1.0',
-      behind: 0,
-      update_available: false,
-      can_apply: false,
-      update_command: null,
-      message: null,
-      commits: []
+    if (!releaseUpdater) {
+      return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '更新服务未初始化', { update_available: false })
+    }
+    try {
+      const result = await releaseUpdater.check()
+      return {
+        ok: true,
+        update_available: result.updateAvailable,
+        current_version: result.currentSha?.replace('version:', '') || '2.0.0',
+        target_version: result.targetSha?.replace('version:', '') || null,
+        supported: result.supported,
+        status: result.error ? 'error' : (result.updateAvailable ? 'available' : 'latest'),
+        message: result.message || null,
+        error: result.error || null,
+        fetched_at: result.fetchedAt || null,
+        behind: result.behind || 0,
+        can_apply: result.updateAvailable,
+        install_method: result.supported ? 'electron_updater' : 'manual'
+      }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `更新检查失败: ${err.message}`, { error: err.message })
     }
   }
   const actionStatusMatch = reqPath.match(/^\/api\/actions\/([^/?]+)\/status/)
   if (actionStatusMatch) {
     const name = decodeURIComponent(actionStatusMatch[1])
-    return { ok: false, capability: 'action', name, pid: null, running: false, exit_code: null, lines: [`Action status is not configured for ${name}.`] }
+    return createApiError(ERROR_CODES.NOT_IMPLEMENTED, `Action status is not configured for ${name}.`, { name, pid: null, running: false, exit_code: null, lines: [] })
   }
-  if (reqPath === '/api/action' || reqPath.startsWith('/api/action')) return notConfigured('action', 'Action runner is not configured.', { status: 'not_configured' })
+  if (reqPath === '/api/action' || reqPath.startsWith('/api/action')) return createApiError(ERROR_CODES.NOT_IMPLEMENTED, 'Action runner is not configured.', { status: 'not_configured' })
 
-  // ---- Audio (mock) ----
-  if (reqPath === '/api/audio/transcribe') return notConfigured('audio', 'ASR model is not configured.', { text: '' })
-  if (reqPath === '/api/audio/speak') return notConfigured('audio', 'TTS model is not configured.', { url: '' })
+  // ---- Audio ----
+  if (reqPath === '/api/audio/transcribe') return createApiError(ERROR_CODES.NOT_IMPLEMENTED, 'ASR model is not configured.', { text: '' })
+  if (reqPath === '/api/audio/speak') return createApiError(ERROR_CODES.NOT_IMPLEMENTED, 'TTS model is not configured.', { url: '' })
+  if (reqPath === '/api/audio/elevenlabs/voices') {
+    return createApiError(ERROR_CODES.NOT_IMPLEMENTED, 'ElevenLabs TTS is not configured.', { voices: [] })
+  }
 
-  // ---- Updates (mock) ----
-  if (reqPath === '/api/updates/check') return { update_available: false, version: '0.1.0' }
+  // ---- Updates ----
+  if (reqPath === '/api/updates/check') {
+    if (!releaseUpdater) {
+      return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '更新服务未初始化', { update_available: false })
+    }
+    try {
+      const result = await releaseUpdater.check()
+      return {
+        ok: true,
+        update_available: result.updateAvailable,
+        current_version: result.currentSha?.replace('version:', '') || '',
+        target_version: result.targetSha?.replace('version:', '') || null,
+        supported: result.supported,
+        status: result.error ? 'error' : (result.updateAvailable ? 'available' : 'latest'),
+        message: result.message || null,
+        error: result.error || null,
+        fetched_at: result.fetchedAt || null,
+        behind: result.behind || 0
+      }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `更新检查失败: ${err.message}`, { error: err.message })
+    }
+  }
+
+  if (reqPath === '/api/updates/download' && method === 'POST') {
+    if (!releaseUpdater) {
+      return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '更新服务未初始化')
+    }
+    try {
+      const result = await releaseUpdater.download()
+      return { ok: true, ...result }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `更新下载失败: ${err.message}`)
+    }
+  }
+
+  if (reqPath === '/api/updates/install' && method === 'POST') {
+    if (!releaseUpdater) {
+      return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '更新服务未初始化')
+    }
+    try {
+      const result = releaseUpdater.install()
+      return { ok: true, ...result }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `更新安装失败: ${err.message}`)
+    }
+  }
 
   // ---- Proxy to Karna backend for /health ----
   if (reqPath === '/health' || reqPath === '/') {
@@ -10527,13 +11670,13 @@ async function handleKarnaApiRequestImpl(request) {
       const result = await karnaBackendFetch(reqPath, { method, body, timeoutMs })
       return result.data
     } catch {
-      return { status: 'mock' }
+      return { status: backendReady ? 'degraded' : 'disconnected', backendReady }
     }
   }
 
   // ---- Default: explicit unsupported response instead of a fake empty object ----
   rememberLog(`Unhandled API path: ${method} ${reqPath}`)
-  return notConfigured('unsupported', `Unsupported Karna desktop API path: ${method} ${reqPath}`)
+  return createApiError(ERROR_CODES.NOT_FOUND, `Unsupported Karna desktop API path: ${method} ${reqPath}`)
 }
 
 /**
@@ -10838,6 +11981,12 @@ async function startKarnaAdapter(bootProgressCallback) {
 
   analytics.track('app_started')
 
+  try {
+    loadSessionsFromDisk()
+  } catch (e) {
+    rememberLog(`Failed to load sessions from disk: ${e.message}`)
+  }
+
   if (bootProgressCb) bootProgressCb('backend.resolve', 'Resolving Karna backend', 8)
   await startKarnaBackend()
 
@@ -10888,6 +12037,21 @@ function isBackendReady() {
  * Stop the adapter (backend + WS bridge).
  */
 function stopKarnaAdapter() {
+  try {
+    for (const timer of saveMessagesTimers.values()) {
+      clearTimeout(timer)
+    }
+    saveMessagesTimers.clear()
+    if (saveSessionsTimer) {
+      clearTimeout(saveSessionsTimer)
+      saveSessionsTimer = null
+    }
+    saveSessionsImmediate()
+    for (const sessionId of sessions.keys()) {
+      saveSessionMessagesImmediate(sessionId)
+    }
+  } catch {
+  }
   try {
     if (vectorDb) {
       vectorDb.saveAll()
@@ -11058,11 +12222,16 @@ function registerRemoteIpcHandlers(ipcMain, getRemoteGateway) {
   })
 }
 
+function setReleaseUpdater(updater) {
+  releaseUpdater = updater
+}
+
 module.exports = {
   startKarnaAdapter,
   getKarnaWsBridgeUrl,
   handleKarnaApiRequest,
   setHermesApiBridge,
+  setReleaseUpdater,
   isBackendReady,
   stopKarnaAdapter,
   getRecentLogs,

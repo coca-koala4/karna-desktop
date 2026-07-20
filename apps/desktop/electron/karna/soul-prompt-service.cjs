@@ -39,6 +39,11 @@ const CORE_POLICY_SUMMARY = [
 ]
 
 const MAX_SOUL_CHARS = 24_000
+const MIN_SOUL_CHARS = 10
+const SOUL_CONFIG_VERSION = 2
+const SOUL_HEALTH_GOOD = 'good'
+const SOUL_HEALTH_WARNING = 'warning'
+const SOUL_HEALTH_ERROR = 'error'
 
 function safeProfileName(profile) {
   const name = String(profile || 'default').trim() || 'default'
@@ -53,6 +58,13 @@ function profileSoulPath(path, dataRoot, profile) {
   return name === 'default'
     ? path.join(dataRoot, 'SOUL.md')
     : path.join(dataRoot, 'profiles', name, 'SOUL.md')
+}
+
+function profileMetaPath(path, dataRoot, profile) {
+  const name = safeProfileName(profile)
+  return name === 'default'
+    ? path.join(dataRoot, 'soul-meta.json')
+    : path.join(dataRoot, 'profiles', name, 'soul-meta.json')
 }
 
 function detectSensitiveSoulContent(content) {
@@ -94,7 +106,97 @@ function backupExistingSoul({ fs, path, file, now = new Date() }) {
   return backup
 }
 
+function isLegacySoulFormat(content) {
+  const text = String(content || '')
+  const hasFrontmatter = /^---\s*\n[\s\S]*?\n---\s*\n/.test(text)
+  return !hasFrontmatter
+}
+
+function migrateLegacySoul(content) {
+  const text = String(content || '')
+  const trimmed = text.trim()
+  const now = new Date().toISOString()
+  const frontmatter = `---
+version: ${SOUL_CONFIG_VERSION}
+createdAt: ${now}
+updatedAt: ${now}
+name: Default Soul
+description: Custom Karna Soul profile
+tags: []
+---
+
+`
+  return frontmatter + trimmed
+}
+
+function parseSoulFrontmatter(content) {
+  const text = String(content || '')
+  const match = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/.exec(text)
+  if (!match) {
+    return { meta: { version: 1 }, body: text }
+  }
+  const rawMeta = match[1]
+  const body = match[2]
+  const meta = {}
+  const lines = rawMeta.split('\n')
+  for (const line of lines) {
+    const colonIndex = line.indexOf(':')
+    if (colonIndex === -1) continue
+    const key = line.slice(0, colonIndex).trim()
+    let value = line.slice(colonIndex + 1).trim()
+    if (/^\d+$/.test(value)) {
+      value = Number(value)
+    } else if (value === 'true') {
+      value = true
+    } else if (value === 'false') {
+      value = false
+    } else if (value.startsWith('[') && value.endsWith(']')) {
+      try {
+        value = JSON.parse(value)
+      } catch {
+        value = []
+      }
+    } else if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1)
+    }
+    meta[key] = value
+  }
+  return { meta, body }
+}
+
 function createSoulPromptService({ fs, path, dataRoot }) {
+  function listProfiles() {
+    const profiles = ['default']
+    const profilesDir = path.join(dataRoot, 'profiles')
+    if (fs.existsSync(profilesDir)) {
+      try {
+        const entries = fs.readdirSync(profilesDir, { withFileTypes: true })
+        for (const entry of entries) {
+          if (entry.isDirectory() && /^[A-Za-z0-9._-]+$/.test(entry.name) && !entry.name.includes('..')) {
+            profiles.push(entry.name)
+          }
+        }
+      } catch {
+      }
+    }
+    return profiles
+  }
+
+  function readSoulMeta(profile) {
+    const file = profileMetaPath(path, dataRoot, profile)
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'))
+    } catch {
+      return { version: 1, createdAt: null, updatedAt: null }
+    }
+  }
+
+  function writeSoulMeta(profile, meta) {
+    const file = profileMetaPath(path, dataRoot, profile)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, JSON.stringify(meta, null, 2) + '\n', 'utf8')
+  }
+
   function getProfileSoul(profile = 'default') {
     const name = safeProfileName(profile)
     const file = profileSoulPath(path, dataRoot, name)
@@ -125,6 +227,131 @@ function createSoulPromptService({ fs, path, dataRoot }) {
     }
   }
 
+  function validateSoulConfig(soulId) {
+    const profile = soulId || 'default'
+    const errors = []
+    const warnings = []
+    const soul = getProfileSoul(profile)
+    if (!soul.exists) {
+      errors.push('Soul profile does not exist')
+      return { valid: false, errors, warnings, profile }
+    }
+    const content = soul.content
+    const { meta, body } = parseSoulFrontmatter(content)
+    if (body.trim().length < MIN_SOUL_CHARS) {
+      errors.push(`Soul content too short (${body.trim().length}/${MIN_SOUL_CHARS} minimum characters)`)
+    }
+    if (body.length > MAX_SOUL_CHARS) {
+      errors.push(`Soul content too long (${body.length}/${MAX_SOUL_CHARS} characters)`)
+    }
+    const sensitive = detectSensitiveSoulContent(content)
+    if (sensitive.length) {
+      errors.push(`Soul contains sensitive content: ${sensitive.join(', ')}`)
+    }
+    if (!meta.version) {
+      warnings.push('Soul config missing version field, assuming v1 (legacy)')
+    }
+    if (meta.version && meta.version > SOUL_CONFIG_VERSION) {
+      warnings.push(`Soul config version (${meta.version}) is newer than current schema (${SOUL_CONFIG_VERSION})`)
+    }
+    if (meta.tags && !Array.isArray(meta.tags)) {
+      warnings.push('Soul tags field is not an array')
+    }
+    const valid = errors.length === 0
+    return {
+      valid,
+      profile,
+      errors,
+      warnings,
+      version: meta.version || 1,
+      currentSchemaVersion: SOUL_CONFIG_VERSION,
+      charCount: body.length,
+      maxChars: MAX_SOUL_CHARS,
+      needsMigration: !meta.version || meta.version < SOUL_CONFIG_VERSION
+    }
+  }
+
+  function migrateSoulConfig(soulId) {
+    const profile = soulId || 'default'
+    const soul = getProfileSoul(profile)
+    if (!soul.exists) {
+      return { migrated: false, profile, reason: 'Soul profile does not exist' }
+    }
+    const validation = validateSoulConfig(profile)
+    if (!validation.needsMigration) {
+      return { migrated: false, profile, reason: 'Already at latest version', version: validation.version }
+    }
+    const backup = backupExistingSoul({ fs, path, file: soul.path })
+    const migratedContent = migrateLegacySoul(soul.content)
+    fs.writeFileSync(soul.path, migratedContent, 'utf8')
+    const meta = readSoulMeta(profile)
+    meta.version = SOUL_CONFIG_VERSION
+    meta.migratedAt = new Date().toISOString()
+    meta.migratedFrom = validation.version
+    writeSoulMeta(profile, meta)
+    return {
+      migrated: true,
+      profile,
+      fromVersion: validation.version,
+      toVersion: SOUL_CONFIG_VERSION,
+      backup,
+      path: soul.path
+    }
+  }
+
+  function getSoulHealth(soulId) {
+    const profile = soulId || 'default'
+    const validation = validateSoulConfig(profile)
+    let health = SOUL_HEALTH_GOOD
+    if (!validation.valid) {
+      health = SOUL_HEALTH_ERROR
+    } else if (validation.warnings.length > 0 || validation.needsMigration) {
+      health = SOUL_HEALTH_WARNING
+    }
+    const soul = getProfileSoul(profile)
+    const stat = fs.existsSync(soul.path) ? fs.statSync(soul.path) : null
+    return {
+      profile,
+      health,
+      exists: soul.exists,
+      version: validation.version,
+      currentSchemaVersion: SOUL_CONFIG_VERSION,
+      needsMigration: validation.needsMigration,
+      charCount: validation.charCount,
+      maxChars: validation.maxChars,
+      errors: validation.errors,
+      warnings: validation.warnings,
+      lastModified: stat ? stat.mtime.toISOString() : null,
+      path: soul.path
+    }
+  }
+
+  function listSoulsWithStatus() {
+    const profiles = listProfiles()
+    const souls = []
+    for (const profile of profiles) {
+      try {
+        const health = getSoulHealth(profile)
+        souls.push(health)
+      } catch (err) {
+        souls.push({
+          profile,
+          health: SOUL_HEALTH_ERROR,
+          exists: false,
+          errors: [err.message || String(err)],
+          warnings: []
+        })
+      }
+    }
+    return {
+      total: souls.length,
+      healthy: souls.filter(s => s.health === SOUL_HEALTH_GOOD).length,
+      warning: souls.filter(s => s.health === SOUL_HEALTH_WARNING).length,
+      error: souls.filter(s => s.health === SOUL_HEALTH_ERROR).length,
+      souls
+    }
+  }
+
   function setProfileSoul(profile = 'default', content = '') {
     const name = safeProfileName(profile)
     const text = validateSoulContent(content)
@@ -132,6 +359,10 @@ function createSoulPromptService({ fs, path, dataRoot }) {
     fs.mkdirSync(path.dirname(file), { recursive: true })
     const backup = backupExistingSoul({ fs, path, file })
     fs.writeFileSync(file, text, 'utf8')
+    const meta = readSoulMeta(name)
+    meta.updatedAt = new Date().toISOString()
+    if (!meta.createdAt) meta.createdAt = meta.updatedAt
+    writeSoulMeta(name, meta)
     return { ok: true, profile: name, path: file, backup, chars: text.length, editable: true }
   }
 
@@ -145,10 +376,15 @@ function createSoulPromptService({ fs, path, dataRoot }) {
     if (from === to) return { ok: true }
     const fromFile = profileSoulPath(path, dataRoot, from)
     const toFile = profileSoulPath(path, dataRoot, to)
+    const fromMetaFile = profileMetaPath(path, dataRoot, from)
+    const toMetaFile = profileMetaPath(path, dataRoot, to)
     if (!fs.existsSync(fromFile)) return { ok: true }
     fs.mkdirSync(path.dirname(toFile), { recursive: true })
     if (fs.existsSync(toFile)) backupExistingSoul({ fs, path, file: toFile })
     fs.renameSync(fromFile, toFile)
+    if (fs.existsSync(fromMetaFile)) {
+      fs.renameSync(fromMetaFile, toMetaFile)
+    }
     return { ok: true, from, to, path: toFile }
   }
 
@@ -156,10 +392,11 @@ function createSoulPromptService({ fs, path, dataRoot }) {
     const name = safeProfileName(profile)
     if (name === 'default') return { ok: true, skipped: true }
     const file = profileSoulPath(path, dataRoot, name)
+    const metaFile = profileMetaPath(path, dataRoot, name)
     if (fs.existsSync(file)) {
       backupExistingSoul({ fs, path, file })
-      fs.rmSync(path.dirname(file), { recursive: true, force: true })
     }
+    fs.rmSync(path.dirname(file), { recursive: true, force: true })
     return { ok: true, profile: name }
   }
 
@@ -169,9 +406,10 @@ function createSoulPromptService({ fs, path, dataRoot }) {
 
   function soulMessage(profile = 'default') {
     const soul = getProfileSoul(profile)
+    const { body } = parseSoulFrontmatter(soul.content)
     const content = [
       'Editable Karna Soul (user-configurable, lower priority than Core Policy):',
-      soul.content.trim() || DEFAULT_KARNA_SOUL.trim()
+      (body || soul.content).trim() || DEFAULT_KARNA_SOUL.trim()
     ].join('\n\n')
     return { role: 'system', content }
   }
@@ -199,10 +437,15 @@ function createSoulPromptService({ fs, path, dataRoot }) {
     corePolicyMessage,
     deleteProfileSoul,
     getProfileSoul,
+    getSoulHealth,
+    listProfiles,
+    listSoulsWithStatus,
+    migrateSoulConfig,
     renameProfileSoul,
     resetProfileSoul,
     setProfileSoul,
     soulMessage,
+    validateSoulConfig,
     validateSoulContent
   }
 }
@@ -212,8 +455,16 @@ module.exports = {
   DEFAULT_KARNA_SOUL,
   KARNA_CORE_POLICY,
   MAX_SOUL_CHARS,
+  MIN_SOUL_CHARS,
+  SOUL_CONFIG_VERSION,
+  SOUL_HEALTH_GOOD,
+  SOUL_HEALTH_WARNING,
+  SOUL_HEALTH_ERROR,
   createSoulPromptService,
   detectSensitiveSoulContent,
+  isLegacySoulFormat,
+  migrateLegacySoul,
+  parseSoulFrontmatter,
   safeProfileName,
   validateSoulContent
 }

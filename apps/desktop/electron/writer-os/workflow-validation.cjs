@@ -3,16 +3,275 @@
 const { getNodeDefinition, isArchiveNode, ARCHIVE_NODE_TYPES } = require('./node-capabilities.cjs')
 const { scanForCredentials, migrateLegacyNodeConfig } = require('./node-resource-resolvers.cjs')
 
-function makeWarning(severity, message, relatedNodeId, fixSuggestions) {
+function makeWarning(severity, message, relatedNodeId, fixSuggestions, relatedEdgeId) {
   return {
     severity,
     userMessage: message,
     relatedNodeId,
+    relatedEdgeId,
     fixSuggestions: fixSuggestions || []
   }
 }
 
 const AI_RESOURCE_CAPABILITIES = new Set(['model', 'skills', 'rag', 'living_wiki', 'story_bible', 'narrative_state', 'soul', 'mcp', 'tools'])
+
+const LEGACY_NODE_TYPE_MAP = {
+  'input': 'input_text',
+  'output': 'final_output',
+  'human_review': 'human_confirm',
+  'loop': 'loop_controller',
+  'archive': 'save_snapshot',
+  'text_output': 'final_output',
+  'file_output': 'final_output',
+  'parallel': 'fanout',
+  'merge': 'text_merge'
+}
+
+const LEGACY_EDGE_TYPE_MAP = {
+  'default': 'normal',
+  'straight': 'normal',
+  'step': 'normal',
+  'smoothstep': 'normal',
+  'bezier': 'normal',
+  'approval': 'human_approval'
+}
+
+const NODE_INPUT_HANDLES = {
+  'input_text': [],
+  'input_file': [],
+  'input_variable': [],
+  'input_constant': [],
+  'agent': ['in', 'context_in'],
+  'critic': ['artifact_in', 'criteria_in'],
+  'scheduler': ['in'],
+  'tool_agent': ['in', 'context_in'],
+  'prompt_template': ['vars_in'],
+  'prompt_merge': ['in'],
+  'context_merge': ['in'],
+  'context_trim': ['in'],
+  'rag_search': ['query_in'],
+  'wiki_query': ['query_in'],
+  'bible_query': ['query_in'],
+  'narrative_query': ['query_in'],
+  'soul_query': ['query_in'],
+  'mcp_tool': ['args_in', 'context_in'],
+  'workspace_read': ['path_in'],
+  'workspace_write': ['path_in', 'content_in'],
+  'web_search': ['query_in'],
+  'fanout': ['in'],
+  'barrier': ['in'],
+  'condition': ['in'],
+  'switch_node': ['in'],
+  'wait': ['in'],
+  'retry': ['in'],
+  'loop_controller': ['in'],
+  'checkpoint': ['in'],
+  'subflow': ['in'],
+  'boolean_judge': ['in'],
+  'score_judge': ['in'],
+  'llm_judge': ['in'],
+  'consensus': ['critiques_in'],
+  'text_merge': ['in'],
+  'critique_aggregate': ['critiques_in'],
+  'human_confirm': ['in'],
+  'human_edit': ['in'],
+  'artifact': ['in'],
+  'save_snapshot': ['content_in', 'artifact_in'],
+  'archive_version': ['in'],
+  'final_output': ['in'],
+  'text_output': ['in'],
+  'file_output': ['in']
+}
+
+const NODE_OUTPUT_HANDLES = {
+  'input_text': ['out'],
+  'input_file': ['out', 'text_out'],
+  'input_variable': ['out'],
+  'input_constant': ['out'],
+  'agent': ['out', 'text_out'],
+  'critic': ['critique_out'],
+  'scheduler': ['out'],
+  'tool_agent': ['out', 'tool_out'],
+  'prompt_template': ['prompt_out'],
+  'prompt_merge': ['out'],
+  'context_merge': ['out'],
+  'context_trim': ['out'],
+  'rag_search': ['results_out', 'context_out'],
+  'wiki_query': ['results_out', 'context_out'],
+  'bible_query': ['results_out', 'context_out'],
+  'narrative_query': ['results_out', 'context_out'],
+  'soul_query': ['results_out', 'context_out'],
+  'mcp_tool': ['result_out', 'text_out'],
+  'workspace_read': ['content_out', 'doc_out'],
+  'workspace_write': ['out'],
+  'web_search': ['results_out'],
+  'fanout': ['out'],
+  'barrier': ['out'],
+  'condition': ['true_out', 'false_out'],
+  'switch_node': ['out'],
+  'wait': ['out'],
+  'retry': ['out'],
+  'loop_controller': ['out', 'exit_out'],
+  'checkpoint': ['out'],
+  'subflow': ['out'],
+  'boolean_judge': ['true_out', 'false_out'],
+  'score_judge': ['pass_out', 'fail_out'],
+  'llm_judge': ['pass_out', 'fail_out'],
+  'consensus': ['pass_out', 'fail_out'],
+  'text_merge': ['out'],
+  'critique_aggregate': ['brief_out'],
+  'human_confirm': ['approve_out', 'reject_out', 'edit_out'],
+  'human_edit': ['approve_out', 'reject_out', 'edit_out'],
+  'artifact': ['artifact_out'],
+  'save_snapshot': ['artifact_out'],
+  'archive_version': ['out'],
+  'final_output': [],
+  'text_output': ['out'],
+  'file_output': ['out']
+}
+
+function migrateNodeType(type) {
+  if (!type) return 'agent'
+  if (LEGACY_NODE_TYPE_MAP[type]) return LEGACY_NODE_TYPE_MAP[type]
+  return type
+}
+
+function migrateEdgeType(type) {
+  if (!type) return 'normal'
+  if (['normal', 'condition', 'loop', 'human_approval'].includes(type)) return type
+  if (LEGACY_EDGE_TYPE_MAP[type]) return LEGACY_EDGE_TYPE_MAP[type]
+  return 'normal'
+}
+
+function getNodeInputHandles(nodeType) {
+  const type = migrateNodeType(nodeType)
+  const handles = new Set(NODE_INPUT_HANDLES[type] || ['in'])
+  handles.add('in')
+  if (type === 'agent') handles.add('context_in')
+  return handles
+}
+
+function getNodeOutputHandles(nodeType) {
+  const type = migrateNodeType(nodeType)
+  const handles = new Set(NODE_OUTPUT_HANDLES[type] || ['out'])
+  handles.add('out')
+  handles.add('text_out')
+  return handles
+}
+
+function migrateWorkflow(workflow) {
+  if (!workflow || typeof workflow !== 'object') {
+    return {
+      name: '未命名工作流',
+      mode: 'canvas',
+      nodes: [],
+      edges: [],
+      limits: { max_agents: 20, max_parallel: 5, max_loop: 10 },
+      runtimeConfig: {
+        defaultModel: 'deepseek-chat',
+        maxNodesPerRun: 50,
+        allowLoop: true,
+        allowParallel: true,
+        timeoutMs: 300000,
+        saveRunHistory: true,
+        maxConcurrency: 3
+      },
+      knowledge_binding: { enabled: false },
+      schema_version: 2
+    }
+  }
+
+  const nodes = Array.isArray(workflow.nodes)
+    ? workflow.nodes.map((n, i) => {
+        const rawType = n?.data?.nodeType || n?.type || 'agent'
+        const nodeType = migrateNodeType(rawType)
+        return {
+          ...n,
+          id: String(n?.id || `node_${Date.now()}_${i}`),
+          type: nodeType,
+          position: {
+            x: Number(n?.position?.x ?? 80 + i * 220),
+            y: Number(n?.position?.y ?? 110)
+          },
+          data: {
+            ...n?.data,
+            label: n?.data?.label || n?.label || nodeType,
+            nodeType,
+            agent_id: n?.data?.agent_id || n?.agent_id,
+            agent_name: n?.data?.agent_name || n?.agent_name,
+            requiresReview: nodeType === 'human_confirm' ? (n?.data?.requiresReview ?? true) : n?.data?.requiresReview
+          }
+        }
+      })
+    : []
+
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
+  const edges = Array.isArray(workflow.edges)
+    ? workflow.edges.map((e, i) => {
+        const sourceId = String(e?.source || '')
+        const targetId = String(e?.target || '')
+        if (!sourceId || !targetId || !nodeMap.has(sourceId) || !nodeMap.has(targetId)) {
+          return null
+        }
+        const sourceNode = nodeMap.get(sourceId)
+        const targetNode = nodeMap.get(targetId)
+        const validSourceHandles = getNodeOutputHandles(sourceNode.type)
+        const validTargetHandles = getNodeInputHandles(targetNode.type)
+
+        let sourceHandle = e?.sourceHandle || 'out'
+        let targetHandle = e?.targetHandle || 'in'
+        let edgeType = migrateEdgeType(e?.type)
+
+        if (!validSourceHandles.has(sourceHandle)) {
+          if (validSourceHandles.has('out')) sourceHandle = 'out'
+          else sourceHandle = Array.from(validSourceHandles)[0] || 'out'
+        }
+        if (!validTargetHandles.has(targetHandle)) {
+          if (validTargetHandles.has('in')) targetHandle = 'in'
+          else targetHandle = Array.from(validTargetHandles)[0] || 'in'
+        }
+
+        let edgeData = { ...(e?.data || {}) }
+        if (edgeType === 'loop') {
+          const existingMaxRounds = Number(edgeData?.condition?.maxRounds || e?.condition?.maxRounds || 0)
+          if (!existingMaxRounds || existingMaxRounds < 1 || existingMaxRounds > 10) {
+            edgeData.condition = {
+              maxRounds: Number(workflow?.limits?.max_loop || 3),
+              onLimitReached: e?.condition?.onLimitReached || edgeData?.condition?.onLimitReached || 'continue'
+            }
+          } else if (!edgeData.condition) {
+            edgeData.condition = e?.condition
+          }
+        }
+
+        return {
+          ...e,
+          id: String(e?.id || `edge_${Date.now()}_${i}`),
+          source: sourceId,
+          target: targetId,
+          sourceHandle,
+          targetHandle,
+          type: edgeType,
+          data: edgeData,
+          animated: e?.animated !== undefined ? e.animated : (edgeType === 'loop')
+        }
+      }).filter(Boolean)
+    : []
+
+  const limits = {
+    max_agents: Number(workflow?.limits?.max_agents || 20),
+    max_parallel: Number(workflow?.limits?.max_parallel || 5),
+    max_loop: Number(workflow?.limits?.max_loop || 3)
+  }
+
+  return {
+    ...workflow,
+    nodes,
+    edges,
+    limits,
+    schema_version: 2
+  }
+}
 
 function nodeHasAIRole(nodeType, capabilities) {
   const aiTypes = ['agent', 'critic', 'scheduler', 'tool_agent', 'llm_judge']
@@ -22,8 +281,9 @@ function nodeHasAIRole(nodeType, capabilities) {
 function validateWorkflow(workflow, context = {}) {
   const errors = []
   const warnings = []
-  const nodes = Array.isArray(workflow?.nodes) ? workflow.nodes : []
-  const edges = Array.isArray(workflow?.edges) ? workflow.edges : []
+  const migratedWorkflow = migrateWorkflow(workflow)
+  const nodes = Array.isArray(migratedWorkflow?.nodes) ? migratedWorkflow.nodes : []
+  const edges = Array.isArray(migratedWorkflow?.edges) ? migratedWorkflow.edges : []
 
   const nodeById = new Map(nodes.map(n => [n.id, n]))
   const nodeTypes = new Map()
@@ -41,7 +301,7 @@ function validateWorkflow(workflow, context = {}) {
     outgoing.set(n.id, [])
     if (n.data?.isStart) startNodeCount++
     const t = String(n.data?.nodeType || n.type || '')
-    if (['output', 'final_output', 'text_output', 'file_output', 'archive', 'archive_version'].includes(t) || ARCHIVE_NODE_TYPES.has(t)) {
+    if (['final_output', 'text_output', 'file_output', 'save_snapshot', 'archive_version'].includes(t) || ARCHIVE_NODE_TYPES.has(t)) {
       outputNodeCount++
     }
   }
@@ -209,32 +469,171 @@ function validateWorkflow(workflow, context = {}) {
     const source = nodeById.get(edge.source)
     const target = nodeById.get(edge.target)
     if (!source) {
-      errors.push(makeWarning('error', `连线引用了不存在的源节点: ${edge.source}`, null))
+      errors.push(makeWarning('error', `连线引用了不存在的源节点: ${edge.source}`, null, null, edge.id))
+      continue
     }
     if (!target) {
-      errors.push(makeWarning('error', `连线引用了不存在的目标节点: ${edge.target}`, null))
+      errors.push(makeWarning('error', `连线引用了不存在的目标节点: ${edge.target}`, null, null, edge.id))
+      continue
+    }
+    if (edge.source === edge.target) {
+      errors.push(makeWarning('error', '节点不能连接到自己', edge.source, null, edge.id))
+      continue
+    }
+
+    const sourceType = String(source.data?.nodeType || source.type || '')
+    const targetType = String(target.data?.nodeType || target.type || '')
+    const validSourceHandles = getNodeOutputHandles(sourceType)
+    const validTargetHandles = getNodeInputHandles(targetType)
+
+    const sourceHandle = edge.sourceHandle || 'out'
+    const targetHandle = edge.targetHandle || 'in'
+
+    if (!validSourceHandles.has(sourceHandle)) {
+      errors.push(makeWarning('error',
+        `连线起点「${source.data?.label || source.id}」的端口「${sourceHandle}」不存在，已自动修正为默认端口`,
+        source.id,
+        [{ label: '自动修复端口', action: 'migrate_workflow' }],
+        edge.id
+      ))
+    }
+
+    if (!validTargetHandles.has(targetHandle)) {
+      errors.push(makeWarning('error',
+        `连线终点「${target.data?.label || target.id}」的端口「${targetHandle}」不存在，已自动修正为默认端口`,
+        target.id,
+        [{ label: '自动修复端口', action: 'migrate_workflow' }],
+        edge.id
+      ))
+    }
+
+    if (sourceType === 'condition') {
+      if (sourceHandle !== 'true_out' && sourceHandle !== 'false_out') {
+        errors.push(makeWarning('error',
+          '条件判断节点的输出端口必须是「条件成立」或「条件不成立」',
+          source.id,
+          null,
+          edge.id
+        ))
+      }
+    }
+
+    if (sourceType === 'human_confirm' || sourceType === 'human_review' || sourceType === 'human_edit') {
+      if (sourceHandle !== 'approve_out' && sourceHandle !== 'reject_out' && sourceHandle !== 'edit_out') {
+        errors.push(makeWarning('error',
+          '人工确认节点的输出端口必须是「通过」「驳回」或「修改后」',
+          source.id,
+          null,
+          edge.id
+        ))
+      }
+    }
+
+    if (sourceType === 'loop_controller' || sourceType === 'loop') {
+      if (sourceHandle !== 'out' && sourceHandle !== 'exit_out') {
+        errors.push(makeWarning('error',
+          '循环控制器的输出端口必须是「循环体」或「退出循环」',
+          source.id,
+          null,
+          edge.id
+        ))
+      }
     }
   }
 
   const visited = new Set()
   const inStack = new Set()
-  function hasCycle(nodeId, path = []) {
-    if (inStack.has(nodeId)) return true
+  const invalidCycles = []
+  const loopEdges = []
+  const normalEdges = []
+  for (const e of edges) {
+    if (e.type === 'loop') {
+      loopEdges.push(e)
+    } else {
+      normalEdges.push(e)
+    }
+  }
+
+  const loopSet = new Set(loopEdges.map(e => `${e.source}->${e.target}`))
+  function hasCycle(nodeId, path = [], edgePath = []) {
+    if (inStack.has(nodeId)) {
+      const cycleStart = path.indexOf(nodeId)
+      const cycleNodes = path.slice(cycleStart)
+      const cycleEdges = []
+      for (let i = 0; i < cycleNodes.length; i++) {
+        const from = cycleNodes[i]
+        const to = cycleNodes[(i + 1) % cycleNodes.length]
+        const edgeId = `${from}->${to}`
+        if (!loopSet.has(edgeId)) {
+          cycleEdges.push({ from, to })
+        }
+      }
+      if (cycleEdges.length > 0) {
+        invalidCycles.push({ nodes: cycleNodes, edges: cycleEdges })
+        return true
+      }
+      return false
+    }
     if (visited.has(nodeId)) return false
     visited.add(nodeId)
     inStack.add(nodeId)
-    const out = outgoing.get(nodeId) || []
+    const out = (outgoing.get(nodeId) || []).filter(e => e.type !== 'loop')
     for (const e of out) {
-      if (hasCycle(e.target, [...path, nodeId])) return true
+      if (hasCycle(e.target, [...path, nodeId], [...edgePath, e.id])) return true
     }
     inStack.delete(nodeId)
     return false
   }
   for (const n of nodes) {
-    if (hasCycle(n.id)) {
-      errors.push(makeWarning('error', '工作流中检测到循环依赖，请检查连线是否形成环路', n.id))
-      break
+    hasCycle(n.id)
+  }
+
+  for (const cycle of invalidCycles) {
+    const cycleDesc = cycle.nodes.map(nid => {
+      const n = nodeById.get(nid)
+      return n?.data?.label || nid
+    }).join(' → ')
+    errors.push(makeWarning('error',
+      `该工作流包含非法闭环：${cycleDesc}。请使用loop类型的连线创建受控循环并设置轮数上限。`,
+      cycle.nodes[0]
+    ))
+  }
+
+  const maxLoop = Number(migratedWorkflow?.limits?.max_loop || 3)
+  for (const loopEdge of loopEdges) {
+    const source = nodeById.get(loopEdge.source)
+    const target = nodeById.get(loopEdge.target)
+    if (!source || !target) {
+      errors.push(makeWarning('error', `循环连线引用了不存在的节点`, null, null, loopEdge.id))
+      continue
     }
+    if (loopEdge.source === loopEdge.target) {
+      errors.push(makeWarning('error', '循环连线的起点和终点不能是同一个节点', loopEdge.source, null, loopEdge.id))
+      continue
+    }
+    const sourceLabel = source?.data?.label || source.id
+    const targetLabel = target?.data?.label || target.id
+    const edgeMaxRounds = Number(
+      loopEdge?.condition?.maxRounds
+      || loopEdge?.data?.condition?.maxRounds
+      || maxLoop
+      || 3
+    )
+    if (!edgeMaxRounds || edgeMaxRounds < 1 || edgeMaxRounds > 10) {
+      warnings.push(makeWarning('warning',
+        `循环连线 ${sourceLabel}→${targetLabel} 的轮数设置异常(${edgeMaxRounds})，已自动设为默认值3轮`,
+        source.id,
+        [{ label: '调整循环上限' }],
+        loopEdge.id
+      ))
+    }
+    const validatedRounds = Math.max(1, Math.min(10, edgeMaxRounds || maxLoop || 3))
+    warnings.push(makeWarning('info',
+      `检测到受控循环：${sourceLabel} → ${targetLabel}，最多 ${validatedRounds} 轮。`,
+      source.id,
+      null,
+      loopEdge.id
+    ))
   }
 
   const orphanNodes = nodes.filter(n => (incoming.get(n.id) || []).length === 0 && (outgoing.get(n.id) || []).length === 0 && !n.data?.isStart)
@@ -277,24 +676,28 @@ function validateWorkflow(workflow, context = {}) {
     stats: {
       nodeCount: nodes.length,
       edgeCount: edges.length,
+      loopEdgeCount: loopEdges.length,
+      maxLoop: Math.max(1, Math.min(10, maxLoop || 3)),
       startNodeCount,
       outputNodeCount,
       orphanCount: orphanNodes.length,
       writebackBindingCount: writebackBindings.length,
       credentialFindings: nodes.reduce((acc, n) => acc + scanForCredentials(n.data || {}).length, 0)
-    }
+    },
+    migratedWorkflow
   }
 }
 
 function compileWorkflow(workflow, context = {}) {
-  const migratedNodes = Array.isArray(workflow?.nodes)
-    ? workflow.nodes.map(n => {
+  const validation = validateWorkflow(workflow, context)
+  const migratedWorkflow = validation.migratedWorkflow || migrateWorkflow(workflow)
+
+  const migratedNodes = Array.isArray(migratedWorkflow?.nodes)
+    ? migratedWorkflow.nodes.map(n => {
         const { data, migrated, legacyConfig } = migrateLegacyNodeConfig(n.data)
         return { ...n, data }
       })
     : []
-
-  const validation = validateWorkflow({ ...workflow, nodes: migratedNodes }, context)
 
   const compiled = {
     id: workflow.id,
@@ -312,7 +715,7 @@ function compileWorkflow(workflow, context = {}) {
         data: nodeData
       }
     }),
-    edges: Array.isArray(workflow.edges) ? workflow.edges.map(e => ({
+    edges: Array.isArray(migratedWorkflow.edges) ? migratedWorkflow.edges.map(e => ({
       id: e.id,
       source: e.source,
       target: e.target,
@@ -320,9 +723,10 @@ function compileWorkflow(workflow, context = {}) {
       targetHandle: e.targetHandle,
       type: e.type || 'normal',
       label: e.label,
-      data: e.data
+      data: e.data,
+      animated: e.animated
     })) : [],
-    entryNodes: migratedNodes.filter(n => n.data?.isStart || (validation.stats.startNodeCount === 0 && !workflow.edges?.some(e => e.target === n.id))).map(n => n.id),
+    entryNodes: migratedNodes.filter(n => n.data?.isStart || (validation.stats.startNodeCount === 0 && !migratedWorkflow.edges?.some(e => e.target === n.id))).map(n => n.id),
     validation
   }
 
@@ -332,5 +736,10 @@ function compileWorkflow(workflow, context = {}) {
 module.exports = {
   validateWorkflow,
   compileWorkflow,
-  makeWarning
+  migrateWorkflow,
+  makeWarning,
+  getNodeInputHandles,
+  getNodeOutputHandles,
+  migrateNodeType,
+  migrateEdgeType
 }

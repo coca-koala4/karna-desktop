@@ -2883,12 +2883,32 @@ class AIAgent:
         """
         if not failed:
             return ""
+        
+        has_multi_match = False
+        multi_match_paths = []
+        for path, info in failed.items():
+            preview = (info.get("error_preview") or "").lower()
+            if "matches for old_string" in preview or "found" in preview and "matches" in preview:
+                has_multi_match = True
+                multi_match_paths.append(path)
+        
         lines = [
-            "⚠️ File-mutation verifier: "
-            f"{len(failed)} file(s) were NOT modified this turn despite any "
-            "wording above that may suggest otherwise. Run `git status` or "
-            "`read_file` to confirm."
+            "⚠️ 文件修改验证："
+            f"本轮有 {len(failed)} 个文件**未被修改**，请勿被上方措辞误导。"
         ]
+        
+        if has_multi_match:
+            lines.append("")
+            lines.append("**原因：匹配到多处** — 提供的 old_string 在文件中出现多次，无法确定要修改哪一处。")
+        
+        lines.append("")
+        lines.append("**建议的下一步操作：**")
+        lines.append("1. 提供更多上下文，让 old_string 唯一确定要修改的位置")
+        lines.append("2. 如果确实要替换所有匹配项，使用 replace_all=True")
+        lines.append("3. 读取目标文件确认当前内容：使用 read_file 工具查看")
+        lines.append("")
+        lines.append("**失败详情：**")
+        
         shown = 0
         for path, info in failed.items():
             if shown >= 10:
@@ -2896,13 +2916,26 @@ class AIAgent:
             preview = (info.get("error_preview") or "").strip()
             tool = info.get("tool") or "patch"
             if preview:
-                lines.append(f"  • `{path}` — [{tool}] {preview}")
+                translated_preview = preview
+                translated_preview = translated_preview.replace(
+                    "Found ", "找到 "
+                ).replace(
+                    " matches for old_string. ", " 处匹配。"
+                ).replace(
+                    "Provide more context to make it unique, or use replace_all=True.",
+                    "请提供更多上下文使其唯一，或使用 replace_all=True。"
+                ).replace(
+                    "Could not find old_string", "未找到要替换的内容"
+                ).replace(
+                    "Could not find match", "未找到匹配内容"
+                )
+                lines.append(f"  • `{path}` — [{tool}] {translated_preview}")
             else:
-                lines.append(f"  • `{path}` — [{tool}] failed")
+                lines.append(f"  • `{path}` — [{tool}] 修改失败")
             shown += 1
         remaining = len(failed) - shown
         if remaining > 0:
-            lines.append(f"  • … and {remaining} more")
+            lines.append(f"  • … 还有 {remaining} 个文件")
         # Neutralize any path the preview text echoed (the bullet path is
         # already backticked above; the lookbehind keeps it from being
         # double-wrapped).

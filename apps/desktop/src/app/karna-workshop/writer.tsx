@@ -114,6 +114,9 @@ export function WriterWorkshopFullView() {
   const [workbenchProfile, setWorkbenchProfile] = useState<WorkbenchProfile | null>(null)
   const [workbenchSummary, setWorkbenchSummary] = useState<any>(null)
   const [workbenchLoading, setWorkbenchLoading] = useState(false)
+  const [healthStatus, setHealthStatus] = useState<{ healthy: boolean; issues: any[]; stats: any } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [showSyncBanner, setShowSyncBanner] = useState(false)
 
   const loadProjects = useCallback(async () => {
     try {
@@ -231,16 +234,50 @@ export function WriterWorkshopFullView() {
  return null } finally { setLoadingModule(null) }
   }, [activeProject])
 
+  const checkProjectHealth = useCallback(async (projectId: string) => {
+    try {
+      const data = await api<any>(`/api/writer/projects/${encodeURIComponent(projectId)}/health`)
+      if (data?.ok) {
+        setHealthStatus({ healthy: data.healthy, issues: data.issues || [], stats: data.stats || {} })
+        setShowSyncBanner(!data.healthy && (data.issues || []).some((i: any) => i.code === 'UNSYNCED_DOCS'))
+      }
+    } catch (e) {
+      console.error('Health check failed:', e)
+    }
+  }, [])
+
+  const syncProject = useCallback(async (projectId: string) => {
+    if (syncing) return
+    setSyncing(true)
+    try {
+      const data = await api<any>(`/api/writer/projects/${encodeURIComponent(projectId)}/sync`, 'POST')
+      if (data?.ok) {
+        setShowSyncBanner(false)
+        setHealthStatus(prev => prev ? { ...prev, healthy: true, issues: [], stats: { ...prev.stats, indexed_documents: data.documents_count, indexed_artifacts: data.artifacts_count } } : null)
+        if (activeProject) {
+          await loadProjectDetail(activeProject.id)
+          await loadWorkbench(activeProject.id)
+        }
+      }
+    } catch (e: any) {
+      console.error('Sync failed:', e)
+      alert('同步失败：' + (e.message || String(e)))
+    } finally {
+      setSyncing(false)
+    }
+  }, [syncing, activeProject, loadProjectDetail, loadWorkbench])
+
   useEffect(() => {
     if (activeProject) {
       void loadProjectDetail(activeProject.id)
       void loadWorkbench(activeProject.id)
+      void checkProjectHealth(activeProject.id)
       api(`/api/writer/projects/${encodeURIComponent(projectRef(activeProject))}/open`, 'POST').catch(() => {})
       window.dispatchEvent(new CustomEvent('karna:writer-project-changed', {
         detail: { projectId: activeProject.id, title: activeProject.title, folder: activeProject.folder }
       }))
     }
-  }, [activeProject, loadProjectDetail, loadWorkbench])
+  }, [activeProject, loadProjectDetail, loadWorkbench, checkProjectHealth])
 
   const LEGACY_BACKEND_MODULES = new Set([
     'bible', 'wiki', 'graph', 'state', 'critic', 'safety', 'memory',
@@ -414,6 +451,38 @@ export function WriterWorkshopFullView() {
           </div>
         )}
       </header>
+
+      {showSyncBanner && activeProject && (
+        <div className="border-b border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Codicon name="warning" size={16} className="text-amber-600 dark:text-amber-400" />
+            <span className="text-sm text-amber-800 dark:text-amber-200">
+              检测到未同步稿件：项目目录中有 {healthStatus?.stats?.markdown_files || 0} 个 Markdown 文件，但索引中只有 {healthStatus?.stats?.indexed_documents || 0} 个。
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-900 dark:hover:bg-amber-800 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+              disabled={syncing}
+              onClick={() => syncProject(activeProject.id)}
+            >
+              {syncing ? (
+                <><Codicon name="loading" size={14} className="mr-1.5 animate-spin" /> 同步中...</>
+              ) : (
+                <>点击同步</>
+              )}
+            </Button>
+            <button
+              className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 p-1"
+              onClick={() => setShowSyncBanner(false)}
+            >
+              <Codicon name="close" size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 flex overflow-hidden">
         {!activeProject ? (

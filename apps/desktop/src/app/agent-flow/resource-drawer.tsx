@@ -145,11 +145,6 @@ export function ResourceDrawer({ activeTab, onTabChange }: ResourceDrawerProps) 
   )
 }
 
-const SAVED_TEMPLATES = [
-  { kind: 'basic_writing' as const, name: '基础写作流程', desc: '输入→大纲→写作→润色→输出', nodes: 5, icon: 'edit' },
-  { kind: 'critique_loop' as const, name: '多评审师循环修订', desc: '四并行评审师→汇总→循环修订→人工检验', nodes: 11, icon: 'comment-discussion' }
-]
-
 const CONTROL_ALLOWLIST = new Set(['fanout', 'barrier', 'condition', 'loop_controller', 'human_confirm', 'consensus', 'scheduler', 'save_snapshot'])
 const IO_ALLOWLIST = new Set(['input_text', 'input_file', 'input_variable', 'input_constant', 'text_merge', 'merge', 'final_output'])
 
@@ -249,8 +244,18 @@ function DraggableCard({
 }
 
 function SavedTab() {
-  const { applyTemplate, applyEmptyTemplate, applyWorkflow, savedWorkflows, deleteWorkflow, currentWorkflow } = useAgentFlow()
+  const { applyTemplate, applyEmptyTemplate, applyBuiltinTemplate, applyWorkflow, savedWorkflows, deleteWorkflow, currentWorkflow } = useAgentFlow()
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; workflowId: string } | null>(null)
+
+  const builtinWorkflows = savedWorkflows.filter(wf => wf.builtin === true || String(wf.id || '').startsWith('builtin.'))
+  const userWorkflows = savedWorkflows.filter(wf => !builtinWorkflows.includes(wf))
+
+  const getTemplateIcon = (wf: any) => {
+    const id = String(wf.id || '')
+    if (id.includes('basic-writing')) return 'edit'
+    if (id.includes('critic-revision') || id.includes('critique')) return 'comment-discussion'
+    return 'file-code'
+  }
 
   useEffect(() => {
     const close = () => setContextMenu(null)
@@ -272,13 +277,13 @@ function SavedTab() {
         新建白板
       </button>
 
-      {savedWorkflows.length > 0 && (
+      {userWorkflows.length > 0 && (
         <>
           <div className="pt-1 pb-1 px-1 text-[0.65rem] font-medium text-slate-500 dark:text-slate-400">
             我的工作流
           </div>
 
-          {savedWorkflows.map(wf => {
+          {userWorkflows.map(wf => {
             const selected = currentWorkflow.id === wf.id
             if (!wf.id) return null
             return (
@@ -315,45 +320,51 @@ function SavedTab() {
         </>
       )}
 
-      <div className="pt-1 pb-1 px-1 text-[0.65rem] font-medium text-slate-500 dark:text-slate-400">
-        内置流程模板
-      </div>
+      {builtinWorkflows.length > 0 && (
+        <>
+          <div className="pt-1 pb-1 px-1 text-[0.65rem] font-medium text-slate-500 dark:text-slate-400">
+            内置流程模板
+          </div>
 
-      {SAVED_TEMPLATES.map(template => {
-        const selected = currentWorkflow.name === template.name && !currentWorkflow.id
-        return (
-          <div
-            className={cn(
-              'cursor-pointer rounded-xl border bg-white p-3 transition-all duration-200 hover:shadow-md dark:bg-white/5',
-              selected
-                ? 'border-violet-400 bg-violet-50/50 shadow-md shadow-violet-500/10 dark:border-violet-400/50 dark:bg-violet-500/10'
-                : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50 dark:border-white/10 dark:hover:border-violet-500/30 dark:hover:bg-white/10'
-            )}
-            key={template.kind}
-            onClick={() => applyTemplate(template.kind)}
-          >
-            <div className="flex items-start gap-2.5">
-              <IconTile icon={template.icon} active={selected} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{template.name}</span>
-                  {selected && <Codicon className="text-violet-500" name="check" size={14} />}
-                </div>
-                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{template.desc}</div>
-                <div className="mt-1.5">
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6rem] text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                    {template.nodes} 节点
-                  </span>
+          {builtinWorkflows.map(wf => {
+            const isCurrent = currentWorkflow.name === wf.name && !currentWorkflow.id
+            return (
+              <div
+                className={cn(
+                  'cursor-pointer rounded-xl border bg-white p-3 transition-all duration-200 hover:shadow-md dark:bg-white/5',
+                  isCurrent
+                    ? 'border-violet-400 bg-violet-50/50 shadow-md shadow-violet-500/10 dark:border-violet-400/50 dark:bg-violet-500/10'
+                    : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50 dark:border-white/10 dark:hover:border-violet-500/30 dark:hover:bg-white/10'
+                )}
+                key={wf.id || wf.name}
+                onClick={() => applyBuiltinTemplate(wf)}
+              >
+                <div className="flex items-start gap-2.5">
+                  <IconTile icon={getTemplateIcon(wf)} active={isCurrent} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{wf.name}</span>
+                      <span className="rounded bg-slate-100 px-1 py-px text-[0.55rem] text-slate-500 shrink-0 dark:bg-white/10 dark:text-slate-400">内置</span>
+                      {isCurrent && <Codicon className="text-violet-500" name="check" size={14} />}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{wf.description}</div>
+                    <div className="mt-1.5">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6rem] text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                        {wf.nodes?.length || 0} 节点
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )
-      })}
+            )
+          })}
+        </>
+      )}
 
       {contextMenu && (() => {
         const wf = savedWorkflows.find(w => w.id === contextMenu.workflowId)
         if (!wf || !wf.id) return null
+        const isBuiltin = wf.builtin === true || String(wf.id).startsWith('builtin.')
         return (
           <div
             className="fixed z-50 min-w-[140px] rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-800"
@@ -365,13 +376,17 @@ function SavedTab() {
               label="打开"
               onClick={() => { applyWorkflow(wf); setContextMenu(null) }}
             />
-            <div className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <ContextMenuItem
-              icon="trash"
-              label="删除"
-              danger
-              onClick={() => { setContextMenu(null); void deleteWorkflow(wf.id!) }}
-            />
+            {!isBuiltin && (
+              <>
+                <div className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
+                <ContextMenuItem
+                  icon="trash"
+                  label="删除"
+                  danger
+                  onClick={() => { setContextMenu(null); void deleteWorkflow(wf.id!) }}
+                />
+              </>
+            )}
           </div>
         )
       })()}

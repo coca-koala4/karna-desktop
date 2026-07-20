@@ -157,6 +157,7 @@ function buildExecutionPlan(workflow) {
   const nodeById = new Map(nodes.map(n => [n.id, n]))
   const inDegree = new Map()
   const outgoing = new Map()
+  const loopEdges = []
 
   for (const node of nodes) {
     inDegree.set(node.id, 0)
@@ -167,8 +168,19 @@ function buildExecutionPlan(workflow) {
     const from = edge.source || edge.from
     const to = edge.target || edge.to
     if (from && to && nodeById.has(from) && nodeById.has(to)) {
-      outgoing.get(from).push(to)
-      inDegree.set(to, (inDegree.get(to) || 0) + 1)
+      if (edge.type === 'loop') {
+        loopEdges.push(edge)
+      } else {
+        outgoing.get(from).push(to)
+        inDegree.set(to, (inDegree.get(to) || 0) + 1)
+      }
+    }
+  }
+
+  for (const loopEdge of loopEdges) {
+    const maxRounds = Number(loopEdge?.condition?.maxRounds || loopEdge?.data?.condition?.maxRounds || workflow?.limits?.max_loop || 3)
+    if (!maxRounds || maxRounds < 1 || maxRounds > 10) {
+      console.warn(`[buildExecutionPlan] Loop edge ${loopEdge.source}->${loopEdge.target} has invalid maxRounds=${maxRounds}, using default 3`)
     }
   }
 
@@ -186,7 +198,7 @@ function buildExecutionPlan(workflow) {
     if (visited.has(nodeId)) continue
     visited.add(nodeId)
     const node = nodeById.get(nodeId)
-    const deps = edges.filter(e => (e.target || e.to) === nodeId).map(e => e.source || e.from)
+    const deps = edges.filter(e => e.type !== 'loop' && (e.target || e.to) === nodeId).map(e => e.source || e.from)
     steps.push({
       nodeId,
       agentId: node?.agent_id || node?.agentId || null,

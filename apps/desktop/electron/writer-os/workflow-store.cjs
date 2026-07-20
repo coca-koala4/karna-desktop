@@ -5,6 +5,14 @@ function createWriterWorkflowStoreService(deps = {}) {
   for (const name of required) if (!deps[name]) throw new Error(`createWriterWorkflowStoreService requires ${name}.`)
   const { fs, path, crypto, getBackendDataDir, readWriterProjects, findWriterProject, readJsonFile, writeJsonFile } = deps
 
+  let workflowValidation = null
+  try {
+    workflowValidation = require('./workflow-validation.cjs')
+  } catch (e) {
+    workflowValidation = null
+  }
+  const migrateWorkflowSafe = (w) => workflowValidation?.migrateWorkflow ? workflowValidation.migrateWorkflow(w) : w
+
 const WORKFLOW_AGENT_TEMPLATES = [
   { id: 'setting_keeper', name: '设定库 Agent', role: '设定核查', color: '#7c3aed', tagline: '守住世界观、人设、时间线和能力规则', duties: '管理世界观、年代、势力、人物性格、能力规则，并核查新内容是否吃设定。', forbidden: '不负责写正文，不擅自新增破坏主设定的大规则。', output_format: '设定核查报告', permissions: { canEditDraft: false, canComment: true, canUseKnowledge: true, canReadUpstream: true }, model: '', temperature: 0.3, top_p: 0.8, constraints: ['必须严格遵循本书世界观', '仅标注问题不修改正文'] },
   { id: 'outline_architect', name: '大纲 Agent', role: '大纲设计', color: '#2563eb', tagline: '搭建主线、分卷和章节节拍', duties: '生成长篇总纲、分卷纲、章节梗概和阶段目标。', forbidden: '不直接撰写完整正文。', output_format: '分层大纲', permissions: { canEditDraft: false, canComment: true, canUseKnowledge: true, canReadUpstream: true }, model: '', temperature: 0.7, top_p: 0.9, constraints: ['不得改动用户指定主线剧情'] },
@@ -92,7 +100,18 @@ const normalizeWorkflowNode = (node, index = 0) => ({
   position: node?.position && typeof node.position === 'object' ? { x: Number(node.position.x || 0), y: Number(node.position.y || 0) } : { x: 120 + index * 160, y: 140 },
   data: node?.data && typeof node.data === 'object' ? node.data : {}
 })
-const normalizeWorkflowEdge = edge => ({ id: String(edge?.id || `${edge?.source || ''}-${edge?.target || ''}` || workflowId('edge')), source: String(edge?.source || ''), target: String(edge?.target || ''), label: edge?.label ? String(edge.label) : '' })
+const normalizeWorkflowEdge = edge => ({
+  id: String(edge?.id || `${edge?.source || ''}-${edge?.target || ''}` || workflowId('edge')),
+  source: String(edge?.source || ''),
+  target: String(edge?.target || ''),
+  sourceHandle: edge?.sourceHandle || 'out',
+  targetHandle: edge?.targetHandle || 'in',
+  label: edge?.label ? String(edge.label) : '',
+  type: edge?.type === 'loop' ? 'loop' : 'normal',
+  animated: edge?.animated,
+  condition: edge?.condition,
+  data: edge?.data || undefined
+})
 const validateWorkflowGraph = workflow => {
   const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : []
   const edges = Array.isArray(workflow.edges) ? workflow.edges : []
@@ -100,38 +119,60 @@ const validateWorkflowGraph = workflow => {
   const agentCount = nodes.filter(node => node.type === 'agent').length
   const limits = defaultWorkflowLimits(workflow.limits)
   if (agentCount > limits.max_agents) throw new Error(`At most ${limits.max_agents} Agent nodes are allowed in one workflow`)
+  const loopEdges = []
   for (const edge of edges) {
     if (!ids.has(edge.source) || !ids.has(edge.target)) throw new Error('An edge references a missing node')
     if (edge.source === edge.target) throw new Error('A node cannot connect to itself')
+    if (edge.type === 'loop') loopEdges.push(edge)
   }
   const adjacency = new Map(nodes.map(node => [node.id, []]))
-  for (const edge of edges) adjacency.get(edge.source)?.push(edge.target)
+  for (const edge of edges) {
+    if (edge.type !== 'loop') {
+      adjacency.get(edge.source)?.push(edge.target)
+    }
+  }
   const visiting = new Set(); const visited = new Set()
   const dfs = id => {
-    if (visiting.has(id)) throw new Error('Workflow cycles are not allowed; use a loop node with an explicit cap')
+    if (visiting.has(id)) throw new Error('Workflow cycles are not allowed; use a loop edge (type: \"loop\") with an explicit max_loop limit')
     if (visited.has(id)) return
     visiting.add(id)
     for (const next of adjacency.get(id) || []) dfs(next)
     visiting.delete(id); visited.add(id)
   }
   for (const id of ids) dfs(id)
+  if (loopEdges.length > 0 && (!limits.max_loop || limits.max_loop < 1)) {
+    throw new Error('Loop edges require a valid max_loop limit (1-10)')
+  }
   return true
 }
 const normalizeWorkflow = (project, input = {}, existing = null) => {
   const now = workflowNow()
-  const workflow = {
+  let nodes = (Array.isArray(input.nodes) ? input.nodes : existing?.nodes || []).map(normalizeWorkflowNode)
+  let edges = (Array.isArray(input.edges) ? input.edges : existing?.edges || []).map(normalizeWorkflowEdge).filter(edge => edge.source && edge.target)
+  const migrated = migrateWorkflowSafe({
     id: String(existing?.id || input.id || workflowId('workflow')),
     project_id: project.id,
-    name: String(input.name || existing?.name || 'Upstream output is not provided').trim(),
+    name: String(input.name || existing?.name || 'Unnamed workflow').trim(),
     mode: ['simple', 'canvas'].includes(input.mode || existing?.mode) ? String(input.mode || existing?.mode) : 'canvas',
-    nodes: (Array.isArray(input.nodes) ? input.nodes : existing?.nodes || []).map(normalizeWorkflowNode),
-    edges: (Array.isArray(input.edges) ? input.edges : existing?.edges || []).map(normalizeWorkflowEdge).filter(edge => edge.source && edge.target),
+    nodes,
+    edges,
     limits: defaultWorkflowLimits(input.limits || existing?.limits),
-    knowledge_binding: input.knowledge_binding || input.knowledgeBinding || existing?.knowledge_binding || { enabled: true, ids: project.knowledge_ids || [] },
+    runtimeConfig: input.runtimeConfig || existing?.runtimeConfig,
+    knowledge_binding: input.knowledge_binding || input.knowledgeBinding || existing?.knowledge_binding || { enabled: true, ids: project.knowledge_ids || [] }
+  })
+  const workflow = {
+    id: migrated.id || String(existing?.id || input.id || workflowId('workflow')),
+    project_id: project.id,
+    name: migrated.name || String(input.name || existing?.name || 'Unnamed workflow').trim(),
+    mode: migrated.mode || 'canvas',
+    nodes: migrated.nodes || nodes,
+    edges: migrated.edges || edges,
+    limits: defaultWorkflowLimits(migrated.limits || input.limits || existing?.limits),
+    knowledge_binding: migrated.knowledge_binding || input.knowledge_binding || input.knowledgeBinding || existing?.knowledge_binding || { enabled: true, ids: project.knowledge_ids || [] },
+    runtimeConfig: migrated.runtimeConfig,
     created_at: existing?.created_at || now,
     updated_at: now
   }
-  validateWorkflowGraph(workflow)
   return workflow
 }
 const upsertWorkflowAgent = (project, patch = {}, targetId = '') => {

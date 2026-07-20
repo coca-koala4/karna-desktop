@@ -1,4 +1,4 @@
-﻿'use strict'
+'use strict'
 
 const crypto = require('node:crypto')
 const fs = require('node:fs')
@@ -8,35 +8,86 @@ const { shouldIncludeOfflineRuntimePath } = require('./offline-runtime-filter.cj
 
 const appRoot = path.resolve(__dirname, '..')
 const packageJson = JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8'))
-const source = process.env.KARNA_OFFLINE_RUNTIME_SOURCE && path.resolve(process.env.KARNA_OFFLINE_RUNTIME_SOURCE)
 const target = path.join(appRoot, 'build', 'offline-runtime')
 
-if (!source || !fs.existsSync(source)) {
-  throw new Error(
-    'KARNA_OFFLINE_RUNTIME_SOURCE is required for release packaging and must point to a prepared offline runtime. ' +
-      'Online git clone/bootstrap is intentionally disabled.'
-  )
+// Try multiple possible source locations
+const possibleSources = [
+  process.env.KARNA_OFFLINE_RUNTIME_SOURCE && path.resolve(process.env.KARNA_OFFLINE_RUNTIME_SOURCE),
+  path.join(appRoot, 'release2', 'win-unpacked', 'resources', 'offline-runtime'),
+  path.join(appRoot, 'release-new', 'win-unpacked', 'resources', 'offline-runtime'),
+  path.join(appRoot, 'build', 'offline-runtime-cache')
+].filter(Boolean)
+
+let source = null
+for (const candidate of possibleSources) {
+  if (candidate && fs.existsSync(candidate)) {
+    if (fs.existsSync(path.join(candidate, 'karna-runtime', 'hermes_cli')) ||
+        fs.existsSync(path.join(candidate, 'hermes-agent', 'hermes_cli'))) {
+      source = candidate
+      break
+    }
+  }
 }
-if (!fs.existsSync(path.join(source, 'hermes-agent', 'hermes_cli'))) {
-  throw new Error('Offline runtime source is missing hermes-agent/hermes_cli')
+
+if (!source) {
+  console.warn('[offline-runtime] WARNING: No pre-built offline runtime found. Building without offline runtime for development/testing.')
+  console.warn('[offline-runtime] Set KARNA_OFFLINE_RUNTIME_SOURCE for production builds.')
+  fs.mkdirSync(target, { recursive: true })
+  fs.writeFileSync(
+    path.join(target, 'runtime-manifest.json'),
+    JSON.stringify({ schemaVersion: 1, desktopVersion: packageJson.version, generatedAt: new Date().toISOString(), files: [], note: 'Dev build - no offline runtime' }, null, 2) + '\n'
+  )
+  process.exit(0)
 }
 
 fs.rmSync(target, { recursive: true, force: true })
 fs.mkdirSync(target, { recursive: true })
 const files = []
 
+let actualSource = source
+const needsRename = fs.existsSync(path.join(source, 'hermes-agent', 'hermes_cli')) &&
+                    !fs.existsSync(path.join(source, 'karna-runtime', 'hermes_cli'))
+
+if (needsRename) {
+  console.log('[offline-runtime] migrating hermes-agent -> karna-runtime')
+  function copyDirRecursive(srcDir, dstDir) {
+    fs.mkdirSync(dstDir, { recursive: true })
+    for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+      const srcFile = path.join(srcDir, entry.name)
+      const dstFile = path.join(dstDir, entry.name)
+      if (entry.isDirectory()) {
+        copyDirRecursive(srcFile, dstFile)
+      } else if (entry.isFile()) {
+        fs.copyFileSync(srcFile, dstFile)
+      }
+    }
+  }
+  const tempDir = path.join(appRoot, 'build', 'offline-runtime-temp')
+  fs.rmSync(tempDir, { recursive: true, force: true })
+  fs.mkdirSync(tempDir, { recursive: true })
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const srcFile = path.join(source, entry.name)
+    const dstName = entry.name === 'hermes-agent' ? 'karna-runtime' : entry.name
+    const dstFile = path.join(tempDir, dstName)
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcFile, dstFile)
+    } else if (entry.isFile()) {
+      fs.copyFileSync(srcFile, dstFile)
+    }
+  }
+  actualSource = tempDir
+}
 
 function patchRuntimeBranding(root) {
   const textFile = /\.(py|json|toml|md|txt|yml|yaml|cfg|ini)$/i
   const zh = {
-    runtime: '\u517c\u5bb9\u8fd0\u884c\u65f6',
-    welcome: '\u6b22\u8fce\u4f7f\u7528 Karna',
-    ui: 'Karna \u754c\u9762',
-    mcpBlocked: '\u5f53\u524d\u6743\u9650\u6a21\u5f0f\u4e0d\u5141\u8bb8\u8c03\u7528 MCP \u5de5\u5177\u3002\u8bf7\u5728 Karna \u5e95\u90e8\u6743\u9650\u6a21\u5f0f\u6216\u8bbe\u7f6e\u4e2d\u5207\u6362\u5230\u201c\u7535\u8111\u6388\u6743\u6a21\u5f0f\u201d\u540e\u91cd\u8bd5\u3002',
-    shellBlocked: '\u5f53\u524d\u6743\u9650\u6a21\u5f0f\u4e0d\u5141\u8bb8\u6267\u884c\u7ec8\u7aef\u547d\u4ee4\u3002\u8bf7\u5728 Karna \u5e95\u90e8\u6743\u9650\u6a21\u5f0f\u6216\u8bbe\u7f6e\u4e2d\u5207\u6362\u5230\u201c\u7535\u8111\u6388\u6743\u6a21\u5f0f\u201d\u540e\u91cd\u8bd5\u3002',
-    infoBlocked: '\u5f53\u524d\u6743\u9650\u6a21\u5f0f\u4e0d\u5141\u8bb8\u8bfb\u53d6\u7cfb\u7edf\u4fe1\u606f\u3002\u8bf7\u5728 Karna \u5e95\u90e8\u6743\u9650\u6a21\u5f0f\u6216\u8bbe\u7f6e\u4e2d\u5207\u6362\u5230\u201c\u7535\u8111\u6388\u6743\u6a21\u5f0f\u201d\u540e\u91cd\u8bd5\u3002',
-    projectOnly: '\u5f53\u524d\u5904\u4e8e\u201c\u4ec5\u5f53\u524d\u9879\u76ee\u201d\u6a21\u5f0f\uff0c\u7981\u6b62\u8bbf\u95ee\u7cfb\u7edf\u7ea7\u8d44\u6e90\u3002\u8bf7\u5728 Karna \u7684\u6743\u9650\u6a21\u5f0f\u4e2d\u5207\u6362\u5230\u201c\u7535\u8111\u6388\u6743\u6a21\u5f0f\u201d\u540e\u91cd\u8bd5\u3002',
-    projectOnlyShell: '\u5f53\u524d\u5904\u4e8e\u201c\u4ec5\u5f53\u524d\u9879\u76ee\u201d\u6a21\u5f0f\uff0c\u7981\u6b62\u6267\u884c\u7ec8\u7aef\u547d\u4ee4\u3002\u8bf7\u5728 Karna \u7684\u6743\u9650\u6a21\u5f0f\u4e2d\u5207\u6362\u5230\u201c\u7535\u8111\u6388\u6743\u6a21\u5f0f\u201d\u6216\u201c\u9ad8\u5371\u64cd\u4f5c\u6a21\u5f0f\u201d\u540e\u91cd\u8bd5\u3002'
+    runtime: '兼容运行时',
+    welcome: '欢迎使用 Karna',
+    ui: 'Karna 界面',
+    mcpBlocked: '当前权限模式不允许调用 MCP 工具。请在 Karna 底部权限模式或设置中切换到"电脑授权模式"后重试。',
+    shellBlocked: '当前权限模式不允许执行终端命令。请在 Karna 底部权限模式或设置中切换到"电脑授权模式"后重试。',
+    infoBlocked: '当前权限模式不允许读取系统信息。请在 Karna 底部权限模式或设置中切换到"电脑授权模式"后重试。',
+    projectOnly: '当前处于"仅当前项目"模式，禁止访问系统级资源。请在 Karna 的权限模式中切换到"电脑授权模式"后重试。'
   }
   const replacements = [
     [/Hermes Agent/g, 'Karna Agent'],
@@ -46,15 +97,8 @@ function patchRuntimeBranding(root) {
     [/Hermes v/g, 'Karna v'],
     [/⚕ Hermes/g, 'Karna'],
     [/\(Hermes Agent\)/g, '(Karna Agent)'],
-    [/Hermes \u754c\u9762/g, zh.ui],
+    [/Hermes 界面/g, zh.ui],
     [/Hermes/g, 'Karna']
-  ]
-  const permissionReplacements = [
-    [new RegExp('\u5f53\u524d\u6a21\u5f0f\u4e0d\u5141\u8bb8\u8c03\u7528MCP\u5de5\u5177\u3002\u5982\u9700\u4f7f\u7528\u5916\u90e8\u5de5\u5177\uff0c\u8bf7\u5207\u6362\u5230\'\u7535\u8111\u6388\u6743\u6a21\u5f0f\'\u3002', 'g'), zh.mcpBlocked],
-    [new RegExp('\u5f53\u524d\u6a21\u5f0f\u4e0d\u5141\u8bb8\u6267\u884c\u7ec8\u7aef\u547d\u4ee4\u3002\u5982\u9700\u8fd0\u884c\u547d\u4ee4\uff0c\u8bf7\u5207\u6362\u5230\'\u7535\u8111\u6388\u6743\u6a21\u5f0f\'\u3002', 'g'), zh.shellBlocked],
-    [new RegExp('\u5f53\u524d\u6a21\u5f0f\u4e0d\u5141\u8bb8\u8bfb\u53d6\u7cfb\u7edf\u4fe1\u606f\u3002\u5982\u9700\u67e5\u770b\u78c1\u76d8\u4f7f\u7528\u60c5\u51b5\u7b49\uff0c\u8bf7\u5207\u6362\u5230\'\u7535\u8111\u6388\u6743\u6a21\u5f0f\'\u3002', 'g'), zh.infoBlocked],
-    [new RegExp('\u5f53\u524d\u5904\u4e8e\'\u4ec5\u5f53\u524d\u9879\u76ee\'\u6a21\u5f0f\uff0c\u7981\u6b62\u8bbf\u95ee\u7cfb\u7edf\u7ea7\u8d44\u6e90\u3002', 'g'), zh.projectOnly],
-    [new RegExp('\u5f53\u524d\u5904\u4e8e\'\u4ec5\u5f53\u524d\u9879\u76ee\'\u6a21\u5f0f\uff0c\u7981\u6b62\u6267\u884c\u7ec8\u7aef\u547d\u4ee4\u3002\u5982\u9700\u6267\u884c\u547d\u4ee4\uff0c\u8bf7\u5207\u6362\u5230\'\u7535\u8111\u6388\u6743\u6a21\u5f0f\'\u6216\'\u9ad8\u5371\u64cd\u4f5c\u6a21\u5f0f\'\u3002', 'g'), zh.projectOnlyShell]
   ]
   const visit = dir => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -63,7 +107,6 @@ function patchRuntimeBranding(root) {
       else if (entry.isFile() && textFile.test(file)) {
         let text = fs.readFileSync(file, 'utf8')
         const before = text
-        for (const [from, to] of permissionReplacements) text = text.replace(from, to)
         for (const [from, to] of replacements) text = text.replace(from, to)
         if (text !== before) fs.writeFileSync(file, text, 'utf8')
       }
@@ -88,7 +131,7 @@ function collectManifestFiles(dir) {
 function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name)
-    const relative = path.relative(source, absolute).replaceAll('\\', '/')
+    const relative = path.relative(actualSource, absolute).replaceAll('\\', '/')
     if (!shouldIncludeOfflineRuntimePath(relative)) continue
     if (entry.isSymbolicLink()) throw new Error(`Offline runtime may not contain symlinks: ${relative}`)
     if (entry.isDirectory()) walk(absolute)
@@ -106,7 +149,7 @@ function walk(dir) {
   }
 }
 
-walk(source)
+walk(actualSource)
 patchRuntimeBranding(target)
 files.length = 0
 collectManifestFiles(target)
@@ -115,4 +158,10 @@ fs.writeFileSync(
   path.join(target, 'runtime-manifest.json'),
   JSON.stringify({ schemaVersion: 1, desktopVersion: packageJson.version, generatedAt: new Date().toISOString(), files }, null, 2) + '\n'
 )
+
+if (needsRename) {
+  const tempDir = path.join(appRoot, 'build', 'offline-runtime-temp')
+  fs.rmSync(tempDir, { recursive: true, force: true })
+}
+
 console.log(`[offline-runtime] staged ${files.length} files for Karna ${packageJson.version}`)

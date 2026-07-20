@@ -105,6 +105,7 @@ interface AgentFlowContextValue {
   savedWorkflows: WriterWorkflow[]
 
   load: () => Promise<void>
+  loadSelectedWorkflow: (workflowId: string) => Promise<void>
   saveWorkflow: () => Promise<string>
   runWorkflow: (nodeId?: string) => Promise<void>
   stopWorkflow: () => Promise<void>
@@ -112,7 +113,8 @@ interface AgentFlowContextValue {
   markNodeAction: (nodeId: string, action: 'accept' | 'reject' | 'skip' | 'edit') => Promise<void>
 
   applyWorkflow: (workflow: WriterWorkflow) => void
-  applyTemplate: (kind: 'basic_writing' | 'critique_loop' | 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'empty' | 'simple' | 'critique') => void
+  applyTemplate: (kind: 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'empty' | 'simple' | 'critique') => void
+  applyBuiltinTemplate: (workflow: WriterWorkflow) => void
   applyEmptyTemplate: () => void
 
   createNodeAt: (type: WorkflowNodeType, x: number, y: number, label?: string, resourceData?: any) => void
@@ -264,38 +266,45 @@ function edgeStyleFor(status: NodeRunStatus | '' = ''): React.CSSProperties {
 
 function toFlowNodes(workflow: WriterWorkflow, agents: WorkflowAgent[], run?: WorkflowRun): FlowNode[] {
   const agentMap = new Map(agents.map(agent => [agent.id, agent]))
+  const seen = new Set<string>()
+  const result: FlowNode[] = []
 
-  return workflow.nodes.map(node => {
+  for (const node of workflow.nodes) {
+    if (!node.id) continue
+    if (seen.has(node.id)) continue
+    seen.add(node.id)
     const def = getNodeDefinition(node.type as WorkflowNodeType)
-    const agent = node.data.agent_id ? agentMap.get(String(node.data.agent_id)) : null
+    const agent = node.data?.agent_id ? agentMap.get(String(node.data.agent_id)) : null
     const runRow = run?.node_statuses?.[node.id]
-    const locked = Boolean(node.data.locked)
-    const nodeType = node.type as WorkflowNodeType
-    const color = node.data.color || agent?.color || NODE_COLOR_MAP[nodeType] || def?.color || '#6366f1'
+    const locked = Boolean(node.data?.locked)
+    const nodeType = (node.type as WorkflowNodeType) || 'agent'
+    const color = node.data?.color || agent?.color || NODE_COLOR_MAP[nodeType] || def?.color || '#6366f1'
 
-    return {
+    result.push({
       id: node.id,
       type: 'custom',
-      position: node.position,
-      size: node.size,
+      position: node.position || { x: 0, y: 0 },
+      width: node.size?.width,
+      height: node.size?.height,
       draggable: !locked,
       selected: false,
       data: {
-        ...node.data,
-        ...def?.defaultConfig,
-        label: String(node.data.label || agent?.name || def?.displayName || node.type),
+        ...(node.data || {}),
+        ...(def?.defaultConfig || {}),
+        label: String(node.data?.label || agent?.name || def?.displayName || node.type),
         nodeType,
-        agent_name: agent?.name || node.data.agent_name,
+        agent_name: agent?.name || node.data?.agent_name,
         color,
         icon: def?.icon,
         runStatus: runRow?.status as NodeRunStatus | undefined,
         summary: runRow?.summary,
         progress: run?.progress?.total ? Math.round(((run.progress.completed || 0) / run.progress.total) * 100) : undefined,
-        isStart: Boolean(node.data.isStart),
+        isStart: Boolean(node.data?.isStart),
         locked
       }
-    }
-  })
+    } as FlowNode)
+  }
+  return result
 }
 
 function fromFlowNodes(nodes: FlowNode[]): WorkflowNodeRecord[] {
@@ -312,38 +321,57 @@ function fromFlowNodes(nodes: FlowNode[]): WorkflowNodeRecord[] {
 }
 
 function toFlowEdges(workflow: WriterWorkflow, run?: WorkflowRun): FlowEdge[] {
-  return workflow.edges.map(edge => {
+  const seen = new Set<string>()
+  const result: FlowEdge[] = []
+  for (const edge of workflow.edges) {
+    if (!edge.id || !edge.source || !edge.target) continue
+    if (seen.has(edge.id)) continue
+    seen.add(edge.id)
+    if (!workflow.nodes.some(n => n.id === edge.source)) continue
+    if (!workflow.nodes.some(n => n.id === edge.target)) continue
     const status = edgeStatus(edge, run)
     const style = edgeStyleFor(status)
-    const edgeType = edge.type
-    const flowEdgeType = !edgeType || edgeType === 'normal' ? 'smoothstep' : edgeType === 'condition' || edgeType === 'loop' || edgeType === 'human_approval' ? 'smoothstep' : edgeType
-    return {
+    const edgeType = edge.type || 'normal'
+    result.push({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       sourceHandle: edge.sourceHandle || 'out',
       targetHandle: edge.targetHandle || 'in',
       label: edge.label,
-      type: flowEdgeType,
+      type: 'smoothstep',
       animated: status === 'running' || edgeType === 'loop',
       style,
-      data: { status, ...edge.condition, edgeType: edgeType || 'normal' }
-    }
-  })
+      selectable: true,
+      focusable: true,
+      data: { status, ...(edge.condition || {}), edgeType }
+    })
+  }
+  return result
 }
 
 function fromFlowEdges(edges: FlowEdge[]): WorkflowEdgeRecord[] {
-  return edges.map(edge => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle as string | undefined,
-    targetHandle: edge.targetHandle as string | undefined,
-    label: typeof edge.label === 'string' ? edge.label : undefined,
-    type: (edge.type as WorkflowEdgeRecord['type']) || 'normal',
-    animated: edge.animated,
-    style: edge.style as Record<string, unknown> | undefined
-  }))
+  return edges.map(edge => {
+    const edgeType = (edge.data as any)?.edgeType as WorkflowEdgeRecord['type'] || 'normal'
+    const condition = (edge.data as any)?.maxRounds != null
+      ? {
+          maxRounds: Number((edge.data as any).maxRounds) || 3,
+          onLimitReached: (edge.data as any).onLimitReached || 'continue'
+        }
+      : undefined
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle as string | undefined,
+      targetHandle: edge.targetHandle as string | undefined,
+      label: typeof edge.label === 'string' ? edge.label : undefined,
+      type: edgeType,
+      condition,
+      animated: edge.animated,
+      style: edge.style as Record<string, unknown> | undefined
+    }
+  })
 }
 
 function createEmptyNodeResources(): NodeResourceConfig {
@@ -391,6 +419,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
   const pollTimerRef = useRef<number | null>(null)
   const pausedNoticeRef = useRef('')
   const runActiveInSessionRef = useRef(false)
+  const applyingTemplateRef = useRef(false)
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>([])
   const flow = useReactFlow<FlowNode, FlowEdge>()
@@ -451,9 +480,10 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
     setEdges(currentEdges =>
       currentEdges.map(edge => {
         const status = edgeStatus(edge, run)
+        const isLoopEdge = (edge.data as any)?.edgeType === 'loop'
         return {
           ...edge,
-          animated: status === 'running',
+          animated: status === 'running' || isLoopEdge,
           style: edgeStyleFor(status),
           markerEnd: { type: MarkerType.ArrowClosed, color: (edgeStyleFor(status).stroke as string) || '#64748b' },
           data: { ...(edge.data || {}), status }
@@ -639,6 +669,66 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
     }
   }, [builtinAgents, builtinAgentIds, selectedAgentId, selectedWorkflowId, setEdges, setNodes, applyRunToCanvas])
 
+  const loadSelectedWorkflow = useCallback(async (workflowId: string) => {
+    try {
+      let workflow: WriterWorkflow | undefined
+      
+      const result = await api<{ workflows?: WriterWorkflow[] }>('/api/writer/workflows')
+      const workflows = (result.workflows || []).map(w => migrateWorkflow(w))
+      workflow = workflows.find(w => w.id === workflowId)
+
+      if (!workflow) {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            if (parsed.workflow && parsed.workflow.id === workflowId) {
+              workflow = migrateWorkflow(parsed.workflow)
+            }
+          } catch {}
+        }
+      }
+
+      if (!workflow) {
+        workflow = savedWorkflows.find(w => w.id === workflowId)
+      }
+
+      if (workflow) {
+        const migrated = migrateWorkflow(workflow)
+        const validationResult = validateWorkflow(migrated)
+        if (validationResult.valid) {
+          setSelectedWorkflowId(migrated.id || '')
+          setWorkflowName(migrated.name)
+          setLimits(migrated.limits || DEFAULT_LIMITS)
+          setRuntimeConfig(migrated.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
+          setLastRun(undefined)
+          runActiveInSessionRef.current = false
+          setNodes(toFlowNodes(migrated, agents))
+          setEdges(toFlowEdges(migrated))
+          setSelectedNodeId('')
+          setSelectedEdgeId('')
+          const snapshot = JSON.stringify({
+            name: migrated.name,
+            nodes: migrated.nodes,
+            edges: migrated.edges,
+            limits: migrated.limits || DEFAULT_LIMITS,
+            runtimeConfig: migrated.runtimeConfig || DEFAULT_RUNTIME_CONFIG
+          })
+          setSavedSnapshot(snapshot)
+          setLastSavedAt(migrated.updated_at || new Date().toISOString())
+          notify({ kind: 'success', title: '工作流已修复并重新加载', message: migrated.name })
+        } else {
+          notify({ kind: 'error', title: '工作流修复失败', message: validationResult.errors[0]?.userMessage || '无法修复该工作流' })
+        }
+      } else {
+        notify({ kind: 'error', title: '未找到工作流', message: workflowId })
+      }
+    } catch (err) {
+      console.error('[loadSelectedWorkflow] Failed:', err)
+      notifyError(err, '加载工作流失败')
+    }
+  }, [agents, savedWorkflows, setEdges, setNodes])
+
   useEffect(() => {
     void load()
     void reloadResources()
@@ -672,43 +762,89 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
   }, [lastRun, nodes])
 
   const applyWorkflow = useCallback((workflow: WriterWorkflow) => {
-    const migrated = migrateWorkflow(workflow)
-    setSelectedWorkflowId(migrated.id || '')
-    setWorkflowName(migrated.name)
-    setLimits(migrated.limits || DEFAULT_LIMITS)
-    setRuntimeConfig(migrated.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
-    setLastRun(undefined)
-    runActiveInSessionRef.current = false
-    setNodes(toFlowNodes(migrated, agents))
-    setEdges(toFlowEdges(migrated))
-    setSelectedNodeId('')
-    setSelectedEdgeId('')
-    setSavedSnapshot('')
-    setLastSavedAt(null)
+    if (applyingTemplateRef.current) return
+    applyingTemplateRef.current = true
+    try {
+      const migrated = migrateWorkflow(workflow)
+      const flowNodes = toFlowNodes(migrated, agents)
+      const flowEdges = toFlowEdges(migrated)
+      setSelectedWorkflowId(migrated.id || '')
+      setWorkflowName(migrated.name)
+      setLimits(migrated.limits || DEFAULT_LIMITS)
+      setRuntimeConfig(migrated.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
+      setLastRun(undefined)
+      runActiveInSessionRef.current = false
+      setNodes(flowNodes)
+      setEdges(flowEdges)
+      setSelectedNodeId('')
+      setSelectedEdgeId('')
+      setSavedSnapshot('')
+      setLastSavedAt(null)
+    } finally {
+      setTimeout(() => { applyingTemplateRef.current = false }, 100)
+    }
   }, [agents, setEdges, setNodes])
 
-  const applyTemplate = useCallback((kind: 'basic_writing' | 'critique_loop' | 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'empty' | 'simple' | 'critique') => {
-    const template = createWorkflowTemplate(kind)
-    const agentMap = new Map(agents.map(agent => [agent.id, agent]))
-    template.nodes = template.nodes.map(node => ({
-      ...node,
-      data: {
-        ...node.data,
-        agent_name: node.data.agent_id ? agentMap.get(String(node.data.agent_id))?.name : undefined
-      }
-    }))
-    setSelectedWorkflowId('')
-    setWorkflowName(template.name)
-    setLimits(template.limits || DEFAULT_LIMITS)
-    setRuntimeConfig(template.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
-    setLastRun(undefined)
-    runActiveInSessionRef.current = false
-    setSelectedNodeId('')
-    setSelectedEdgeId('')
-    setNodes(toFlowNodes(template, agents))
-    setEdges(toFlowEdges(template))
-    setSavedSnapshot('')
-    setLastSavedAt(null)
+  const applyTemplate = useCallback((kind: 'chapter' | 'polish' | 'foreshadow' | 'unstuck' | 'empty' | 'simple' | 'critique') => {
+    if (applyingTemplateRef.current) return
+    applyingTemplateRef.current = true
+    try {
+      const template = createWorkflowTemplate(kind)
+      const agentMap = new Map(agents.map(agent => [agent.id, agent]))
+      template.nodes = template.nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          agent_name: node.data.agent_id ? agentMap.get(String(node.data.agent_id))?.name : undefined
+        }
+      }))
+      setSelectedWorkflowId('')
+      setWorkflowName(template.name)
+      setLimits(template.limits || DEFAULT_LIMITS)
+      setRuntimeConfig(template.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
+      setLastRun(undefined)
+      runActiveInSessionRef.current = false
+      setSelectedNodeId('')
+      setSelectedEdgeId('')
+      setNodes(toFlowNodes(template, agents))
+      setEdges(toFlowEdges(template))
+      setSavedSnapshot('')
+      setLastSavedAt(null)
+    } finally {
+      setTimeout(() => { applyingTemplateRef.current = false }, 100)
+    }
+  }, [agents, setEdges, setNodes])
+
+  const applyBuiltinTemplate = useCallback((workflow: WriterWorkflow) => {
+    if (applyingTemplateRef.current) return
+    applyingTemplateRef.current = true
+    try {
+      const template = migrateWorkflow({ ...workflow, id: undefined, builtin: undefined })
+      const agentMap = new Map(agents.map(agent => [agent.id, agent]))
+      template.nodes = template.nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          agent_name: node.data.agent_id ? agentMap.get(String(node.data.agent_id))?.name : undefined
+        }
+      }))
+      const flowNodes = toFlowNodes(template, agents)
+      const flowEdges = toFlowEdges(template)
+      setSelectedWorkflowId('')
+      setWorkflowName(template.name)
+      setLimits(template.limits || DEFAULT_LIMITS)
+      setRuntimeConfig(template.runtimeConfig || DEFAULT_RUNTIME_CONFIG)
+      setLastRun(undefined)
+      runActiveInSessionRef.current = false
+      setSelectedNodeId('')
+      setSelectedEdgeId('')
+      setNodes(flowNodes)
+      setEdges(flowEdges)
+      setSavedSnapshot('')
+      setLastSavedAt(null)
+    } finally {
+      setTimeout(() => { applyingTemplateRef.current = false }, 100)
+    }
   }, [agents, setEdges, setNodes])
 
   const applyEmptyTemplate = useCallback(() => {
@@ -956,36 +1092,56 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
 
     for (const edge of edges) {
       if (!indegree.has(edge.source) || !indegree.has(edge.target)) continue
+      const edgeType = (edge.data as any)?.edgeType || edge.type
+      if (edgeType === 'loop') continue
       indegree.set(edge.target, (indegree.get(edge.target) || 0) + 1)
       outgoing.get(edge.source)?.push(edge.target)
     }
 
     const queue = nodeIds.filter(id => (indegree.get(id) || 0) === 0)
     const ordered: string[] = []
+    const orderedSet = new Set<string>()
+    const queueSet = new Set(queue)
+    let safetyCounter = 0
+    const maxSafety = nodeIds.length * nodeIds.length + 10
 
-    while (queue.length) {
+    while (queue.length && safetyCounter < maxSafety) {
+      safetyCounter++
       const id = queue.shift()!
-      if (ordered.includes(id)) continue
+      queueSet.delete(id)
+      if (orderedSet.has(id)) continue
       ordered.push(id)
+      orderedSet.add(id)
       for (const next of outgoing.get(id) || []) {
         indegree.set(next, (indegree.get(next) || 0) - 1)
-        if ((indegree.get(next) || 0) <= 0) queue.push(next)
+        if ((indegree.get(next) || 0) <= 0 && !queueSet.has(next) && !orderedSet.has(next)) {
+          queue.push(next)
+          queueSet.add(next)
+        }
       }
     }
 
     for (const id of nodeIds) {
-      if (!ordered.includes(id)) ordered.push(id)
+      if (!orderedSet.has(id)) {
+        ordered.push(id)
+        orderedSet.add(id)
+      }
     }
 
     const columns = Math.max(1, Math.ceil(Math.sqrt(ordered.length)))
     const spacingX = 280
     const spacingY = 180
 
-    setNodes(current => current.map(node => {
-      const index = ordered.indexOf(node.id)
+    const positionMap = new Map<string, { x: number; y: number }>()
+    ordered.forEach((id, index) => {
       const col = index % columns
       const row = Math.floor(index / columns)
-      return { ...node, position: { x: 80 + col * spacingX, y: 110 + row * spacingY } }
+      positionMap.set(id, { x: 80 + col * spacingX, y: 110 + row * spacingY })
+    })
+
+    setNodes(current => current.map(node => {
+      const pos = positionMap.get(node.id) || node.position
+      return { ...node, position: pos }
     }))
 
     notify({ kind: 'success', title: '自动排版', message: `已排列 ${ordered.length} 个节点` })
@@ -1370,7 +1526,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [saveWorkflow, selectedNodeId, selectedEdgeId, deleteNode, deleteSelectedEdge, copyNode, pendingEdgeSource, cancelPendingEdge])
 
-  const value: AgentFlowContextValue = {
+  const value = useMemo<AgentFlowContextValue>(() => ({
     state,
     selectedWorkflowId,
     workflowName,
@@ -1410,6 +1566,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
     savedWorkflows,
 
     load,
+    loadSelectedWorkflow,
     saveWorkflow,
     runWorkflow,
     stopWorkflow,
@@ -1418,6 +1575,7 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
 
     applyWorkflow,
     applyTemplate,
+    applyBuiltinTemplate,
     applyEmptyTemplate,
 
     createNodeAt,
@@ -1465,7 +1623,26 @@ function AgentFlowInner({ children }: { children: React.ReactNode }) {
 
     reloadResources,
     openInNewWindow
-  }
+  }), [
+    state, selectedWorkflowId, workflowName, currentWorkflow,
+    nodes, edges, selectedNodeId, selectedEdgeId, selectedNode, selectedEdge,
+    agents, selectedAgentId, selectedAgent, builtinAgentIds,
+    lastRun, running, saving, hasUnsavedChanges, lastSavedAt, validation,
+    inputText, humanReviewText, pendingReviewNode, runPanelVisible, runPanelTab, inputMode,
+    mode, sidebarCollapsed, workshopTheme,
+    nodeResources, savedWorkflows,
+    load, loadSelectedWorkflow, saveWorkflow, runWorkflow, stopWorkflow, continueWorkflow, markNodeAction,
+    applyWorkflow, applyTemplate, applyBuiltinTemplate, applyEmptyTemplate,
+    createNodeAt, deleteNode, deleteSelectedEdge,
+    copyNode, toggleNodeLock, setStartNode, focusNode, arrangeNodes,
+    patchNode, patchEdge, patchAgent, patchRuntimeConfig, patchLimits,
+    createAgent, deleteAgent, deleteWorkflow,
+    onNodesChange, onEdgesChange, onConnect, setNodes, setEdges, onDrop,
+    startEdgeFrom, cancelPendingEdge, pendingEdgeSource,
+    setSelectedNodeId, setSelectedAgentId, setSelectedEdgeId, setInputText, setHumanReviewText,
+    setRunPanelVisible, setRunPanelTab, setInputMode, setMode, setSidebarCollapsed, setWorkflowName,
+    reloadResources, openInNewWindow
+  ])
 
   return <AgentFlowContext.Provider value={value}>{children}</AgentFlowContext.Provider>
 }

@@ -27,6 +27,24 @@ function loadBuiltinWorkflows({ appRoot, fs, isPackaged, path, resourcesPath }) 
   return { manifest, root, workflows }
 }
 
+function migrateBuiltinWorkflowsInUserStore(userWorkflows, latestBuiltinWorkflows) {
+  if (!Array.isArray(userWorkflows)) return userWorkflows
+  const latestMap = new Map(latestBuiltinWorkflows.map(w => [w.id, w]))
+  return userWorkflows.map(wf => {
+    const wfId = String(wf?.id || '')
+    const isBuiltin = wf?.builtin === true || wfId.startsWith('builtin.')
+    if (!isBuiltin) return wf
+    const latest = latestMap.get(wfId)
+    if (!latest) return wf
+    const userVersion = Number(wf?.template_version || 1)
+    const latestVersion = Number(latest?.template_version || 1)
+    if (userVersion >= latestVersion && wf?.fixed_in === latest?.fixed_in) {
+      return wf
+    }
+    return { ...latest }
+  })
+}
+
 function installBuiltinWorkflowResources({ appRoot, dataRoot, fs, isPackaged, path, resourcesPath }) {
   const loaded = loadBuiltinWorkflows({ appRoot, fs, isPackaged, path, resourcesPath })
   const globalDir = path.join(dataRoot, 'global-workflows')
@@ -35,28 +53,47 @@ function installBuiltinWorkflowResources({ appRoot, dataRoot, fs, isPackaged, pa
   fs.mkdirSync(path.join(globalDir, 'workflow_artifacts'), { recursive: true })
 
   const registry = {
-    version: 1,
+    version: 2,
     source: 'Karna release resources',
+    updated_at: new Date().toISOString(),
     workflows: loaded.workflows
   }
   fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`, 'utf8')
 
-  // Seed only a genuinely fresh profile. Existing workflows are user data and
-  // are never rewritten by an application update.
-  if (!fs.existsSync(userWorkflowsPath)) {
+  if (fs.existsSync(userWorkflowsPath)) {
+    try {
+      const userStore = JSON.parse(fs.readFileSync(userWorkflowsPath, 'utf8'))
+      const migratedWorkflows = migrateBuiltinWorkflowsInUserStore(
+        Array.isArray(userStore.workflows) ? userStore.workflows : [],
+        loaded.workflows
+      )
+      const nextStore = {
+        ...userStore,
+        version: Math.max(Number(userStore.version || 1), 2),
+        project_id: userStore.project_id || 'global-workflows',
+        updated_at: new Date().toISOString(),
+        workflows: migratedWorkflows
+      }
+      fs.writeFileSync(userWorkflowsPath, `${JSON.stringify(nextStore, null, 2)}\n`, 'utf8')
+    } catch (e) {
+      console.error('[builtin-workflows] migration failed, preserving user file:', e.message)
+    }
+  } else {
     fs.writeFileSync(userWorkflowsPath, `${JSON.stringify({
-      version: 1,
+      version: 2,
       project_id: 'global-workflows',
+      updated_at: new Date().toISOString(),
       workflows: loaded.workflows
     }, null, 2)}\n`, 'utf8')
   }
 
-  return { registryPath, userWorkflowsPath, workflowCount: loaded.workflows.length }
+  return { registryPath, userWorkflowsPath, workflowCount: loaded.workflows.length, migrated: true }
 }
 
 module.exports = {
   installBuiltinWorkflowResources,
   loadBuiltinWorkflows,
   resolveBuiltinWorkflowRoot,
+  migrateBuiltinWorkflowsInUserStore,
   sha256
 }

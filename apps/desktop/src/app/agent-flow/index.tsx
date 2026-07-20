@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { ErrorBoundary, type ErrorBoundaryFallbackProps } from '@/components/error-boundary'
 import { cn } from '@/lib/utils'
 
 import { FlowCanvas } from './flow-canvas'
@@ -8,6 +10,41 @@ import { FlowRunPanel } from './flow-run-panel'
 import { ResourceDrawer, type DrawerType } from './resource-drawer'
 import { AgentFlowProvider, useAgentFlow } from './store'
 import { AgentFlowTopBar } from './top-bar'
+
+function WorkflowErrorFallback({ error, reset }: ErrorBoundaryFallbackProps) {
+  const { loadSelectedWorkflow, selectedWorkflowId } = useAgentFlow()
+
+  const handleRepair = () => {
+    if (selectedWorkflowId) {
+      void loadSelectedWorkflow(selectedWorkflowId)
+    }
+    reset()
+  }
+
+  return (
+    <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-8">
+      <div className="max-w-md text-center">
+        <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <span className="text-red-600 dark:text-red-400 text-2xl">⚠️</span>
+        </div>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+          该工作流模板已损坏
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          {error.message || '工作流渲染时发生错误，可能是由于无效的节点或连线配置导致。'}
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button onClick={handleRepair} variant="default">
+            点击自动修复
+          </Button>
+          <Button onClick={reset} variant="outline">
+            重试
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AgentFlowContent() {
   const {
@@ -191,7 +228,9 @@ function AgentFlowContent() {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <FlowCanvas />
+              <ErrorBoundary label="workflow-canvas" fallback={WorkflowErrorFallback}>
+                <FlowCanvas />
+              </ErrorBoundary>
               {isDraggingOver && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm z-30">
                   <div className="rounded-xl border-2 border-dashed border-blue-500/50 bg-white/80 dark:bg-slate-900/80 px-8 py-4 text-blue-600 dark:text-blue-400 font-medium">
@@ -215,7 +254,9 @@ function AgentFlowContent() {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              <FlowCanvas />
+              <ErrorBoundary label="workflow-canvas" fallback={WorkflowErrorFallback}>
+                <FlowCanvas />
+              </ErrorBoundary>
               {isDraggingOver && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm z-30">
                   <div className="rounded-xl border-2 border-dashed border-blue-500/50 bg-white/80 dark:bg-slate-900/80 px-8 py-4 text-blue-600 dark:text-blue-400 font-medium">

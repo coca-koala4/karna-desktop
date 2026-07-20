@@ -341,6 +341,7 @@ export interface HermesTerminalExit {
 
 export interface DesktopVersionInfo {
   appVersion: string
+  displayVersion?: string
   runtimeVersion?: string
   electronVersion: string
   nodeVersion: string

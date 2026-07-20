@@ -6,7 +6,7 @@ const path = require('node:path')
 
 const desktopRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(desktopRoot, '..', '..')
-const target = path.join(desktopRoot, 'build', 'offline-runtime-source', 'hermes-agent')
+const target = path.join(desktopRoot, 'build', 'offline-runtime-source', 'karna-runtime')
 const venvPython = path.join(repoRoot, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 if (!fs.existsSync(venvPython)) throw new Error('Create the locked production .venv before preparing the offline runtime.')
 

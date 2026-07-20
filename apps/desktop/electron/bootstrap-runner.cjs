@@ -1,4 +1,4 @@
-﻿'use strict'
+'use strict'
 
 /**
  * bootstrap-runner.cjs
@@ -107,13 +107,16 @@ function bootstrapCacheDir(hermesHome) {
 // app stamped to an unpushed HEAD).
 function installedAgentInstallScript(hermesHome) {
   if (!hermesHome) return null
-  const candidate = path.join(hermesHome, 'hermes-agent', 'scripts', installScriptName())
-  try {
-    fs.accessSync(candidate, fs.constants.R_OK)
-    return candidate
-  } catch {
-    return null
+  for (const dirName of ['karna-runtime', 'hermes-agent']) {
+    const candidate = path.join(hermesHome, dirName, 'scripts', installScriptName())
+    try {
+      fs.accessSync(candidate, fs.constants.R_OK)
+      return candidate
+    } catch {
+      // try next
+    }
   }
+  return null
 }
 
 function cachedScriptPath(hermesHome, commit) {

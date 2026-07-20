@@ -84,9 +84,9 @@ function resolveRemovableAppPath(execPath, platform, env = {}) {
   }
 
   if (platform === 'win32') {
-    // NSIS per-user installs Hermes.exe directly in the install dir.
+    // NSIS per-user installs Karna.exe directly in the install dir.
     const dir = p.dirname(exe)
-    if (/[\\/]Hermes$/i.test(dir) || /[\\/]hermes-desktop$/i.test(dir)) return dir
+    if (/[\\/](?:Karna|Hermes|karna-desktop|hermes-desktop)$/i.test(dir)) return dir
     return null
   }
 
