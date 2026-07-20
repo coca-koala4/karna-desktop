@@ -3066,7 +3066,13 @@ const runSegmentedWorkflowWrite = async ({ project, workflow, run, node, agent, 
 }
 
 const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNodeId = '') => {
-  const store = readWorkflows(project)
+  // A workflow template may come from the global catalog, but execution must
+  // always be bound to the explicitly selected writer project.  Keeping the
+  // template separate prevents global workflow state from becoming creative
+  // memory for every project.
+  const store = input.workflowOverride
+    ? { version: 1, project_id: project.id, workflows: [input.workflowOverride] }
+    : readWorkflows(project)
   const workflow = (store.workflows || []).find(row => row.id === workflowIdText)
   if (!workflow) throw new Error(`Workflow not found: ${workflowIdText}`)
   validateWorkflowGraph(workflow)
@@ -3218,6 +3224,21 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
     let contextPackage = null
     let contextWarnings = []
     let contextCitations = []
+    // Inject the selected project's creative scope into every workflow node.
+    // This is deliberately resolved from the project argument, never from a
+    // global/last-opened project fallback.
+    try {
+      const scopeService = getWriterProjectScope()
+      const scope = scopeService.resolveWriterProjectScope({
+        writer_project_id: project.id,
+        workspace_id: project.workspace_id || project.id,
+        cwd: project.folder
+      })
+      const scopeContext = scopeService.buildProjectSessionContext(scope)
+      if (scopeContext) contextText = scopeContext
+    } catch (scopeErr) {
+      contextWarnings.push(`项目创作上下文加载失败: ${scopeErr.message}`)
+    }
     if (prepared.isAgent && !prepared.isArchive) {
       try {
         const { contextPackage: builtContextPackage, contextText: ctxText, warnings } = await writerWorkflowUtils.flowCompiler.buildNodeExecutionContext({
@@ -3225,7 +3246,7 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
           input: { input: input.input || input.text || input.prompt || '' },
           upstream: localUpstream, services
         })
-        contextText = ctxText
+        contextText = [contextText, ctxText].filter(Boolean).join('\n\n')
         contextPackage = builtContextPackage || null
         contextWarnings = warnings
         contextCitations = contextPackage?.citations || []
@@ -7906,14 +7927,29 @@ async function handlePromptSubmit(socket, id, params) {
   const workflowDirective = parseWorkflowChatDirective(prompt)
   if (workflowDirective) {
     try {
-      const workflowProject = workflowProjectFromRef('global')
-      const workflowStore = readWorkflows(workflowProject)
+      // Never execute a chat workflow against the global workflow project.
+      // Resolve the project attached to this session (or its cwd) and fail
+      // loudly when the UI did not provide one instead of silently falling
+      // back to the last active project.
+      const boundProjectId = sessionRecord?.writer_project_id || sessionRecord?.project_id
+      let workflowProject = boundProjectId ? findWriterProject(boundProjectId) : null
+      if (!workflowProject && sessionRecord?.cwd) {
+        workflowProject = (readWriterProjects().projects || []).find(row => row.folder && normalizeFolderPath(row.folder) === normalizeFolderPath(sessionRecord.cwd)) || null
+      }
+      if (!workflowProject) {
+        throw new Error('请先在当前会话中选择一个写作项目，再运行多智能体工作流。')
+      }
+      const globalTemplateProject = globalWorkflowProject()
+      const workflowStore = readWorkflows(globalTemplateProject)
       const workflow = (workflowStore.workflows || []).find(row => row.id === workflowDirective.workflowId)
       if (!workflow) throw new Error(`Workflow not found: ${workflowDirective.workflowId}`)
       const emit = text => sendGatewayEvent(socket, sessionId, 'message.delta', { message_id: assistantMessageId, text })
       emit(`多 Agent 工作流已启动：${workflow.name}\n\n`)
       const result = await runWorkflowForProject(workflowProject, workflowDirective.workflowId, {
         input: workflowDirective.text,
+        workflowOverride: workflow,
+        writer_project_id: workflowProject.id,
+        workspace_id: workflowProject.workspace_id || workflowProject.id,
         model,
         provider,
         onNodeStatus: ({ status }) => {
