@@ -153,6 +153,7 @@ output/
 .playwright-cli/
 apps/desktop/.playwright-cli/
 apps/desktop/test-results/
+apps/desktop/release-2.0.2/
 apps/desktop/_restore_backup_*/
 *.log
 dist/
