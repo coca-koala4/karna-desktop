@@ -13,6 +13,7 @@ const { createWriterDeliveryService } = require('./delivery.cjs')
 const { createWriterGuideService } = require('./guide-utils.cjs')
 const { createWriterRagService } = require('./rag.cjs')
 const { createWriterVectorUtils } = require('./vector-utils.cjs')
+const { createWriterProjectSync } = require('./writer-project-sync.cjs')
 const writerSafetyUtils = require('./safety-utils.cjs')
 const moduleStatus = require('./module-status.cjs')
 const fileWatcher = require('./file-watcher.cjs')
@@ -154,6 +155,18 @@ function createWriterOsServices(deps) {
     return aa && bb ? dot / (Math.sqrt(aa) * Math.sqrt(bb)) : 0
   }
   const vectorUtils = createWriterVectorUtils({ textHash })
+
+  const projectSync = createWriterProjectSync({
+    fs, path, crypto, readJsonFile, writeJsonFile, textHash, slugify
+  })
+
+  const syncWriterProjectFull = (project, options = {}) => {
+    return projectSync.syncWriterProjectFull(project, options)
+  }
+
+  const checkProjectSyncStatus = (project) => {
+    return projectSync.checkProjectNeedsSync(project)
+  }
   const rag = createWriterRagService({
     fs, path, textHash, fileHash, readJsonFile, writeJsonFile,
     ensureWriterProjectMetadata, enrichWriterProject, findWriterProject,
@@ -483,6 +496,8 @@ function createWriterOsServices(deps) {
     inspectWriterOsProjectSchema,
     buildStoryBible, readWriterProjectStoryBible,
     syncWriterProjectDocuments, readWriterProjectDocumentEngine,
+    syncWriterProjectFull, checkProjectSyncStatus,
+    projectSync,
     narrative, safetyCouncil, memory, dataModel, docSearch,
     benchmark, commandCenter, delivery, guide,
     buildWriterProjectRagIndex, buildWriterProjectVectorStore,

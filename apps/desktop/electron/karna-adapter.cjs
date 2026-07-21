@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars, no-control-regex, no-useless-escape, no-empty -- legacy adapter stays linted for syntax and unsafe constructs while its module extraction proceeds. */
+/* eslint-disable no-unused-vars, no-control-regex, no-useless-escape, no-empty -- legacy adapter stays linted for syntax and unsafe constructs while its module extraction proceeds. */
 // TODO: 历史债务 - 此文件为340KB的大型Node.js CommonJS模块，包含大量历史代码。
 // 全局禁用ESLint是临时方案，后续应拆分为多个小模块并逐步修复lint问题。
 'use strict'
@@ -3683,6 +3683,25 @@ const runWorkflowForProject = async (project, workflowIdText, input = {}, onlyNo
   appendWorkflowTaskSystem(project, workflow, run, agentNodes)
   const latestRuns = readWorkflowRuns(project).runs || []
   writeWorkflowRuns(project, [...latestRuns.filter(row => row.run_id !== run.run_id), run])
+  
+  if (run.status === 'done') {
+    try {
+      const writerOs = getWriterOs()
+      if (writerOs && writerOs.syncWriterProjectFull) {
+        const syncReport = writerOs.syncWriterProjectFull(project, {
+          source: 'workflow_run',
+          run_id: run.run_id,
+          auto_update_canonical_files: true
+        })
+        run.sync_report = syncReport
+        rememberLog(`Workflow run ${run.run_id} project sync completed: ${syncReport.characters_added} chars, ${syncReport.chapters_added} chapters added`)
+      }
+    } catch (syncErr) {
+      rememberLog(`Workflow run ${run.run_id} project sync failed (non-fatal): ${syncErr.message}`)
+      run.sync_error = syncErr.message
+    }
+  }
+  
   return { ok: true, run, workflow, tasks: readTaskSystem(project) }
 }
 
@@ -3999,9 +4018,70 @@ const parseTypedTitle = arg => {
 }
 const ensureWriterProjectFolders = project => {
   fs.mkdirSync(project.folder, { recursive: true })
-  const requiredDirs = ['identity', 'bible', 'memory', 'narrative-state', 'documents', 'safety', 'graph', 'wiki', 'critics', 'artifacts', 'rag', 'guide', 'delivery', 'capabilities', 'benchmarks', 'roadmap']
+  const requiredDirs = ['identity', 'bible', 'memory', 'narrative-state', 'documents', 'safety', 'graph', 'wiki', 'critics', 'artifacts', 'rag', 'guide', 'delivery', 'capabilities', 'benchmarks', 'roadmap', '规划', '设定', '正文', 'versions', 'versions/canonical-sync', 'logs', 'workflow_artifacts']
   for (const dir of requiredDirs) {
     try { fs.mkdirSync(path.join(project.folder, dir), { recursive: true }) } catch {}
+  }
+  const canonicalFiles = [
+    {
+      rel: '规划/故事大纲.md',
+      content: `# 故事大纲
+
+## 核心前提
+（待完善）
+
+## 一句话简介
+（待完善）
+
+## 主题
+- （待完善）
+
+## 章节目录
+（待完善）
+
+## 主线剧情
+（待完善）
+`
+    },
+    {
+      rel: '设定/人物设定.md',
+      content: `# 人物设定
+
+## 主要人物
+（待完善）
+
+## 其他人物
+（待完善）
+`
+    },
+    {
+      rel: '设定/世界观.md',
+      content: `# 世界观设定
+
+## 故事背景
+（待完善）
+
+## 时代背景
+（待完善）
+
+## 主要地点
+（待完善）
+
+## 世界观规则
+（待完善）
+`
+    }
+  ]
+  for (const cf of canonicalFiles) {
+    const filePath = path.join(project.folder, cf.rel)
+    if (!fs.existsSync(filePath)) {
+      try {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true })
+        fs.writeFileSync(filePath, cf.content, 'utf8')
+      } catch (err) {
+        rememberLog(`Failed to create canonical file ${cf.rel}: ${err.message}`)
+      }
+    }
   }
 }
 const safeWriteFile = (filePath, content, encoding = 'utf8') => {
@@ -4795,6 +4875,38 @@ const setActiveWriterProject = ref => {
   const project = findWriterProject(ref)
   if (!project) return null
   writeWriterProjects({ ...store, active_project_id: project.id })
+  
+  try {
+    const writerOs = getWriterOs()
+    if (writerOs?.checkProjectSyncStatus && writerOs?.syncWriterProjectFull) {
+      const status = writerOs.checkProjectSyncStatus(project)
+      const storyBiblePath = path.join(project.folder, 'bible', 'story_bible.json')
+      const hasBible = fs.existsSync(storyBiblePath)
+      let bibleEmpty = true
+      if (hasBible) {
+        try {
+          const bible = readJsonFile(storyBiblePath, null)
+          bibleEmpty = !bible || ((bible.characters?.length || 0) === 0 && (bible.chapters?.length || 0) === 0)
+        } catch {}
+      }
+      if (status.needs_sync || bibleEmpty || !status.last_sync_at) {
+        setTimeout(() => {
+          try {
+            writerOs.syncWriterProjectFull(project, {
+              source: 'startup',
+              auto_update_canonical_files: false
+            })
+            rememberLog(`Initial/migration sync completed for project ${project.id}`)
+          } catch (syncErr) {
+            rememberLog(`Initial/migration sync failed for project ${project.id}: ${syncErr.message}`)
+          }
+        }, 500)
+      }
+    }
+  } catch (err) {
+    rememberLog(`Project activation sync check failed: ${err.message}`)
+  }
+  
   return project
 }
 const updateWriterProject = (ref, patch = {}) => {
@@ -7700,8 +7812,16 @@ const syncProjectAfterTurn = (sessionRecord, prompt, response) => {
   const project = findWriterProject(projectId)
   if (!project) return
   try {
-    syncProjectDocuments(project)
-    updateCreativeMemory(project, prompt, response)
+    const writerOs = getWriterOs()
+    if (writerOs && writerOs.syncWriterProjectFull) {
+      writerOs.syncWriterProjectFull(project, {
+        source: 'chat_turn',
+        auto_update_canonical_files: false
+      })
+    } else {
+      syncProjectDocuments(project)
+      updateCreativeMemory(project, prompt, response)
+    }
     updateTaskSystemProgress(project, sessionRecord, prompt, response)
   } catch (err) {
     rememberLog(`Project sync after turn failed: ${err.message}`)
@@ -9642,6 +9762,57 @@ async function handleKarnaApiRequestImpl(request) {
       }
     }
   }
+
+  if (reqPath === '/api/writer/projects/sync' && method === 'POST') {
+    try {
+      const projectRef = body?.project_id || body?.projectId || body?.ref
+      const project = projectRef ? findWriterProject(projectRef) : activeWriterProject()
+      if (!project) return createApiError(ERROR_CODES.NOT_FOUND, '项目未找到')
+      const writerOs = getWriterOs()
+      if (!writerOs?.syncWriterProjectFull) return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '同步服务未初始化')
+      const report = writerOs.syncWriterProjectFull(project, {
+        source: body?.source || 'manual',
+        run_id: body?.run_id || null,
+        auto_update_canonical_files: body?.auto_update_canonical_files !== false
+      })
+      return { ok: true, project: enrichWriterProject(project), sync_report: report }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `同步失败: ${err.message}`, { error: err.message })
+    }
+  }
+
+  if (reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync-status$/) && method === 'GET') {
+    try {
+      const projectRef = decodeURIComponent(reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync-status$/)[1])
+      const project = findWriterProject(projectRef)
+      if (!project) return createApiError(ERROR_CODES.NOT_FOUND, '项目未找到')
+      const writerOs = getWriterOs()
+      if (!writerOs?.checkProjectSyncStatus) return { ok: true, needs_sync: false, unsynced_files: [] }
+      const status = writerOs.checkProjectSyncStatus(project)
+      return { ok: true, project: enrichWriterProject(project), sync_status: status }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `检查同步状态失败: ${err.message}`)
+    }
+  }
+
+  if (reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/) && method === 'POST') {
+    try {
+      const projectRef = decodeURIComponent(reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/)[1])
+      const project = findWriterProject(projectRef)
+      if (!project) return createApiError(ERROR_CODES.NOT_FOUND, '项目未找到')
+      const writerOs = getWriterOs()
+      if (!writerOs?.syncWriterProjectFull) return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '同步服务未初始化')
+      const report = writerOs.syncWriterProjectFull(project, {
+        source: body?.source || 'manual',
+        run_id: body?.run_id || null,
+        auto_update_canonical_files: body?.auto_update_canonical_files !== false
+      })
+      return { ok: true, project: enrichWriterProject(project), sync_report: report }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `同步失败: ${err.message}`, { error: err.message })
+    }
+  }
+
   const writerAgentMatch = reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/agents\/([^/?]+)$/)
   if (writerAgentMatch) {
     try { return { ok: true, agents: updateProjectAgent(decodeURIComponent(writerAgentMatch[1]), decodeURIComponent(writerAgentMatch[2]), body || {}) } }

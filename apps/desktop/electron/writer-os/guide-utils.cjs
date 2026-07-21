@@ -50,7 +50,9 @@ function createWriterGuideService(deps = {}) {
     writeJsonFile,
     findWriterProject,
     enrichWriterProject,
-    appendWriterProjectVersion
+    appendWriterProjectVersion,
+    syncWriterProjectFull,
+    checkProjectSyncStatus
   } = deps
 
 const guideStep = (id, title, ok, action, detail, endpoint = '') => ({ id, title, ok: Boolean(ok), status: ok ? 'done' : 'todo', action, detail, endpoint })
@@ -74,8 +76,10 @@ const buildWriterProjectGuide = project => {
   const caps = readCapabilityPackStore(project)
   const safety = readWriterProjectSafetyStore(project)
   const reviewQueue = livingWikiReviewQueue(project)
+  const syncStatus = checkProjectSyncStatus ? checkProjectSyncStatus(project) : { needs_sync: false, unsynced_files: [] }
   const steps = [
     guideStep('schema', 'Project Foundation', schema.ready, 'Repair project structure', `${schema.missing_files.length} missing files`, 'schema'),
+    guideStep('full_sync', 'Full Project Sync', !syncStatus.needs_sync, 'Run full sync', syncStatus.needs_sync ? `${syncStatus.unsynced_files.length} unsynced files` : 'Synced', 'full-sync'),
     guideStep('documents', 'Document Engine', (docs.documents || []).length > 0, 'Sync document index', `${docs.documents?.length || 0} documents`, 'documents'),
     guideStep('story_bible', 'Story Bible', (story.chapters || []).length > 0 || (story.characters || []).length > 0, 'Rebuild Story Bible', `${story.chapters?.length || 0} chapters / ${story.characters?.length || 0} characters`, 'story-bible'),
     guideStep('living_wiki', 'Living Wiki', (wiki.pages || []).length > 0 || (wiki.pending_updates || []).length > 0, 'Generate wiki candidates', `${wiki.pages?.length || 0} pages / ${wiki.pending_updates?.length || 0} pending`, 'living-wiki'),
