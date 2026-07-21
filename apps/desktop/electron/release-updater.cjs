@@ -1,5 +1,8 @@
 'use strict'
 
+const path = require('node:path')
+const fs = require('node:fs')
+
 function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promptInstall, setIntervalFn = setInterval, setTimeoutFn = setTimeout }) {
   let initialized = false
   let available = null
@@ -15,7 +18,7 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
     currentSha: `version:${app.getVersion()}`,
     targetSha: available ? `version:${available.version}` : undefined,
     branch: 'stable',
-    message: downloaded ? `Karna ${downloaded.version} 已下载，等待安装。` : undefined,
+    message: downloaded ? `Karna ${downloaded.version} 已下载，等待安装。` : (available ? `发现新版本 ${available.version}` : undefined),
     error: error ? 'check-failed' : undefined,
     fetchedAt: lastCheckedAt || undefined
   })
@@ -24,6 +27,26 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
     if (initialized) return true
     if (!app.isPackaged || process.platform !== 'win32') return false
     initialized = true
+
+    try {
+      const updateConfigPath = path.join(process.resourcesPath, 'app-update.yml')
+      if (fs.existsSync(updateConfigPath)) {
+        const yaml = require('js-yaml')
+        const config = yaml.load(fs.readFileSync(updateConfigPath, 'utf8'))
+        if (config?.owner && config?.repo) {
+          const feedUrl = `https://github.com/${config.owner}/${config.repo}/releases/latest/download/`
+          console.log('[updater] Setting feed URL to:', feedUrl)
+          autoUpdater.setFeedURL({
+            provider: 'generic',
+            url: feedUrl,
+            channel: 'latest'
+          })
+        }
+      }
+    } catch (configErr) {
+      console.log('[updater] Failed to read config, using default:', configErr.message)
+    }
+
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.allowPrerelease = true
@@ -52,6 +75,7 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
     })
     autoUpdater.on('error', cause => {
       error = cause
+      console.log('[updater] Error:', cause?.message || String(cause))
       emitProgress({ stage: 'error', message: cause?.message || String(cause), percent: null, error: 'release-update-failed' })
     })
     return true
@@ -61,13 +85,16 @@ function createReleaseUpdater({ app, autoUpdater, emitProgress, onInstall, promp
     if (!initialize()) return { ...status(), supported: false, message: '打包安装版才支持 GitHub Releases 自动更新。' }
     lastCheckedAt = Date.now()
     error = null
-    const result = await autoUpdater.checkForUpdates()
-    if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) {
-      available = result.updateInfo
-    } else {
-      available = null
-      downloaded = null
+    available = null
+    downloaded = null
+
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (err) {
+      console.log('[updater] checkForUpdates threw:', err.message)
+      error = err
     }
+
     return status()
   }
 
