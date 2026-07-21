@@ -132,68 +132,65 @@ function createWriterProjectSync(deps = {}) {
   function extractCharacters(text, sourceFile, origin = 'manual') {
     const characters = []
     const sections = extractSections(text)
-    const characterSections = sections.filter(s =>
-      s.title.match(/人物|角色|character/i) && s.level <= 3
-    )
-
-    const namePatterns = [
-      /(?:^|\n)\s*(?:[-*•]|\d+\.)\s*\*\*([^*]+)\*\*[：:]/g,
-      /(?:^|\n)\s*(?:[-*•]|\d+\.)\s*([^\s：:]{2,12})[：:]/g,
-      /(?:^|\n)\s*#{2,4}\s+(.+?)(?:\s|$)/gm
-    ]
-
     const foundNames = new Set()
 
-    for (const section of characterSections) {
+    function addCharacter(name, desc, sourceHash) {
+      name = String(name || '').trim()
+      if (name.length < 2 || name.length > 12 || foundNames.has(name)) return
+      foundNames.add(name)
+      characters.push({
+        id: generateStableId('char', name),
+        name,
+        description: String(desc || '').trim().slice(0, 500),
+        source_file: sourceFile,
+        source_hash: sourceHash || textToHash(text),
+        origin,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    }
+
+    const characterSections = sections.filter(s =>
+      s.title.match(/人物|角色|主角|配角|character/i)
+    )
+
+    const bulletPatterns = [
+      /(?:^|\n)\s*(?:[-*•]|\d+\.)\s*\*\*([^*]+)\*\*[：:]\s*(.*)/g,
+      /(?:^|\n)\s*(?:[-*•]|\d+\.)\s*([^\s：:，,。；;]{2,12})[：:]\s*(.*)/g
+    ]
+
+    for (const section of characterSections.length > 0 ? characterSections : sections) {
       const content = section.content
-      let match
-      for (const pattern of namePatterns) {
+      for (const pattern of bulletPatterns) {
         pattern.lastIndex = 0
+        let match
         while ((match = pattern.exec(content)) !== null) {
-          const name = match[1].trim()
-          if (name.length >= 2 && name.length <= 12 && !foundNames.has(name)) {
-            foundNames.add(name)
-            const lines = content.split(/\r?\n/)
-            let desc = ''
-            const idx = content.indexOf(match[0])
-            if (idx >= 0) {
-              const afterMatch = content.slice(idx + match[0].length)
-              const nextLine = afterMatch.split(/\r?\n/)[0] || ''
-              desc = nextLine.trim().slice(0, 300)
-            }
-            characters.push({
-              id: generateStableId('char', name),
-              name,
-              description: desc,
-              source_file: sourceFile,
-              source_hash: textToHash(content),
-              origin,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-          }
+          addCharacter(match[1], match[2], textToHash(content))
         }
+      }
+
+      const headingPattern = /^#{2,4}\s+(.+?)(?:\s|$)/gm
+      headingPattern.lastIndex = 0
+      let hMatch
+      while ((hMatch = headingPattern.exec(content)) !== null) {
+        addCharacter(hMatch[1], '', textToHash(content))
       }
     }
 
-    if (characters.length === 0) {
-      const lines = String(text).split(/\r?\n/)
-      for (const line of lines) {
-        const boldMatch = line.match(/^\s*[-*•]\s*\*\*([^*]{2,12})\*\*[：:]/)
-        if (boldMatch && !foundNames.has(boldMatch[1])) {
-          const name = boldMatch[1].trim()
-          foundNames.add(name)
-          characters.push({
-            id: generateStableId('char', name),
-            name,
-            description: '',
-            source_file: sourceFile,
-            source_hash: textToHash(text),
-            origin,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-        }
+    const lines = String(text).split(/\r?\n/)
+    for (const line of lines) {
+      const boldMatch = line.match(/^\s*[-*•]\s*\*\*([^*]{2,12})\*\*[：:]\s*(.*)/)
+      if (boldMatch) addCharacter(boldMatch[1], boldMatch[2])
+    }
+
+    const basename = pathModule.basename(sourceFile, pathModule.extname(sourceFile))
+    if (basename.includes('人物') || basename.includes('角色')) {
+      const simpleNameMatch = text.match(/^#\s+(.+)$/m)
+      if (simpleNameMatch) {
+        addCharacter(simpleNameMatch[1], text.slice(0, 500))
+      }
+      if (characters.length === 0 && text.length > 10) {
+        addCharacter(basename.replace(/人物|角色|设定/g, ''), text.slice(0, 300))
       }
     }
 
@@ -203,7 +200,8 @@ function createWriterProjectSync(deps = {}) {
   function extractChapters(text, sourceFile, origin = 'manual') {
     const chapters = []
     const sections = extractSections(text)
-    const chapterHeadingPattern = /^第\s*([0-9一二三四五六七八九十百千]+)\s*[章节回卷部]\s*[：:]?\s*(.*)$/
+    const chapterHeadingPattern = /^第\s*([0-9一二三四五六七八九十百千零〇]+)\s*[章节回卷部篇集话]\s*[：:、.]?\s*(.*)$/
+    const foundNumbers = new Set()
     const numberMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
       '百': 100, '千': 1000, '零': 0, '〇': 0 }
 
@@ -227,16 +225,67 @@ function createWriterProjectSync(deps = {}) {
       const match = section.title.match(chapterHeadingPattern)
       if (match) {
         const num = chineseToNum(match[1])
-        const title = match[2].trim() || `第${match[1]}章`
-        const summaryLines = section.content.split(/\r?\n/).filter(l => l.trim()).slice(0, 2)
+        if (num > 0 && !foundNumbers.has(num)) {
+          foundNumbers.add(num)
+          const title = match[2].trim() || `第${match[1]}章`
+          const contentLines = section.content.split(/\r?\n/).filter(l => l.trim())
+          chapters.push({
+            id: generateStableId('ch', `chapter-${num}-${title}`),
+            number: num,
+            title,
+            summary: contentLines.slice(0, 3).join(' ').trim().slice(0, 800),
+            word_count: section.content.length,
+            source_file: sourceFile,
+            source_hash: textToHash(section.content),
+            origin,
+            status: 'draft',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+    }
+
+    const lines = String(text).split(/\r?\n/)
+    for (const line of lines) {
+      const inlineMatch = line.match(chapterHeadingPattern)
+      if (inlineMatch) {
+        const num = chineseToNum(inlineMatch[1])
+        if (num > 0 && !foundNumbers.has(num)) {
+          foundNumbers.add(num)
+          const title = inlineMatch[2].trim() || `第${inlineMatch[1]}章`
+          chapters.push({
+            id: generateStableId('ch', `chapter-${num}-${title}`),
+            number: num,
+            title,
+            summary: '',
+            word_count: 0,
+            source_file: sourceFile,
+            source_hash: textToHash(line),
+            origin,
+            status: 'draft',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+    }
+
+    const basename = pathModule.basename(sourceFile, pathModule.extname(sourceFile))
+    const fileChapterMatch = basename.match(chapterHeadingPattern)
+    if (fileChapterMatch && chapters.length === 0) {
+      const num = chineseToNum(fileChapterMatch[1])
+      if (num > 0) {
+        const title = fileChapterMatch[2].trim() || basename
+        const firstLines = String(text).split(/\r?\n/).filter(l => l.trim()).slice(0, 3).join(' ')
         chapters.push({
           id: generateStableId('ch', `chapter-${num}-${title}`),
           number: num,
           title,
-          summary: summaryLines.join(' ').trim().slice(0, 500),
-          word_count: section.content.length,
+          summary: firstLines.slice(0, 800),
+          word_count: text.length,
           source_file: sourceFile,
-          source_hash: textToHash(section.content),
+          source_hash: textToHash(text),
           origin,
           status: 'draft',
           created_at: new Date().toISOString(),
@@ -252,19 +301,22 @@ function createWriterProjectSync(deps = {}) {
     const rules = []
     const sections = extractSections(text)
     const ruleSections = sections.filter(s =>
-      s.title.match(/世界观|规则|设定|地点|势力|world|rule|setting|location|faction/i)
+      s.title.match(/世界观|规则|设定|地点|势力|世界|背景|world|rule|setting|location|faction|location/i)
     )
 
-    for (const section of ruleSections) {
+    const targetSections = ruleSections.length > 0 ? ruleSections : sections
+
+    for (const section of targetSections) {
       const lines = section.content.split(/\r?\n/).filter(l => l.trim())
       let currentCategory = section.title
       for (const line of lines) {
-        const bulletMatch = line.match(/^\s*[-*•]\s+(.+)$/)
-        if (bulletMatch) {
-          const content = bulletMatch[1].trim()
-          if (content.length > 2) {
+        const bulletMatch = line.match(/^\s*(?:[-*•]|\d+\.)\s+(.+)$/)
+        const content = bulletMatch ? bulletMatch[1].trim() : line.trim()
+        if (content.length > 3 && content.length < 500) {
+          const ruleId = generateStableId('rule', `${currentCategory}-${content.slice(0, 30)}`)
+          if (!rules.find(r => r.id === ruleId)) {
             rules.push({
-              id: generateStableId('rule', `${currentCategory}-${content.slice(0, 20)}`),
+              id: ruleId,
               category: currentCategory,
               content: content.slice(0, 500),
               source_file: sourceFile,
@@ -492,7 +544,9 @@ function createWriterProjectSync(deps = {}) {
     }
 
     if (autoBlock) {
+      autoBlockRegex.lastIndex = 0
       if (autoBlockRegex.test(existingContent)) {
+        autoBlockRegex.lastIndex = 0
         newContent = existingContent.replace(autoBlockRegex, autoBlock.trim())
       } else {
         if (existingContent.trim() && !existingContent.endsWith('\n')) {
@@ -501,6 +555,7 @@ function createWriterProjectSync(deps = {}) {
           newContent = existingContent + autoBlock
         }
       }
+      fsModule.mkdirSync(pathModule.dirname(filePath), { recursive: true })
       fsModule.writeFileSync(filePath, newContent, 'utf8')
       return { file: CANONICAL_FILES[type][0], written: true }
     }
@@ -569,37 +624,112 @@ function createWriterProjectSync(deps = {}) {
         }
       }
 
-      const storyBiblePath = pathModule.join(project.folder, 'bible', 'story_bible.json')
-      const existingBible = readJsonFile(storyBiblePath, {
-        version: 1, project_id: project.id, title: project.title,
-        characters: [], locations: [], world_rules: [], foreshadows: [], timeline: [], chapters: []
+      const biblePath = pathModule.join(project.folder, 'bible', 'bible.json')
+      const existingBible = readJsonFile(biblePath, {
+        version: 1,
+        project_id: project.id,
+        project_slug: project.slug || project.id,
+        title: project.title,
+        chapters: [],
+        characters: [],
+        world: [],
+        foreshadows: [],
+        timeline: [],
+        updated_at: null
       })
 
-      const mergedCharacters = mergeById(existingBible.characters || [], allCharacters)
-      const mergedChapters = mergeById(existingBible.chapters || [], allChapters)
+      const bibleChapters = allChapters.map(ch => ({
+        id: ch.id,
+        title: ch.title,
+        number: ch.number,
+        file: ch.source_file,
+        chars: ch.word_count || 0,
+        summary: ch.summary || '',
+        status: ch.status || 'draft',
+        origin: ch.origin,
+        created_at: ch.created_at,
+        updated_at: ch.updated_at
+      }))
+
+      const bibleCharacters = allCharacters.map(c => ({
+        id: c.id,
+        name: c.name,
+        note: c.description || '',
+        evidence: c.source_file,
+        count: 1,
+        signals: ['sync-extracted'],
+        origin: c.origin,
+        created_at: c.created_at,
+        updated_at: c.updated_at
+      }))
+
+      const bibleWorld = [
+        ...allWorldRules.map(r => ({
+          id: r.id,
+          rule: r.content,
+          evidence: `${r.source_file}`,
+          file: r.source_file,
+          category: r.category,
+          origin: r.origin,
+          created_at: r.created_at,
+          updated_at: r.updated_at
+        })),
+        ...allLocations.map(l => ({
+          id: l.id,
+          rule: `地点：${l.name} - ${l.description || ''}`,
+          evidence: l.source_file,
+          file: l.source_file,
+          category: '地点',
+          origin: l.origin,
+          created_at: l.created_at,
+          updated_at: l.updated_at
+        }))
+      ]
+
+      const bibleForeshadows = allForeshadows.map(f => ({
+        id: f.id,
+        clue: f.content,
+        status: f.status || 'open',
+        evidence: f.source_file,
+        file: f.source_file,
+        origin: f.origin,
+        created_at: f.created_at,
+        updated_at: f.updated_at
+      }))
+
+      const bibleTimeline = bibleChapters.map(c => ({
+        event: `第${c.number}章：${c.title}`,
+        evidence: c.file,
+        file: c.file,
+        chapter: c.number
+      }))
+
+      const mergedChapters = mergeById(existingBible.chapters || [], bibleChapters)
         .sort((a, b) => (a.number || 0) - (b.number || 0))
-      const mergedWorldRules = mergeById(existingBible.world_rules || [], allWorldRules)
-      const mergedLocations = mergeById(existingBible.locations || [], allLocations)
-      const mergedForeshadows = mergeById(existingBible.foreshadows || [], allForeshadows)
+      const mergedCharacters = mergeById(existingBible.characters || [], bibleCharacters)
+      const mergedWorld = mergeById(existingBible.world || [], bibleWorld)
+      const mergedForeshadows = mergeById(existingBible.foreshadows || [], bibleForeshadows)
+      const mergedTimeline = mergeById(existingBible.timeline || [], bibleTimeline)
 
       report.characters_added = Math.max(0, mergedCharacters.length - (existingBible.characters?.length || 0))
       report.chapters_added = Math.max(0, mergedChapters.length - (existingBible.chapters?.length || 0))
-      report.world_rules_added = Math.max(0, mergedWorldRules.length - (existingBible.world_rules?.length || 0))
-      report.locations_added = Math.max(0, mergedLocations.length - (existingBible.locations?.length || 0))
+      report.world_rules_added = Math.max(0, mergedWorld.length - (existingBible.world?.length || 0))
       report.foreshadows_added = Math.max(0, mergedForeshadows.length - (existingBible.foreshadows?.length || 0))
 
       const updatedBible = {
         ...existingBible,
         version: 1,
         project_id: project.id,
+        project_slug: project.slug || project.id,
         title: project.title,
-        characters: mergedCharacters,
-        chapters: mergedChapters,
-        locations: mergedLocations,
-        world_rules: mergedWorldRules,
-        foreshadows: mergedForeshadows,
-        timeline: existingBible.timeline || [],
         updated_at: new Date().toISOString(),
+        source_policy: 'sync-pipeline',
+        sources: files.map(f => ({ file: f.rel, chars: f.text.length, lines: f.text.split(/\r?\n/).length })),
+        chapters: mergedChapters,
+        characters: mergedCharacters,
+        world: mergedWorld,
+        foreshadows: mergedForeshadows,
+        timeline: mergedTimeline,
         last_sync: {
           source,
           run_id,
@@ -607,7 +737,37 @@ function createWriterProjectSync(deps = {}) {
           documents_scanned: files.length
         }
       }
-      writeJsonFile(storyBiblePath, updatedBible)
+      writeJsonFile(biblePath, updatedBible)
+
+      const bibleDir = pathModule.join(project.folder, 'bible')
+      const md = [`# ${project.title} Project Bible`, '', `Updated: ${updatedBible.updated_at}`, '',
+        '## Chapter summaries',
+        ...(updatedBible.chapters || []).map(row => `- 第${row.number}章 ${row.title} (${row.file}): ${row.summary}`),
+        '', '## Characters',
+        ...(updatedBible.characters || []).map(row => `- ${row.name}: ${row.note || ''} (source: ${row.evidence})`),
+        '', '## World / canon rules',
+        ...(updatedBible.world || []).map(row => `- ${row.rule} (source: ${row.evidence})`),
+        '', '## Foreshadows',
+        ...(updatedBible.foreshadows || []).map(row => `- [${row.status}] ${row.clue} (source: ${row.evidence})`),
+        '', '## Timeline',
+        ...(updatedBible.timeline || []).map(row => `- ${row.event} (source: ${row.evidence})`)
+      ].join('\n')
+      fsModule.writeFileSync(pathModule.join(bibleDir, 'bible.md'), md, 'utf8')
+
+      const storyBiblePath = pathModule.join(project.folder, 'bible', 'story_bible.json')
+      writeJsonFile(storyBiblePath, {
+        version: 1,
+        project_id: project.id,
+        title: project.title,
+        characters: mergedCharacters,
+        chapters: mergedChapters,
+        locations: allLocations,
+        world_rules: allWorldRules,
+        foreshadows: mergedForeshadows,
+        timeline: mergedTimeline,
+        updated_at: updatedBible.updated_at,
+        last_sync: updatedBible.last_sync
+      })
 
       const narrativeStatePath = pathModule.join(project.folder, 'narrative-state', 'narrative_state.json')
       const narrativeState = {
@@ -644,15 +804,15 @@ function createWriterProjectSync(deps = {}) {
           ...mergedCharacters.map(c => ({
             id: generateStableId('mem_char', c.name),
             type: 'character',
-            content: `${c.name}: ${c.description || '主要角色'}`,
+            content: `${c.name}: ${c.note || '主要角色'}`,
             character_id: c.id,
             created_at: c.created_at,
             updated_at: c.updated_at
           })),
-          ...mergedWorldRules.map(r => ({
+          ...mergedWorld.map(r => ({
             id: generateStableId('mem_rule', r.id),
             type: 'world_rule',
-            content: r.content,
+            content: r.rule,
             category: r.category,
             created_at: r.created_at,
             updated_at: r.updated_at
@@ -697,7 +857,7 @@ function createWriterProjectSync(deps = {}) {
         const charResult = writeCanonicalMarkdown(project, 'characters', { characters: mergedCharacters }, { source, run_id })
         if (charResult.written) report.canonical_files_updated.push(charResult.file)
 
-        const worldResult = writeCanonicalMarkdown(project, 'world', { world_rules: mergedWorldRules, locations: mergedLocations }, { source, run_id })
+        const worldResult = writeCanonicalMarkdown(project, 'world', { world_rules: mergedWorld, locations: allLocations }, { source, run_id })
         if (worldResult.written) report.canonical_files_updated.push(worldResult.file)
       }
 
@@ -713,13 +873,40 @@ function createWriterProjectSync(deps = {}) {
           documents_scanned: report.documents_scanned,
           characters: mergedCharacters.length,
           chapters: mergedChapters.length,
-          world_rules: mergedWorldRules.length,
-          locations: mergedLocations.length
+          world_rules: mergedWorld.length,
+          locations: allLocations.length
         }
       }
       writeJsonFile(artifactsPath, {
         ...existingArtifacts,
         artifacts: [...(existingArtifacts.artifacts || []), syncArtifact].slice(-100),
+        updated_at: new Date().toISOString()
+      })
+
+      const graphDir = pathModule.join(project.folder, 'graph')
+      fsModule.mkdirSync(graphDir, { recursive: true })
+      writeJsonFile(pathModule.join(graphDir, 'knowledge_graph.json'), {
+        version: 1,
+        project_id: project.id,
+        nodes: [
+          ...mergedCharacters.map(c => ({ id: c.id, type: 'character', label: c.name })),
+          ...mergedChapters.map(c => ({ id: c.id, type: 'chapter', label: c.title })),
+          ...allLocations.map(l => ({ id: l.id, type: 'location', label: l.name }))
+        ],
+        edges: [],
+        updated_at: new Date().toISOString()
+      })
+
+      const wikiDir = pathModule.join(project.folder, 'wiki')
+      fsModule.mkdirSync(wikiDir, { recursive: true })
+      writeJsonFile(pathModule.join(wikiDir, 'living_wiki.json'), {
+        version: 1,
+        project_id: project.id,
+        entries: [
+          ...mergedCharacters.map(c => ({ id: c.id, title: c.name, content: c.note || '', type: 'character' })),
+          ...mergedChapters.map(c => ({ id: c.id, title: c.title, content: c.summary || '', type: 'chapter' })),
+          ...allLocations.map(l => ({ id: l.id, title: l.name, content: l.description || '', type: 'location' }))
+        ],
         updated_at: new Date().toISOString()
       })
 

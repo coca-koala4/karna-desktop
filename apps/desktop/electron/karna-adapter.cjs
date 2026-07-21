@@ -9793,6 +9793,25 @@ async function handleKarnaApiRequestImpl(request) {
     }
   }
 
+  if (reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/) && method === 'POST') {
+    try {
+      const projectRef = decodeURIComponent(reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/)[1])
+      const project = findWriterProject(projectRef)
+      if (!project) return createApiError(ERROR_CODES.NOT_FOUND, '项目未找到')
+      const writerOs = getWriterOs()
+      if (!writerOs?.syncWriterProjectFull) return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '同步服务未初始化')
+      const report = writerOs.syncWriterProjectFull(project, {
+        source: body?.source || 'manual',
+        run_id: body?.run_id || null,
+        auto_update_canonical_files: true
+      })
+      const bible = writerOs.readWriterProjectBible ? writerOs.readWriterProjectBible(projectRef) : null
+      return { ok: true, project: enrichWriterProject(project), sync_report: report, bible }
+    } catch (err) {
+      return createApiError(ERROR_CODES.INTERNAL_ERROR, `同步失败: ${err.message}`, { error: err.message })
+    }
+  }
+
   if (reqPath === '/api/writer/projects/sync' && method === 'POST') {
     try {
       const projectRef = body?.project_id || body?.projectId || body?.ref
@@ -9803,9 +9822,10 @@ async function handleKarnaApiRequestImpl(request) {
       const report = writerOs.syncWriterProjectFull(project, {
         source: body?.source || 'manual',
         run_id: body?.run_id || null,
-        auto_update_canonical_files: body?.auto_update_canonical_files !== false
+        auto_update_canonical_files: true
       })
-      return { ok: true, project: enrichWriterProject(project), sync_report: report }
+      const bible = writerOs.readWriterProjectBible ? writerOs.readWriterProjectBible(project.id) : null
+      return { ok: true, project: enrichWriterProject(project), sync_report: report, bible }
     } catch (err) {
       return createApiError(ERROR_CODES.INTERNAL_ERROR, `同步失败: ${err.message}`, { error: err.message })
     }
