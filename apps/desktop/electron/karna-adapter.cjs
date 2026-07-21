@@ -9623,18 +9623,31 @@ async function handleKarnaApiRequestImpl(request) {
       return { ok: false, error: 'PROJECT_NOT_FOUND', message: '项目不存在', statusCode: 404 }
     }
     try {
-      const result = syncProjectDocuments(project)
-      updateCreativeMemory(project, '', '手动同步')
-      updateTaskSystemProgress(project, { id: 'sync' }, '手动同步项目文件', '')
+      const writerOs = getWriterOs()
+      let syncReport = null
+      if (writerOs?.syncWriterProjectFull) {
+        syncReport = writerOs.syncWriterProjectFull(project, {
+          source: body?.source || 'manual',
+          run_id: body?.run_id || null,
+          auto_update_canonical_files: body?.auto_update_canonical_files !== false
+        })
+      } else {
+        const result = syncProjectDocuments(project)
+        updateCreativeMemory(project, '', '手动同步')
+        updateTaskSystemProgress(project, { id: 'sync' }, '手动同步项目文件', '')
+        syncReport = { documents_scanned: result?.documents?.length || 0 }
+      }
       return {
         ok: true,
         project_id: projectId,
         synced_at: new Date().toISOString(),
-        documents_count: result?.documents?.length || 0,
-        artifacts_count: result?.artifacts?.length || 0,
-        new_count: result?.new_count || 0,
-        documents: result?.documents || [],
-        artifacts: result?.artifacts || []
+        documents_count: syncReport.documents_scanned || 0,
+        artifacts_count: syncReport.chapters_added + syncReport.characters_added || 0,
+        new_count: syncReport.chapters_added + syncReport.characters_added + syncReport.world_rules_added || 0,
+        documents: syncReport.documents_updated ? [] : [],
+        artifacts: [],
+        sync_report: syncReport,
+        project: enrichWriterProject(project)
       }
     } catch (err) {
       return { ok: false, error: 'SYNC_FAILED', message: err instanceof Error ? err.message : String(err), statusCode: 500 }
@@ -9648,17 +9661,34 @@ async function handleKarnaApiRequestImpl(request) {
       return { ok: false, error: 'PROJECT_NOT_FOUND', message: '项目不存在', statusCode: 404 }
     }
     try {
-      const docs = scanProjectMarkdownFiles(project)
-      const docsFile = path.join(project.folder, 'documents', 'documents.json')
-      const artifactsFile = path.join(project.folder, 'artifacts', 'artifacts.json')
       const tasksFile = taskSystemPath(project)
       const memoryFile = path.join(project.folder, 'memory', 'creative_memory.json')
       const agentsFile = path.join(writerProjectDataPath(project), 'writer_agents.json')
-      const docsIndexed = fs.existsSync(docsFile) ? (readJsonFile(docsFile, { documents: [] }).documents || []).length : 0
+      
+      let syncStatus = null
+      let hasUnsynced = false
+      let docsLength = 0
+      let docsIndexed = 0
+      
+      const writerOs = getWriterOs()
+      if (writerOs?.checkProjectSyncStatus) {
+        syncStatus = writerOs.checkProjectSyncStatus(project)
+        hasUnsynced = syncStatus.needs_sync
+        docsLength = syncStatus.files_scanned || 0
+        docsIndexed = hasUnsynced ? docsLength - 1 : docsLength
+      } else {
+        const docs = scanProjectMarkdownFiles(project)
+        const docsFile = path.join(project.folder, 'documents', 'documents.json')
+        docsLength = docs.length
+        docsIndexed = fs.existsSync(docsFile) ? (readJsonFile(docsFile, { documents: [] }).documents || []).length : 0
+        hasUnsynced = docsLength > docsIndexed
+      }
+      
+      const artifactsFile = path.join(project.folder, 'artifacts', 'artifacts.json')
       const artifactsIndexed = fs.existsSync(artifactsFile) ? (readJsonFile(artifactsFile, { artifacts: [] }).artifacts || []).length : 0
-      const hasUnsynced = docs.length > docsIndexed
+      
       const issues = []
-      if (hasUnsynced) issues.push({ code: 'UNSYNCED_DOCS', message: `发现 ${docs.length - docsIndexed} 个未同步的稿件文件` })
+      if (hasUnsynced) issues.push({ code: 'UNSYNCED_DOCS', message: `发现未同步的稿件文件，建议立即同步`, unsynced_count: syncStatus?.unsynced_files?.length || (docsLength - docsIndexed) })
       if (!fs.existsSync(tasksFile)) issues.push({ code: 'MISSING_TASK_SYSTEM', message: '任务系统文件不存在' })
       if (!fs.existsSync(agentsFile)) issues.push({ code: 'MISSING_AGENTS', message: '智能体配置文件不存在' })
       return {
@@ -9666,13 +9696,13 @@ async function handleKarnaApiRequestImpl(request) {
         healthy: issues.length === 0,
         issues,
         stats: {
-          markdown_files: docs.length,
+          markdown_files: docsLength,
           indexed_documents: docsIndexed,
           indexed_artifacts: artifactsIndexed,
           has_task_system: fs.existsSync(tasksFile),
           has_memory: fs.existsSync(memoryFile),
           has_agents: fs.existsSync(agentsFile),
-          output_dir_files: docs.filter(d => /输出|output/i.test(d.path)).length
+          sync_status: syncStatus
         },
         can_sync: true
       }
@@ -9792,24 +9822,6 @@ async function handleKarnaApiRequestImpl(request) {
       return { ok: true, project: enrichWriterProject(project), sync_status: status }
     } catch (err) {
       return createApiError(ERROR_CODES.INTERNAL_ERROR, `检查同步状态失败: ${err.message}`)
-    }
-  }
-
-  if (reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/) && method === 'POST') {
-    try {
-      const projectRef = decodeURIComponent(reqPath.match(/^\/api\/writer\/projects\/([^/?]+)\/sync$/)[1])
-      const project = findWriterProject(projectRef)
-      if (!project) return createApiError(ERROR_CODES.NOT_FOUND, '项目未找到')
-      const writerOs = getWriterOs()
-      if (!writerOs?.syncWriterProjectFull) return createApiError(ERROR_CODES.NOT_IMPLEMENTED, '同步服务未初始化')
-      const report = writerOs.syncWriterProjectFull(project, {
-        source: body?.source || 'manual',
-        run_id: body?.run_id || null,
-        auto_update_canonical_files: body?.auto_update_canonical_files !== false
-      })
-      return { ok: true, project: enrichWriterProject(project), sync_report: report }
-    } catch (err) {
-      return createApiError(ERROR_CODES.INTERNAL_ERROR, `同步失败: ${err.message}`, { error: err.message })
     }
   }
 
